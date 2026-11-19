@@ -1,0 +1,490 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080d18">
+    <title>PhishGuard | Security Operations Center</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M32%204%208%2013v18c0%2015%2010%2026%2024%2031%2014-5%2024-16%2024-31V13z'%20fill='%23c0392b'/%3E%3Cpath%20d='M22%2032l7%207%2013-15'%20fill='none'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="app-shell">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-mark"><span>PG</span></div>
+            <div>
+                <h2>PhishGuard<span class="brand-dot">.</span></h2>
+                <small>THREAT INTELLIGENCE</small>
+            </div>
+            <button class="mobile-close" id="closeSidebar" aria-label="Close menu">×</button>
+        </div>
+
+        <div class="workspace-label">WORKSPACE</div>
+
+        <nav class="navigation">
+            <button class="nav-link active" data-page="overview">
+                <span class="nav-icon">◫</span><span>Overview</span>
+            </button>
+            <button class="nav-link" data-page="scanner">
+                <span class="nav-icon">⌕</span><span>URL Scanner</span>
+                <span class="nav-tag">AI</span>
+            </button>
+            <button class="nav-link" data-page="history">
+                <span class="nav-icon">◷</span><span>Scan History</span>
+            </button>
+            <button class="nav-link" data-page="intelligence">
+                <span class="nav-icon">⌘</span><span>Intelligence</span>
+            </button>
+        </nav>
+
+        <div class="workspace-label second-label">SYSTEM</div>
+
+        <nav class="navigation">
+            <button class="nav-link" data-page="about">
+                <span class="nav-icon">ⓘ</span><span>About Project</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="sidebar-status">
+                <span class="status-indicator"></span>
+                <div>
+                    <strong>Local engine active</strong>
+                    <small>Offline protection enabled</small>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <span>PHISHGUARD</span>
+                <span>v1.0.0</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN AREA -->
+    <main class="main-area">
+
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle" aria-label="Open menu">☰</button>
+                <div>
+                    <div class="breadcrumb">Security Center <span>/</span> <strong id="breadcrumbPage">Overview</strong></div>
+                    <div class="topbar-subtitle">AI-powered phishing detection platform</div>
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <div class="connection-pill">
+                    <span class="status-indicator"></span>
+                    LOCAL SYSTEM
+                </div>
+                <div class="offline-pill"><span>●</span> OFFLINE MODE</div>
+                <div class="profile-avatar">PG</div>
+            </div>
+        </header>
+
+        <div class="content-area">
+
+            <!-- OVERVIEW -->
+            <section class="page active" id="page-overview">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">SECURITY OVERVIEW</div>
+                        <h1>Security Dashboard</h1>
+                        <p>Monitor URL threats, analyze suspicious links and review your security activity.</p>
+                    </div>
+                    <button class="primary-button" id="goScanner">＋ New URL Scan</button>
+                </div>
+
+                <div class="welcome-banner">
+                    <div class="welcome-content">
+                        <div class="banner-label"><span class="live-dot"></span> PROTECTION ENGINE ONLINE</div>
+                        <h2>Your digital safety, <span>under control.</span></h2>
+                        <p>PhishGuard combines a character-level machine-learning model, local detection rules, and optional live threat-intelligence providers.</p>
+                        <button class="banner-button" id="bannerScan">Start security scan <span>→</span></button>
+                    </div>
+                    <div class="shield-art">
+                        <div class="shield-ring ring-one"></div>
+                        <div class="shield-ring ring-two"></div>
+                        <div class="shield-core">⬡</div>
+                        <div class="shield-check">✓</div>
+                    </div>
+                </div>
+
+                <div class="section-heading">
+                    <div>
+                        <h2>Security statistics</h2>
+                        <p>Based on your locally stored scan history</p>
+                    </div>
+                    <button class="text-button" id="refreshOverview">↻ Refresh data</button>
+                </div>
+
+                <div class="stats-grid">
+                    <article class="stat-card">
+                        <div class="stat-top">
+                            <span class="stat-icon blue">⌕</span>
+                            <span class="stat-caption">ALL TIME</span>
+                        </div>
+                        <div class="stat-value" id="totalScans">—</div>
+                        <div class="stat-label">Total URLs scanned</div>
+                        <div class="stat-bottom">Total recorded analyses</div>
+                    </article>
+
+                    <article class="stat-card">
+                        <div class="stat-top">
+                            <span class="stat-icon red">⚠</span>
+                            <span class="stat-caption">THREATS</span>
+                        </div>
+                        <div class="stat-value" id="phishingCount">—</div>
+                        <div class="stat-label">Phishing detected</div>
+                        <div class="stat-bottom">Detected in loaded history</div>
+                    </article>
+
+                    <article class="stat-card">
+                        <div class="stat-top">
+                            <span class="stat-icon green">✓</span>
+                            <span class="stat-caption">NO THREAT FOUND</span>
+                        </div>
+                        <div class="stat-value" id="legitimateCount">—</div>
+                        <div class="stat-label">No threat detected</div>
+                        <div class="stat-bottom">Based on current local checks</div>
+                    </article>
+
+                    <article class="stat-card">
+                        <div class="stat-top">
+                            <span class="stat-icon purple">◈</span>
+                            <span class="stat-caption">CURRENT ENGINE</span>
+                        </div>
+                        <div class="stat-value stat-word">ACTIVE</div>
+                        <div class="stat-label">Detection engine</div>
+                        <div class="stat-bottom">ML + Local intelligence</div>
+                    </article>
+                </div>
+
+                <div class="overview-grid">
+                    <article class="panel activity-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h3>Recent scan activity</h3>
+                                <p>Your latest URL security analyses</p>
+                            </div>
+                            <button class="text-button" data-goto="history">View all →</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>URL / DOMAIN</th>
+                                        <th>RESULT</th>
+                                        <th>RISK</th>
+                                        <th>TIME</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentScans">
+                                    <tr><td colspan="4" class="empty-cell">Loading scan history...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="panel distribution-panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h3>Threat distribution</h3>
+                                <p>Current loaded history</p>
+                            </div>
+                        </div>
+                        <div class="donut-area">
+                            <div class="donut-chart" id="donutChart">
+                                <div class="donut-center">
+                                    <strong id="donutTotal">0</strong>
+                                    <span>SCANS</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="legend">
+                            <div><span class="legend-dot red-bg"></span> Phishing <strong id="legendPhishing">0</strong></div>
+                            <div><span class="legend-dot green-bg"></span> No threat detected <strong id="legendLegitimate">0</strong></div>
+                        </div>
+                        <p class="chart-note">Distribution is calculated from the latest loaded history records.</p>
+                    </article>
+                </div>
+
+                <div class="bottom-note">
+                    <span>ⓘ</span>
+                    <p><strong>Security notice:</strong> A "No threat detected" result does not guarantee that a URL is safe. Always verify unfamiliar websites before sharing sensitive information.</p>
+                </div>
+            </section>
+
+            <!-- SCANNER -->
+            <section class="page" id="page-scanner">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">AI THREAT ANALYSIS</div>
+                        <h1>URL Security Scanner</h1>
+                        <p>Analyze suspicious links using machine learning, local rules, and optional live threat intelligence.</p>
+                    </div>
+                    <div class="engine-chip"><span class="status-indicator"></span> ENGINE READY</div>
+                </div>
+
+                <div class="scanner-layout">
+                    <div class="panel scanner-panel">
+                        <div class="scanner-title">
+                            <div class="scanner-icon">⌕</div>
+                            <div>
+                                <h2>Analyze a URL</h2>
+                                <p>Enter the complete website address below.</p>
+                            </div>
+                        </div>
+
+                        <form id="scanForm">
+                            <label for="urlInput">WEBSITE URL</label>
+                            <div class="url-input-wrap">
+                                <span class="url-prefix">↗</span>
+                                <input type="text" id="urlInput"
+                                placeholder="example.com"
+                                autocomplete="url"
+                                inputmode="url"
+                                required>
+                                <button type="submit" id="scanButton">Analyze URL <span>→</span></button>
+                            </div>
+                            <div class="input-hint"><span>ⓘ</span> Include http:// or https:// in the URL.</div>
+                        </form>
+
+                        <div class="scan-progress" id="scanProgress" hidden>
+                            <div class="scan-progress-top">
+                                <span class="spinner"></span>
+                                <strong>Analyzing URL...</strong>
+                                <span class="progress-label">PROCESSING</span>
+                            </div>
+                            <div class="progress-track"><span></span></div>
+                            <p>Extracting URL features and checking configured local and online threat intelligence. When online providers are enabled, the URL text is shared with those providers for reputation lookup.</p>
+                        </div>
+
+                        <div class="scanner-divider"></div>
+
+                        <div class="scanner-capabilities">
+                            <div><span class="cap-icon blue">◈</span><div><strong>Machine Learning</strong><small>Trained Random Forest model</small></div></div>
+                            <div><span class="cap-icon purple">⌘</span><div><strong>Local Intelligence</strong><small>Brand rules and local blocklists</small></div></div>
+                            <div><span class="cap-icon green">▣</span><div><strong>Privacy First</strong><small>Submitted URLs are not opened</small></div></div>
+                        </div>
+                    </div>
+
+                    <aside class="panel scanner-info">
+                        <div class="info-icon">🛡</div>
+                        <h3>How PhishGuard works</h3>
+                        <p>Every submitted URL is evaluated locally through multiple detection layers.</p>
+                        <div class="process-step"><span>01</span><div><strong>Feature extraction</strong><small>URL structure and domain characteristics</small></div></div>
+                        <div class="process-step"><span>02</span><div><strong>ML prediction</strong><small>Trained model estimates phishing risk</small></div></div>
+                        <div class="process-step"><span>03</span><div><strong>Threat intelligence</strong><small>Local rules plus optional online reputation lookups</small></div></div>
+                        <div class="process-step"><span>04</span><div><strong>Final assessment</strong><small>Combined result saved to local history</small></div></div>
+                    </aside>
+                </div>
+
+                <div class="result-panel panel" id="resultPanel" hidden>
+                    <div class="result-heading">
+                        <div>
+                            <div class="eyebrow">ANALYSIS REPORT</div>
+                            <h2>Scan results</h2>
+                        </div>
+                        <span class="result-status" id="resultStatus">COMPLETED</span>
+                    </div>
+
+                    <div class="result-summary" id="resultSummary">
+                        <div class="result-symbol" id="resultSymbol">✓</div>
+                        <div class="result-main">
+                            <div class="result-kicker">FINAL ASSESSMENT</div>
+                            <h2 id="resultPrediction">—</h2>
+                            <p id="resultMessage">Analysis completed.</p>
+                        </div>
+                        <div class="risk-box">
+                            <strong id="riskScore">0%</strong>
+                            <span>RISK SCORE</span>
+                        </div>
+                    </div>
+
+                    <div class="result-metrics">
+                        <div><span>ML CONFIDENCE</span><strong id="mlConfidence">—</strong></div>
+                        <div><span>DETECTION MODE</span><strong id="detectionMode">—</strong></div>
+                        <div><span>SCAN ID</span><strong id="scanId">—</strong></div>
+                    </div>
+
+                    <div class="indicators-section">
+                        <h3>Security indicators</h3>
+                        <div id="indicatorsList" class="indicators-list"></div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="secondary-button" id="scanAgain">Scan another URL</button>
+                        <button class="text-button" data-goto="history">Open scan history →</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HISTORY -->
+            <section class="page" id="page-history">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">AUDIT & RECORDS</div>
+                        <h1>Scan History</h1>
+                        <p>Review and manage previously analyzed URLs.</p>
+                    </div>
+                    <div class="heading-actions">
+                        <button class="secondary-button" id="exportHistory">↓ Export CSV</button>
+                        <button class="danger-button" id="clearHistory">Clear history</button>
+                    </div>
+                </div>
+
+                <div class="history-toolbar panel">
+                    <div class="search-box"><span>⌕</span><input type="search" id="historySearch" placeholder="Search URL or domain..."></div>
+                    <select id="historyFilter" aria-label="Filter scans">
+                        <option value="all">All results</option>
+                        <option value="phishing">Phishing</option>
+                        <option value="legitimate">No threat detected</option>
+                    </select>
+                    <button class="secondary-button" id="refreshHistory">↻ Refresh</button>
+                </div>
+
+                <div class="panel history-panel">
+                    <div class="panel-heading">
+                        <div><h3>Analysis records</h3><p id="historyCount">Loading records...</p></div>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>SCAN ID</th>
+                                    <th>URL / DOMAIN</th>
+                                    <th>CLASSIFICATION</th>
+                                    <th>RISK SCORE</th>
+                                    <th>DETECTION MODE</th>
+                                    <th>DATE</th>
+                                    <th>ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTable">
+                                <tr><td colspan="7" class="empty-cell">Loading history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination">
+                        <span id="paginationInfo">—</span>
+                        <div><button id="prevPage" class="page-button">←</button><button id="nextPage" class="page-button">→</button></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- INTELLIGENCE -->
+            <section class="page" id="page-intelligence">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">DETECTION TECHNOLOGY</div>
+                        <h1>Threat Intelligence</h1>
+                        <p>Understand the local and optional online intelligence layers powering PhishGuard.</p>
+                    </div>
+                    <div class="engine-chip"><span class="status-indicator"></span> LOCAL ENGINE</div>
+                </div>
+
+                <div class="intelligence-grid">
+                    <article class="panel intelligence-card">
+                        <div class="large-feature-icon blue">◈</div>
+                        <span class="feature-label">LAYER 01</span>
+                        <h3>Machine Learning</h3>
+                        <p>A locally trained Random Forest classifier evaluates numerical URL features and estimates phishing probability.</p>
+                        <div class="feature-footer"><span class="mini-status"></span> Model loaded locally</div>
+                    </article>
+                    <article class="panel intelligence-card">
+                        <div class="large-feature-icon purple">⌘</div>
+                        <span class="feature-label">LAYER 02</span>
+                        <h3>Local Threat Rules</h3>
+                        <p>Heuristic checks identify suspicious URL characteristics, including IP-based hosts, unusual symbols and suspicious keywords.</p>
+                        <div class="feature-footer"><span class="mini-status"></span> Rules available offline</div>
+                    </article>
+                    <article class="panel intelligence-card">
+                        <div class="large-feature-icon red">⚑</div>
+                        <span class="feature-label">LAYER 03</span>
+                        <h3>Threat Lists</h3>
+                        <p>Local blocklist and allowlist files provide offline domain intelligence. If API keys are configured in the project .env file, Google Safe Browsing and URLhaus are also queried for known malicious URLs.</p>
+                        <div class="feature-footer"><span class="mini-status"></span> Local lists enabled</div>
+                    </article>
+                </div>
+
+                <div class="panel architecture-panel">
+                    <div class="panel-heading"><div><h3>Detection architecture</h3><p>High-level view of the analysis workflow</p></div></div>
+                    <div class="architecture-flow">
+                        <div class="architecture-node"><span>01</span><strong>URL Input</strong><small>User submits a URL</small></div>
+                        <div class="flow-arrow">→</div>
+                        <div class="architecture-node"><span>02</span><strong>Feature Engine</strong><small>Numerical URL features</small></div>
+                        <div class="flow-arrow">→</div>
+                        <div class="architecture-node"><span>03</span><strong>ML + Rules</strong><small>Hybrid assessment</small></div>
+                        <div class="flow-arrow">→</div>
+                        <div class="architecture-node"><span>04</span><strong>Final Result</strong><small>Local scan history</small></div>
+                    </div>
+                </div>
+
+                <div class="bottom-note"><span>ⓘ</span><p>A no-match from any provider does not guarantee a URL is safe. Keep local lists updated and configure live providers for additional reputation coverage.</p></div>
+            </section>
+
+            <!-- ABOUT -->
+            <section class="page" id="page-about">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">PROJECT INFORMATION</div>
+                        <h1>About PhishGuard</h1>
+                        <p>AI-Based Phishing URL Detection System.</p>
+                    </div>
+                </div>
+
+                <div class="about-hero panel">
+                    <div class="about-logo">PG</div>
+                    <div>
+                        <div class="eyebrow">CYBERSECURITY PROJECT</div>
+                        <h2>PhishGuard<span class="brand-dot">.</span></h2>
+                        <p>An offline-first URL threat detection platform combining character-level machine learning, local rules, and optional live threat-intelligence lookups.</p>
+                        <span class="version-tag">VERSION 1.0.0</span>
+                    </div>
+                </div>
+
+                <div class="section-heading"><div><h2>Technology stack</h2><p>Core technologies used in this project</p></div></div>
+                <div class="tech-grid">
+                    <div class="tech-card"><strong>Python</strong><span>Core programming</span></div>
+                    <div class="tech-card"><strong>Flask</strong><span>Backend API</span></div>
+                    <div class="tech-card"><strong>Scikit-learn</strong><span>Machine learning</span></div>
+                    <div class="tech-card"><strong>SQLite</strong><span>Local database</span></div>
+                    <div class="tech-card"><strong>HTML / CSS</strong><span>User interface</span></div>
+                    <div class="tech-card"><strong>JavaScript</strong><span>Frontend logic</span></div>
+                </div>
+
+                <div class="panel disclaimer-panel">
+                    <h3>Important security disclaimer</h3>
+                    <p>PhishGuard is a defensive detection tool. Its results are based on the current model, local rules and available intelligence data. A legitimate classification means that no threat was detected by the current checks; it is not a guarantee that a website is safe.</p>
+                </div>
+            </section>
+
+            <footer class="main-footer">
+                <span>© 2026 PhishGuard Security Platform</span>
+                <span><span class="status-indicator"></span> All analysis processed locally</span>
+            </footer>
+        </div>
+    </main>
+</div>
+
+<!-- DETAILS MODAL -->
+<div class="modal-overlay" id="detailsModal" hidden>
+    <div class="modal-card">
+        <div class="modal-heading">
+            <div><div class="eyebrow">SCAN RECORD</div><h2>Analysis details</h2></div>
+            <button class="modal-close" id="closeModal" aria-label="Close">×</button>
+        </div>
+        <div id="detailsContent"></div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

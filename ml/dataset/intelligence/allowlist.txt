@@ -1,0 +1,31 @@
+# One domain per line. Sub-domains are included automatically (mail.google.com matches google.com).
+# Extend this with the Tranco top-10k list: https://tranco-list.eu/
+google.com
+youtube.com
+microsoft.com
+microsoftonline.com
+live.com
+office.com
+apple.com
+icloud.com
+amazon.com
+facebook.com
+instagram.com
+whatsapp.com
+linkedin.com
+github.com
+gitlab.com
+stackoverflow.com
+wikipedia.org
+paypal.com
+netflix.com
+dropbox.com
+yahoo.com
+ebay.com
+python.org
+mozilla.org
+x.com
+twitter.com
+zoom.us
+irembo.gov.rw
+rra.gov.rw

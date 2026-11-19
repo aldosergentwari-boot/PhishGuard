@@ -1,0 +1,5 @@
+feature_1,feature_2,correlation
+url_length,num_digits,0.8345611488795471
+num_digits,num_special_chars,0.8202655445324114
+has_https,has_http,-0.9999999999999988
+has_suspicious_words,suspicious_word_count,0.921262051937252

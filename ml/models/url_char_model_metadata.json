@@ -1,0 +1,46 @@
+{
+  "model_name": "Character n-gram TF-IDF + numeric URL features (SGD logistic)",
+  "model_version": "3.1-hostname-only",
+  "threshold": 0.2924454943794037,
+  "features": "HOSTNAME-only character n-grams (2-5) plus deterministic numeric features computed on the hostname",
+  "training_partition_records": 181642,
+  "model_fit_records": 154459,
+  "validation_records": 27183,
+  "testing_records": 47074,
+  "validation": {
+    "method": "Stratified 85/15 validation split from the training partition (random_state=42)",
+    "threshold": 0.2924454943794037,
+    "false_positive_rate": 0.009964903484582602,
+    "f2_score": 0.6271952805107606,
+    "precision": 0.9759927525290654,
+    "recall": 0.5757548766366795,
+    "confusion_matrix": {
+      "tn": 15797,
+      "fp": 159,
+      "fn": 4763,
+      "tp": 6464
+    }
+  },
+  "test": {
+    "accuracy": 0.8223010579088244,
+    "precision": 0.9827288428324698,
+    "recall": 0.5943593314763231,
+    "f1": 0.7407246691256237,
+    "f2": 0.6453686200378072,
+    "roc_auc": 0.9056871730848308,
+    "pr_auc": 0.9113341045760579,
+    "false_positive_rate": 0.00778642936596218,
+    "tn": 26760,
+    "fp": 210,
+    "fn": 8155,
+    "tp": 11949,
+    "threshold": 0.2924454943794037
+  },
+  "scikit_learn_version": "1.8.0",
+  "normalization": {
+    "strip_www": true,
+    "default_scheme_when_missing": "https",
+    "preserve_explicit_http_https": true
+  },
+  "risk_score_method": "piecewise: 0-50 below threshold, 50-100 above threshold"
+}

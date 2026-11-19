@@ -1,0 +1,32 @@
+{
+  "selected_model": "Character n-gram TF-IDF + numeric URL features (SGD logistic)",
+  "model_version": "3.1-hostname-only",
+  "threshold": 0.2924454943794037,
+  "test_metrics": {
+    "accuracy": 0.8223010579088244,
+    "precision": 0.9827288428324698,
+    "recall": 0.5943593314763231,
+    "f1": 0.7407246691256237,
+    "f2": 0.6453686200378072,
+    "roc_auc": 0.9056871730848308,
+    "pr_auc": 0.9113341045760579,
+    "false_positive_rate": 0.00778642936596218,
+    "true_negative": 26760,
+    "false_positive": 210,
+    "false_negative": 8155,
+    "true_positive": 11949
+  },
+  "confusion_matrix": [
+    [
+      26760,
+      210
+    ],
+    [
+      8155,
+      11949
+    ]
+  ],
+  "note": "Hostname-only model. Earlier 99.4% figures were inflated by a dataset shortcut (all legitimate URLs are bare https root domains).",
+  "scikit_learn_version": "1.8.0",
+  "risk_score_method": "piecewise: 0-50 below threshold, 50-100 above threshold"
+}
