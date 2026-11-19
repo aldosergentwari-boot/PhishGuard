@@ -19,19 +19,7 @@ def create_app():
 
     @app.route("/")
     def home():
-        return jsonify({
-            "status": "running",
-            "application": "AI-Based Phishing URL Detection System",
-            "version": "1.0.0",
-            "mode": "OFFLINE_FIRST",
-            "endpoints": {
-                "dashboard": "/dashboard",
-                "health": "/api/health",
-                "prediction": "/api/predict",
-                "offline_analysis": "/api/analyze",
-                "history": "/api/history"
-            }
-        }), 200
+        return render_template("index.html")
 
     @app.route("/dashboard")
     def dashboard():
