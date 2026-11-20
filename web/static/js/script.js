@@ -64,13 +64,14 @@ function showToast(message, type = 'info') {
 
 async function apiRequest(url, options = {}) {
     const response = await fetch(url, {
+        credentials: 'same-origin',
+        ...options,
         headers: {
             ...(options.body
                 ? { 'Content-Type': 'application/json' }
                 : {}),
             ...(options.headers || {})
-        },
-        ...options
+        }
     });
 
     let payload;
@@ -282,9 +283,10 @@ function riskMarkup(record) {
 // Get overview data from the backend
 async function getOverviewData() {
     const response = await fetch('/api/history?limit=10&offset=0', {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        cache: 'no-store'
+    method: 'GET',
+    credentials: 'same-origin',
+    headers: { 'Accept': 'application/json' },
+    cache: 'no-store'
     });
 
     if (!response.ok) {
