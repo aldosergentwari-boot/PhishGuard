@@ -145,21 +145,42 @@ class LocalIntelligenceService:
         host_compact = hostname.replace("-", "").replace("_", "")
         host_tokens = set(re.split(r"[-_.]", hostname))
         url_lower = url.lower()
+
+        # Identify labels placed BEFORE the registrable domain. A brand used as
+        # an exact subdomain label on an unrelated registrable domain is itself
+        # a strong impersonation signal (e.g. ebay.scammer.com), even when the
+        # URL has no /login or /verify path.
+        subdomain_labels = set()
+        if registered and hostname.endswith("." + registered):
+            subdomain_part = hostname[: -(len(registered) + 1)]
+            subdomain_labels = set(subdomain_part.split("."))
+
         for brand, official_domains in BRAND_DOMAINS.items():
             if any(registered == official or registered.endswith("." + official)
                    for official in official_domains):
                 continue
-            # Short names (att, rra, mtn) must be a WHOLE word: "att-help.com" yes, "attorney.com" no.
+
+            # Short names (att, rra, mtn) must be a WHOLE word.
             if len(brand) <= 4:
                 brand_in_host = brand in host_tokens
             else:
                 brand_in_host = brand in host_compact
+
+            exact_brand_subdomain = brand in subdomain_labels
             action_in_url = any(word in url_lower for word in BRAND_ACTION_WORDS)
-            if brand_in_host and action_in_url:
+
+            # Exact brand subdomain on an unrelated base domain is flagged
+            # without requiring an action keyword. Brand-like text elsewhere
+            # still requires account/security language to reduce false positives.
+            if exact_brand_subdomain or (brand_in_host and action_in_url):
                 return {
                     "brand": brand,
                     "domain": registered,
-                    "reason": "Brand name combined with account/security language on an unrelated domain.",
+                    "reason": (
+                        "Brand name used as a subdomain on an unrelated domain."
+                        if exact_brand_subdomain
+                        else "Brand name combined with account/security language on an unrelated domain."
+                    ),
                 }
         return None
 
