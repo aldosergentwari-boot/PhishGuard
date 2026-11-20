@@ -131,22 +131,13 @@ def create_app():
         static_url_path="/static"
     )
 
-    secret_key = os.getenv("SECRET_KEY")
-
-    if not secret_key:
-        if os.getenv("RENDER"):
-            raise RuntimeError("SECRET_KEY must be configured on Render.")
-        secret_key = secrets.token_hex(32)
-
-    app.secret_key = secret_key
+    app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 
     app.config.update(
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.getenv(
-            "SESSION_COOKIE_SECURE", "true"
-        ).lower() == "true",
-        PERMANENT_SESSION_LIFETIME=timedelta(days=365)
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365)
     )
 
     app.register_blueprint(prediction_bp)
