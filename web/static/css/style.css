@@ -383,11 +383,13 @@ tbody tr:hover { background: #ffffff05; }
     background: rgba(120, 74, 10, 0.12);
     box-shadow: 0 0 16px rgba(245, 158, 11, 0.12);
     border-radius: 14px;
+    border-color: #f59e0b !important;
 }
 
 #resultPanel.is-suspicious #resultSummary {
     border-color: #f59e0b;
     background: rgba(120, 74, 10, 0.18);
+    color: #f59e0b;
 }
 
 #resultPanel.is-suspicious #resultStatus,

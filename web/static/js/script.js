@@ -174,6 +174,10 @@ function isPhishing(record) {
     return getPrediction(record) === 'PHISHING';
 }
 
+function isSuspicious(record) {
+    return getPrediction(record) === 'SUSPICIOUS';
+}
+
 function getRisk(record) {
     const value =
         record?.final_risk_score ??
@@ -248,7 +252,7 @@ function resultBadge(record) {
     }
 
     if (prediction === 'LEGITIMATE') {
-        return '<span class="result-badge legitimate">SAFE</span>';
+        return '<span class="result-badge legitimate">NO THREAT</span>';
     }
 
     return '<span class="result-badge">UNKNOWN</span>';
@@ -277,16 +281,11 @@ function riskMarkup(record) {
 
 // Get overview data from the backend
 async function getOverviewData() {
-    const response = await fetch(
-        '/api/history?limit=10&offset=0',
-        {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            },
-            cache: 'no-store'
-        }
-    );
+    const response = await fetch('/api/history?limit=10&offset=0', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+    });
 
     if (!response.ok) {
         throw new Error(`HTTP Error: ${response.status}`);
@@ -295,63 +294,54 @@ async function getOverviewData() {
     const result = await response.json();
 
     if (result.success === false) {
-        throw new Error(
-            result.message || result.error || 'Unable to load overview data.'
-        );
+        throw new Error(result.message || result.error || 'Unable to load overview data.');
     }
-
-    // Backend response:
-    // { success: true, data: { scans: [], total: 0, summary: {} } }
 
     const data = result.data ?? result;
-
-    let records = [];
-
-    if (Array.isArray(data.scans)) {
-        records = data.scans;
-    } else if (Array.isArray(data.history)) {
-        records = data.history;
-    } else if (Array.isArray(data.records)) {
-        records = data.records;
-    }
+    const records = Array.isArray(data.scans)
+        ? data.scans
+        : Array.isArray(data.history)
+            ? data.history
+            : Array.isArray(data.records)
+                ? data.records
+                : [];
 
     const summary = data.summary ?? {};
 
-    const total = Number(
-        summary.total ?? data.total ?? records.length
-    );
+    const total = Number(summary.total ?? data.total ?? records.length);
 
     const phishing = Number(
-        summary.phishing ??
-        records.filter(record =>
-            getPrediction(record) === 'PHISHING'
-        ).length
+        summary.phishing ?? records.filter(isPhishing).length
+    );
+
+    const suspicious = Number(
+        summary.suspicious ?? records.filter(isSuspicious).length
     );
 
     const legitimate = Number(
         summary.legitimate ??
-        records.filter(record =>
-            getPrediction(record) === 'LEGITIMATE'
-        ).length
+        records.filter(record => getPrediction(record) === 'LEGITIMATE').length
     );
 
     return {
         records,
         total,
         phishing,
+        suspicious,
         legitimate
     };
 }
-
 
 // Update the four statistic cards
 function updateOverviewCards(data) {
     const elements = {
         total: $('totalScans'),
         phishing: $('phishingCount'),
+        suspicious: $('suspiciousCount'),
         legitimate: $('legitimateCount'),
         donutTotal: $('donutTotal'),
         legendPhishing: $('legendPhishing'),
+        legendSuspicious: $('legendSuspicious'),
         legendLegitimate: $('legendLegitimate')
     };
 
@@ -360,68 +350,41 @@ function updateOverviewCards(data) {
     }
 
     if (elements.phishing) {
-        elements.phishing.textContent =
-            data.phishing.toLocaleString();
+        elements.phishing.textContent = data.phishing.toLocaleString();
+    }
+
+    if (elements.suspicious) {
+        elements.suspicious.textContent = data.suspicious.toLocaleString();
     }
 
     if (elements.legitimate) {
-        elements.legitimate.textContent =
-            data.legitimate.toLocaleString();
+        elements.legitimate.textContent = data.legitimate.toLocaleString();
     }
 
     if (elements.donutTotal) {
-        elements.donutTotal.textContent =
-            data.total.toLocaleString();
+        elements.donutTotal.textContent = data.total.toLocaleString();
     }
 
     if (elements.legendPhishing) {
-        elements.legendPhishing.textContent =
-            data.phishing.toLocaleString();
+        elements.legendPhishing.textContent = data.phishing.toLocaleString();
+    }
+
+    if (elements.legendSuspicious) {
+        elements.legendSuspicious.textContent = data.suspicious.toLocaleString();
     }
 
     if (elements.legendLegitimate) {
-        elements.legendLegitimate.textContent =
-            data.legitimate.toLocaleString();
+        elements.legendLegitimate.textContent = data.legitimate.toLocaleString();
     }
 
     updateOverviewDonut(data);
 }
 
-
 // Update the threat distribution chart
-function updateOverviewDonut(data) {
-    const donut = $('donutChart');
-
-    if (!donut) return;
-
-    const total = data.phishing + data.legitimate;
-
-    if (total === 0) {
-        donut.style.background =
-            'conic-gradient(#263449 0% 100%)';
-        return;
-    }
-
-    const phishingPercentage =
-        (data.phishing / total) * 100;
-
-    donut.style.background = `
-        conic-gradient(
-            #ef4444 0% ${phishingPercentage}%,
-            #22c55e ${phishingPercentage}% 100%
-        )
-    `;
-}
-
-
-// Display latest five scans
 function renderRecentScans(records) {
     const tbody = $('recentScans');
 
-    if (!tbody) {
-        console.error('Overview element #recentScans was not found.');
-        return;
-    }
+    if (!tbody) return;
 
     if (!records || records.length === 0) {
         tbody.innerHTML = `
@@ -436,14 +399,8 @@ function renderRecentScans(records) {
 
     const latestRecords = [...records]
         .sort((a, b) => {
-            const dateA = new Date(
-                a.scanned_at ?? a.created_at ?? 0
-            ).getTime();
-
-            const dateB = new Date(
-                b.scanned_at ?? b.created_at ?? 0
-            ).getTime();
-
+            const dateA = new Date(a.scanned_at ?? a.created_at ?? 0).getTime();
+            const dateB = new Date(b.scanned_at ?? b.created_at ?? 0).getTime();
             return dateB - dateA;
         })
         .slice(0, 5);
@@ -454,33 +411,7 @@ function renderRecentScans(records) {
         const risk = getRisk(record);
         const prediction = getPrediction(record);
 
-        let badge;
-
-        if (prediction === 'PHISHING') {
-            badge = `
-                <span class="result-badge phishing">
-                    PHISHING
-                </span>
-            `;
-        } else if (prediction === 'SUSPICIOUS') {
-            badge = `
-                <span class="result-badge suspicious">
-                    SUSPICIOUS
-                </span>
-            `;
-        } else if (prediction === 'LEGITIMATE') {
-            badge = `
-                <span class="result-badge legitimate">
-                    SAFE
-                </span>
-            `;
-        } else {
-            badge = `
-                <span class="result-badge">
-                    UNKNOWN
-                </span>
-            `;
-        }
+        const badge = resultBadge(record);
 
         let riskClass = 'risk-low';
 
@@ -508,17 +439,12 @@ function renderRecentScans(records) {
                 </td>
 
                 <td>
-                    ${escapeHtml(
-                        formatDate(
-                            record.scanned_at ?? record.created_at
-                        )
-                    )}
+                    ${escapeHtml(formatDate(record.scanned_at ?? record.created_at))}
                 </td>
             </tr>
         `;
     }).join('');
 }
-
 
 // Main overview function
 async function loadOverview() {
@@ -1047,9 +973,11 @@ function normalizeAnalysis(response) {
 
 function showScanResult(record) {
     const prediction = getPrediction(record);
+
     const phishing = prediction === 'PHISHING';
     const suspicious = prediction === 'SUSPICIOUS';
     const legitimate = prediction === 'LEGITIMATE';
+    const unknown = !phishing && !suspicious && !legitimate;
 
     const risk = getRisk(record);
     const confidence = getConfidence(record);
@@ -1057,66 +985,59 @@ function showScanResult(record) {
     const panel = $('resultPanel');
     const summary = $('resultSummary');
 
+    [panel, summary].forEach(element => {
+        if (!element) return;
+
+        element.classList.toggle('is-phishing', phishing);
+        element.classList.toggle('is-suspicious', suspicious);
+        element.classList.toggle('is-legitimate', legitimate);
+        element.classList.toggle('is-unknown', unknown);
+    });
+
     if (panel) {
         panel.hidden = false;
-
-        panel.classList.toggle('is-phishing', phishing);
-        panel.classList.toggle('is-suspicious', suspicious);
-        panel.classList.toggle('is-legitimate', legitimate);
-        panel.classList.toggle(
-            'is-unknown',
-            !phishing && !suspicious && !legitimate
-        );
-    }
-
-    if (summary) {
-        summary.classList.toggle('is-phishing', phishing);
-        summary.classList.toggle('is-suspicious', suspicious);
-        summary.classList.toggle('is-legitimate', legitimate);
-        summary.classList.toggle(
-            'is-unknown',
-            !phishing && !suspicious && !legitimate
-        );
     }
 
     if ($('resultStatus')) {
         $('resultStatus').textContent = phishing
             ? 'THREAT DETECTED!'
             : suspicious
-                ? 'CAUTION ADVISED'
+                ? 'WARNING: SUSPICIOUS WEBSITE'
                 : legitimate
                     ? 'NO THREAT DETECTED'
                     : 'ANALYSIS COMPLETED';
     }
 
     if ($('resultSymbol')) {
-        $('resultSymbol').textContent = phishing || suspicious
+        $('resultSymbol').textContent = phishing
             ? '!'
-            : legitimate
-                ? '✓'
-                : '?';
+            : suspicious
+                ? '⚠'
+                : legitimate
+                    ? '✓'
+                    : '?';
     }
 
     if ($('resultPrediction')) {
         $('resultPrediction').textContent = phishing
             ? 'PHISHING — THREAT DETECTED'
             : suspicious
-                ? 'SUSPICIOUS — VERIFY BEFORE PROCEEDING'
+                ? 'SUSPICIOUS — REVIEW REQUIRED'
                 : legitimate
-                    ? 'SAFE — NO THREAT DETECTED'
+                    ? 'LEGITIMATE'
                     : 'ANALYSIS COMPLETED';
     }
 
     if ($('resultMessage')) {
-        $('resultMessage').textContent =
-            record.message ??
-            (
-                phishing
-                    ? 'WARNING: This website has indicators associated with phishing activity. Do not enter passwords, payment details or other sensitive information.'
+        $('resultMessage').textContent = record.message ?? (
+            phishing
+                ? 'This URL has strong indicators of phishing. Do not open it or enter personal information.'
+                : suspicious
+                    ? 'This URL has suspicious characteristics. Be careful and avoid entering sensitive information until it is verified.'
                     : legitimate
                         ? 'No threat was detected by the current checks. This does not guarantee that the website is safe.'
                         : 'The analysis could not determine the website status.'
-            );
+        );
     }
 
     if ($('riskScore')) {
@@ -1124,18 +1045,15 @@ function showScanResult(record) {
     }
 
     if ($('mlConfidence')) {
-        $('mlConfidence').textContent =
-            `${confidence.toFixed(2)}%`;
+        $('mlConfidence').textContent = `${confidence.toFixed(2)}%`;
     }
 
     if ($('detectionMode')) {
-        $('detectionMode').textContent =
-            record.detection_mode ?? '—';
+        $('detectionMode').textContent = record.detection_mode ?? '—';
     }
 
     if ($('scanId')) {
-        $('scanId').textContent =
-            record.scan_id ?? record.id ?? '—';
+        $('scanId').textContent = record.scan_id ?? record.id ?? '—';
     }
 
     const indicatorsList = $('indicatorsList');
