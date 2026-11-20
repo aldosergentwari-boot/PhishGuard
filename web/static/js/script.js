@@ -381,6 +381,39 @@ function updateOverviewCards(data) {
 }
 
 // Update the threat distribution chart
+function updateOverviewDonut(data) {
+    const donut = $('donutChart');
+
+    if (!donut) return;
+
+    const phishing = Number(data.phishing) || 0;
+    const suspicious = Number(data.suspicious) || 0;
+    const legitimate = Number(data.legitimate) || 0;
+
+    const total = phishing + suspicious + legitimate;
+
+    if (total === 0) {
+        donut.style.background = 'conic-gradient(#263449 0% 100%)';
+        return;
+    }
+
+    const phishingPercentage = (phishing / total) * 100;
+    const suspiciousPercentage = (suspicious / total) * 100;
+    const legitimatePercentage = (legitimate / total) * 100;
+
+    const phishingEnd = phishingPercentage;
+    const suspiciousEnd = phishingEnd + suspiciousPercentage;
+
+    donut.style.background = `
+        conic-gradient(
+            #ef4444 0% ${phishingEnd}%,
+            #f59e0b ${phishingEnd}% ${suspiciousEnd}%,
+            #22c55e ${suspiciousEnd}% 100%
+        )
+    `;
+}
+
+// Display latest five scans
 function renderRecentScans(records) {
     const tbody = $('recentScans');
 
