@@ -7,6 +7,7 @@ import tldextract
 from backend.config import MAX_URL_LENGTH
 from backend.services.model_service import get_model_service
 from backend.services.hybrid_service import get_hybrid_service
+from backend.services.user_identity import get_current_user_id
 from backend.database.history_service import (
     get_history_service
 )
@@ -224,12 +225,13 @@ def analyze_url():
 
         result = service.analyze(url.strip())
 
-        # Save scan in database
+        # Save scan under the current browser's identity
         history_service = get_history_service()
-
-        scan_id = history_service.save_scan(result)
-
-        result["scan_id"] = scan_id
+        owner_id = get_current_user_id()
+        scan_id = history_service.save_scan(
+            result,
+            owner_id=owner_id
+        )
 
         return jsonify({
             "success": True,

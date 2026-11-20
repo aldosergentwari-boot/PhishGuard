@@ -14,6 +14,7 @@ from flask import (
 
 from backend.routes.prediction import prediction_bp
 from backend.routes.history import history_bp
+from datetime import timedelta
 
 
 MAINTENANCE_PAGE = """
@@ -133,11 +134,10 @@ def create_app():
     app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 
     app.config.update(
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=(
-            os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
-        )
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=365)
     )
 
     app.register_blueprint(prediction_bp)

@@ -30,9 +30,11 @@ class HistoryService:
 
     def initialize_database(self):
         with self.get_connection() as connection:
+
             connection.execute("""
                 CREATE TABLE IF NOT EXISTS scan_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    owner_id TEXT,
                     url TEXT NOT NULL,
                     domain TEXT,
                     prediction TEXT NOT NULL,
@@ -43,6 +45,26 @@ class HistoryService:
                     indicators TEXT,
                     scanned_at TEXT NOT NULL
                 )
+            """)
+
+            # Safely upgrade an existing database.
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(scan_history)"
+                ).fetchall()
+            }
+
+            if "owner_id" not in columns:
+                connection.execute("""
+                    ALTER TABLE scan_history
+                    ADD COLUMN owner_id TEXT
+                """)
+
+            connection.execute("""
+                CREATE INDEX IF NOT EXISTS
+                idx_scan_history_owner
+                ON scan_history(owner_id)
             """)
 
             connection.execute("""
@@ -57,7 +79,10 @@ class HistoryService:
                 ON scan_history(prediction)
             """)
 
-    def save_scan(self, result):
+    def save_scan(self, result, owner_id):
+        if not owner_id:
+            raise ValueError("A valid scan owner is required.")
+
         ml_result = result.get("ml_result", {})
         local_result = result.get("local_intelligence", {})
 
@@ -71,6 +96,7 @@ class HistoryService:
         with self.get_connection() as connection:
             cursor = connection.execute("""
                 INSERT INTO scan_history (
+                    owner_id,
                     url,
                     domain,
                     prediction,
@@ -81,8 +107,9 @@ class HistoryService:
                     indicators,
                     scanned_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
+                owner_id,
                 result.get("url"),
                 local_result.get("domain"),
                 result.get("final_prediction"),
@@ -141,30 +168,37 @@ class HistoryService:
             conditions.append("UPPER(prediction) NOT LIKE '%PHISH%'")
 
         where_clause = (
-            "WHERE " + " AND ".join(conditions)
-            if conditions else ""
+            " AND ".join(conditions)
+            if conditions else "1 = 1"
         )
 
         return where_clause, parameters
 
     def get_history(
         self,
+        owner_id,
         limit=20,
         offset=0,
         search="",
         filter_by="all"
     ):
-        where_clause, parameters = self._build_filters(
+        if not owner_id:
+            raise ValueError("A valid history owner is required.")
+
+        filters, filter_parameters = self._build_filters(
             search,
             filter_by
         )
+
+        where_clause = f"owner_id = ? AND ({filters})"
+        parameters = [owner_id, *filter_parameters]
 
         with self.get_connection() as connection:
 
             rows = connection.execute(f"""
                 SELECT *
                 FROM scan_history
-                {where_clause}
+                WHERE {where_clause}
                 ORDER BY id DESC
                 LIMIT ? OFFSET ?
             """, (*parameters, limit, offset)).fetchall()
@@ -172,7 +206,7 @@ class HistoryService:
             total = connection.execute(f"""
                 SELECT COUNT(*)
                 FROM scan_history
-                {where_clause}
+                WHERE {where_clause}
             """, parameters).fetchone()[0]
 
             summary_row = connection.execute("""
@@ -191,7 +225,8 @@ class HistoryService:
                         END
                     ), 0) AS legitimate
                 FROM scan_history
-            """).fetchone()
+                WHERE owner_id = ?
+            """, (owner_id,)).fetchone()
 
             return {
                 "total": total,
@@ -210,33 +245,34 @@ class HistoryService:
                 ]
             }
 
-    def get_scan(self, scan_id):
+    def get_scan(self, scan_id, owner_id):
         with self.get_connection() as connection:
             row = connection.execute("""
                 SELECT *
                 FROM scan_history
-                WHERE id = ?
-            """, (scan_id,)).fetchone()
+                WHERE id = ? AND owner_id = ?
+            """, (scan_id, owner_id)).fetchone()
 
             if row is None:
                 return None
 
             return self.serialize_scan(row)
 
-    def delete_scan(self, scan_id):
+    def delete_scan(self, scan_id, owner_id):
         with self.get_connection() as connection:
             cursor = connection.execute("""
                 DELETE FROM scan_history
-                WHERE id = ?
-            """, (scan_id,))
+                WHERE id = ? AND owner_id = ?
+            """, (scan_id, owner_id))
 
             return cursor.rowcount > 0
 
-    def clear_history(self):
+    def clear_history(self, owner_id):
         with self.get_connection() as connection:
             cursor = connection.execute("""
                 DELETE FROM scan_history
-            """)
+                WHERE owner_id = ?
+            """, (owner_id,))
 
             return cursor.rowcount
 

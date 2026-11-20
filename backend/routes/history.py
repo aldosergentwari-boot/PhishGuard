@@ -5,6 +5,8 @@ from backend.database.history_service import (
     get_history_service
 )
 
+from backend.services.user_identity import get_current_user_id
+
 
 history_bp = Blueprint("history", __name__)
 
@@ -12,10 +14,16 @@ history_bp = Blueprint("history", __name__)
 @history_bp.route("/api/history", methods=["GET"])
 def get_history():
     try:
+        owner_id = get_current_user_id()
+
         limit = request.args.get("limit", default=20, type=int)
         offset = request.args.get("offset", default=0, type=int)
-        search = request.args.get("search", default="", type=str).strip()
-        filter_by = request.args.get("filter", default="all", type=str)
+        search = request.args.get(
+            "search", default="", type=str
+        ).strip()
+        filter_by = request.args.get(
+            "filter", default="all", type=str
+        )
 
         if limit is None or offset is None:
             return jsonify({
@@ -44,6 +52,7 @@ def get_history():
         service = get_history_service()
 
         result = service.get_history(
+            owner_id=owner_id,
             limit=limit,
             offset=offset,
             search=search,
@@ -65,8 +74,13 @@ def get_history():
 @history_bp.route("/api/history/<int:scan_id>", methods=["GET"])
 def get_scan(scan_id):
     try:
+        owner_id = get_current_user_id()
         service = get_history_service()
-        scan = service.get_scan(scan_id)
+
+        scan = service.get_scan(
+            scan_id=scan_id,
+            owner_id=owner_id
+        )
 
         if scan is None:
             return jsonify({
@@ -89,8 +103,13 @@ def get_scan(scan_id):
 @history_bp.route("/api/history/<int:scan_id>", methods=["DELETE"])
 def delete_scan(scan_id):
     try:
+        owner_id = get_current_user_id()
         service = get_history_service()
-        deleted = service.delete_scan(scan_id)
+
+        deleted = service.delete_scan(
+            scan_id=scan_id,
+            owner_id=owner_id
+        )
 
         if not deleted:
             return jsonify({
@@ -113,12 +132,14 @@ def delete_scan(scan_id):
 @history_bp.route("/api/history", methods=["DELETE"])
 def clear_history():
     try:
+        owner_id = get_current_user_id()
         service = get_history_service()
-        deleted_count = service.clear_history()
+
+        deleted_count = service.clear_history(owner_id)
 
         return jsonify({
             "success": True,
-            "message": "Scan history cleared.",
+            "message": "Your scan history cleared.",
             "deleted_count": deleted_count
         }), 200
 
