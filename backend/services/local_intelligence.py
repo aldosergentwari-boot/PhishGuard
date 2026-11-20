@@ -13,21 +13,34 @@ except ImportError:
     _domain_extractor = None
 
 BRAND_DOMAINS = {
-    "paypal": {"paypal.com"}, "google": {"google.com"},
-    "microsoft": {"microsoft.com", "live.com", "office.com", "microsoftonline.com", "office365.com", "microsoft365.com"},
-    "apple": {"apple.com", "icloud.com"}, "amazon": {"amazon.com", "amazon.co.uk", "amazon.co.jp"},
-    "facebook": {"facebook.com"}, "instagram": {"instagram.com"},
-    "whatsapp": {"whatsapp.com"}, "netflix": {"netflix.com"},
-    "linkedin": {"linkedin.com"}, "dropbox": {"dropbox.com"},
-    "dhl": {"dhl.com"}, "fedex": {"fedex.com"},
-    "ebay": {"ebay.com"}, "yahoo": {"yahoo.com"},
-    "binance": {"binance.com"}, "coinbase": {"coinbase.com"},
-    # Rwanda (VERIFY these official domains before relying on them)
-    "irembo": {"irembo.gov.rw"}, "rra": {"rra.gov.rw"},
-    "mtn": {"mtn.co.rw", "mtn.com"}, "airtel": {"airtel.co.rw", "airtel.com"},
+    "paypal": {"paypal.com"},
+    "google": {"google.com"},
+    "youtube": {"youtube.com"},
+    "microsoft": {
+        "microsoft.com", "live.com", "office.com",
+        "microsoftonline.com", "office365.com", "microsoft365.com"
+    },
+    "apple": {"apple.com", "icloud.com"},
+    "amazon": {"amazon.com", "amazon.co.uk", "amazon.co.jp"},
+    "facebook": {"facebook.com"},
+    "instagram": {"instagram.com"},
+    "whatsapp": {"whatsapp.com"},
+    "netflix": {"netflix.com"},
+    "linkedin": {"linkedin.com"},
+    "dropbox": {"dropbox.com"},
+    "dhl": {"dhl.com"},
+    "fedex": {"fedex.com"},
+    "ebay": {"ebay.com"},
+    "yahoo": {"yahoo.com"},
+    "binance": {"binance.com"},
+    "coinbase": {"coinbase.com"},
+    "irembo": {"irembo.gov.rw"},
+    "rra": {"rra.gov.rw"},
+    "mtn": {"mtn.co.rw", "mtn.com"},
+    "airtel": {"airtel.co.rw", "airtel.com"},
     "steam": {"steampowered.com", "steamcommunity.com"},
     "att": {"att.com", "att.net"},
-}
+} 
 BRAND_ACTION_WORDS = (
     "login", "signin", "verify", "verification", "secure", "account",
     "password", "update", "confirm", "recover", "wallet", "support",
