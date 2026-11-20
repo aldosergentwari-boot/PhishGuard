@@ -243,29 +243,8 @@ function resultBadge(record) {
         return '<span class="result-badge phishing">PHISHING</span>';
     }
 
-    if (prediction === 'LEGITIMATE') {
-        return '<span class="result-badge legitimate">NO THREAT</span>';
-    }
-
-    return '<span class="result-badge">UNKNOWN</span>';
-}
-
-function resultBadge(record) {
-    const prediction = getPrediction(record);
-
-    if (prediction === 'PHISHING') {
-        return '<span class="result-badge phishing">PHISHING</span>';
-    }
-
     if (prediction === 'SUSPICIOUS') {
-        return `
-            <span class="result-badge suspicious"
-                style="color:#f59e0b;
-                border:1px solid #f59e0b;
-                background:rgba(245,158,11,.10)">
-                SUSPICIOUS
-            </span>
-        `;
+        return '<span class="result-badge suspicious">SUSPICIOUS</span>';
     }
 
     if (prediction === 'LEGITIMATE') {
@@ -274,6 +253,23 @@ function resultBadge(record) {
 
     return '<span class="result-badge">UNKNOWN</span>';
 }
+
+function riskMarkup(record) {
+    const risk = getRisk(record);
+
+    const riskClass = risk >= 70
+        ? 'risk-high'
+        : risk >= 35
+            ? 'risk-medium'
+            : 'risk-low';
+
+    return `
+        <span class="risk-value ${riskClass}">
+            ${risk.toFixed(2)}%
+        </span>
+    `;
+}
+
 
 /* =========================================
    5. OVERVIEW - FIXED VERSION
@@ -460,34 +456,31 @@ function renderRecentScans(records) {
 
         let badge;
 
-if (prediction === 'PHISHING') {
-    badge = `
-        <span class="result-badge phishing">
-            PHISHING
-        </span>
-    `;
-} else if (prediction === 'SUSPICIOUS') {
-    badge = `
-        <span class="result-badge suspicious"
-            style="color:#f59e0b;
-            border:1px solid #f59e0b;
-            background:rgba(245,158,11,.10)">
-            SUSPICIOUS
-        </span>
-    `;
-} else if (prediction === 'LEGITIMATE') {
-    badge = `
-        <span class="result-badge legitimate">
-            SAFE
-        </span>
-    `;
-} else {
-    badge = `
-        <span class="result-badge">
-            UNKNOWN
-        </span>
-    `;
-}
+        if (prediction === 'PHISHING') {
+            badge = `
+                <span class="result-badge phishing">
+                    PHISHING
+                </span>
+            `;
+        } else if (prediction === 'SUSPICIOUS') {
+            badge = `
+                <span class="result-badge suspicious">
+                    SUSPICIOUS
+                </span>
+            `;
+        } else if (prediction === 'LEGITIMATE') {
+            badge = `
+                <span class="result-badge legitimate">
+                    SAFE
+                </span>
+            `;
+        } else {
+            badge = `
+                <span class="result-badge">
+                    UNKNOWN
+                </span>
+            `;
+        }
 
         let riskClass = 'risk-low';
 
@@ -1054,10 +1047,9 @@ function normalizeAnalysis(response) {
 
 function showScanResult(record) {
     const prediction = getPrediction(record);
-
     const phishing = prediction === 'PHISHING';
-    const legitimate = prediction === 'LEGITIMATE';
     const suspicious = prediction === 'SUSPICIOUS';
+    const legitimate = prediction === 'LEGITIMATE';
 
     const risk = getRisk(record);
     const confidence = getConfidence(record);
@@ -1065,92 +1057,66 @@ function showScanResult(record) {
     const panel = $('resultPanel');
     const summary = $('resultSummary');
 
-    const palette = phishing
-        ? {
-            color: '#ef4444',
-            bg: 'rgba(239,68,68,.09)',
-            label: 'PHISHING',
-            status: 'THREAT DETECTED',
-            symbol: '!'
-        }
-        : suspicious
-            ? {
-                color: '#f59e0b',
-                bg: 'rgba(245,158,11,.09)',
-                label: 'SUSPICIOUS',
-                status: 'CAUTION ADVISED',
-                symbol: '!'
-            }
-            : legitimate
-                ? {
-                    color: '#00c987',
-                    bg: 'rgba(0,201,135,.08)',
-                    label: 'SAFE',
-                    status: 'NO THREAT DETECTED',
-                    symbol: '✓'
-                }
-                : {
-                    color: '#94a3b8',
-                    bg: 'rgba(148,163,184,.08)',
-                    label: 'UNKNOWN',
-                    status: 'ANALYSIS COMPLETED',
-                    symbol: '?'
-                };
-
     if (panel) {
         panel.hidden = false;
 
         panel.classList.toggle('is-phishing', phishing);
-        panel.classList.toggle('is-legitimate', legitimate);
         panel.classList.toggle('is-suspicious', suspicious);
-
+        panel.classList.toggle('is-legitimate', legitimate);
         panel.classList.toggle(
             'is-unknown',
-            !phishing && !legitimate && !suspicious
+            !phishing && !suspicious && !legitimate
         );
-
-        panel.style.borderColor = palette.color;
     }
 
     if (summary) {
         summary.classList.toggle('is-phishing', phishing);
-        summary.classList.toggle('is-legitimate', legitimate);
         summary.classList.toggle('is-suspicious', suspicious);
-
+        summary.classList.toggle('is-legitimate', legitimate);
         summary.classList.toggle(
             'is-unknown',
-            !phishing && !legitimate && !suspicious
+            !phishing && !suspicious && !legitimate
         );
-
-        summary.style.borderColor = palette.color;
-        summary.style.backgroundColor = palette.bg;
     }
 
     if ($('resultStatus')) {
-        $('resultStatus').textContent = palette.status;
+        $('resultStatus').textContent = phishing
+            ? 'THREAT DETECTED!'
+            : suspicious
+                ? 'CAUTION ADVISED'
+                : legitimate
+                    ? 'NO THREAT DETECTED'
+                    : 'ANALYSIS COMPLETED';
     }
 
     if ($('resultSymbol')) {
-        $('resultSymbol').textContent = palette.symbol;
-        $('resultSymbol').style.color = palette.color;
-        $('resultSymbol').style.backgroundColor = palette.bg;
+        $('resultSymbol').textContent = phishing || suspicious
+            ? '!'
+            : legitimate
+                ? '✓'
+                : '?';
     }
 
     if ($('resultPrediction')) {
-        $('resultPrediction').textContent = palette.label;
-        $('resultPrediction').style.color = palette.color;
+        $('resultPrediction').textContent = phishing
+            ? 'PHISHING — THREAT DETECTED'
+            : suspicious
+                ? 'SUSPICIOUS — VERIFY BEFORE PROCEEDING'
+                : legitimate
+                    ? 'SAFE — NO THREAT DETECTED'
+                    : 'ANALYSIS COMPLETED';
     }
 
     if ($('resultMessage')) {
-        $('resultMessage').textContent = record.message ?? (
-            phishing
-                ? 'This URL has indicators associated with phishing. Do not enter passwords or sensitive information.'
-                : suspicious
-                    ? 'This URL has suspicious characteristics. Avoid entering sensitive information until it is independently verified.'
+        $('resultMessage').textContent =
+            record.message ??
+            (
+                phishing
+                    ? 'WARNING: This website has indicators associated with phishing activity. Do not enter passwords, payment details or other sensitive information.'
                     : legitimate
-                        ? 'No threat was detected by the enabled checks. This does not guarantee that the URL is safe.'
-                        : 'The analysis could not confidently classify this URL.'
-        );
+                        ? 'No threat was detected by the current checks. This does not guarantee that the website is safe.'
+                        : 'The analysis could not determine the website status.'
+            );
     }
 
     if ($('riskScore')) {
@@ -1158,7 +1124,8 @@ function showScanResult(record) {
     }
 
     if ($('mlConfidence')) {
-        $('mlConfidence').textContent = `${confidence.toFixed(2)}%`;
+        $('mlConfidence').textContent =
+            `${confidence.toFixed(2)}%`;
     }
 
     if ($('detectionMode')) {
@@ -1187,6 +1154,96 @@ function showScanResult(record) {
         behavior: 'smooth',
         block: 'start'
     });
+}
+
+async function handleScanSubmit(event) {
+    event.preventDefault();
+
+    const input = $('urlInput');
+    const button = $('scanButton');
+    const progress = $('scanProgress');
+    const resultPanel = $('resultPanel');
+
+    let url = input?.value.trim();
+
+    if (url && !/^https?:\/\//i.test(url)) {
+        url = `https://${url}`;
+    }
+
+    if (!url) {
+        showToast('Enter a URL to analyze.', 'warning');
+        input?.focus();
+        return;
+    }
+
+    try {
+        const parsed = new URL(url);
+
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+            throw new Error('Invalid protocol');
+        }
+
+        input.value = url;
+    } catch {
+        showToast('Enter a valid website address.', 'warning');
+        input?.focus();
+        return;
+    }
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Analyzing...';
+    }
+
+    if (progress) {
+        progress.hidden = false;
+    }
+
+    if (resultPanel) {
+        resultPanel.hidden = true;
+    }
+
+    try {
+        const response = await apiRequest(API.analyze, {
+            method: 'POST',
+            body: JSON.stringify({ url })
+        });
+
+        const result = normalizeAnalysis(response);
+
+        showScanResult(result);
+
+        showToast(
+            'URL analysis completed.',
+            'success'
+        );
+
+        // Refresh background panels without delaying the scan result or
+        // making the scanner feel as if it navigated away from the result.
+        state.historyPage = 0;
+        void Promise.allSettled([
+            loadOverview(),
+            loadHistory()
+        ]);
+
+    } catch (error) {
+        console.error('URL analysis failed:', error);
+
+        showToast(
+            `URL analysis failed: ${error.message}`,
+            'error'
+        );
+
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = 'Analyze URL <span>→</span>';
+        }
+
+        if (progress) {
+            progress.hidden = true;
+        }
+    }
 }
 
 /* =========================================

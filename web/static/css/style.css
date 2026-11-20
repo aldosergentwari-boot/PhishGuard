@@ -256,6 +256,7 @@ tbody tr:hover { background: #ffffff05; }
 }
 .result-badge.phishing { background: #7d263633; color: #ff8798; border: 1px solid #a53c5144; }
 .result-badge.legitimate { background: #1c745033; color: #6ce4b1; border: 1px solid #27855b55; }
+.result-badge.suspicious { background: #8a5a1833; color: #ffc46b; border: 1px solid #b7791f66; }
 .risk-value { font-weight: 800; }
 .risk-high { color: #ff8292; }
 .risk-low { color: #61dca8; }
@@ -376,6 +377,25 @@ tbody tr:hover { background: #ffffff05; }
     color: #22c55e;
 }
 
+/* Suspicious result */
+#resultPanel.is-suspicious {
+    border: 1px solid #f59e0b;
+    background: rgba(120, 74, 10, 0.12);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.12);
+    border-radius: 14px;
+}
+
+#resultPanel.is-suspicious #resultSummary {
+    border-color: #f59e0b;
+    background: rgba(120, 74, 10, 0.18);
+}
+
+#resultPanel.is-suspicious #resultStatus,
+#resultPanel.is-suspicious #resultPrediction,
+#resultPanel.is-suspicious #resultSymbol {
+    color: #f59e0b;
+}
+
 /* Unknown result */
 #resultPanel.is-unknown {
     border: 1px solid #64748b;
@@ -403,6 +423,8 @@ tbody tr:hover { background: #ffffff05; }
 .result-symbol { width: 43px; height: 43px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: #1d805333; color: var(--green); font-size: 22px; }
 .result-summary.is-phishing { border-color: #803c4c; background: #341a293d; }
 .result-summary.is-phishing .result-symbol { background: #a8334b44; color: var(--red); }
+.result-summary.is-suspicious { border-color: #a66a1d; background: #5036122e; }
+.result-summary.is-suspicious .result-symbol { background: #a66a1d33; color: #f59e0b; }
 .result-kicker { color: var(--muted); font-size: 8px; letter-spacing: 1.2px; font-weight: 900; }
 .result-main { min-width: 0; }
 .result-main h2 { margin: 5px 0; font-size: 18px; }

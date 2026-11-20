@@ -14,7 +14,7 @@ An offline-first phishing URL detection project with a Flask web dashboard, a Tk
 
 ## Model improvements
 
-The primary model is now `url_char_model.joblib` (version `3.0-url-lexical-hybrid`). It combines character n-gram TF-IDF features from the normalized URL with the existing numeric URL features. This lets it learn suspicious spelling patterns and domain/URL character sequences that a small set of length/count features cannot represent.
+The primary model is now `url_char_model.joblib` (version `3.1-hostname-only`). It combines character n-gram TF-IDF features from the normalized URL with the existing numeric URL features. This lets it learn suspicious spelling patterns and domain/URL character sequences that a small set of length/count features cannot represent.
 
 - `www.example.com` and `example.com` are normalized consistently.
 - A missing scheme is treated as HTTPS for feature extraction; explicit HTTP/HTTPS is preserved.
@@ -75,6 +75,18 @@ http://127.0.0.1:5000/dashboard
 ```
 
 The API runs locally. The scanner does not open the target website or download its page. If online threat-intelligence keys are configured, the URL text is sent to the selected provider(s) for reputation lookup; otherwise analysis remains local.
+
+## Deploy on Render
+
+Create a Render **Web Service** connected to the GitHub repository and use:
+
+- Build command: `pip install -r requirements.txt`
+- Start command: `gunicorn --bind 0.0.0.0:$PORT backend.app:app`
+- Runtime: Python 3
+
+Add `GOOGLE_SAFE_BROWSING_API_KEY` and/or `URLHAUS_AUTH_KEY` under Render Environment Variables if you want online reputation checks. Keep the values private; never commit `.env` or paste API keys into source files.
+
+**Storage note:** the default SQLite database is stored inside the project directory. On hosts with an ephemeral filesystem, history can be reset when the service is redeployed or restarted. Configure a persistent disk and point the database path to it if durable production history is required.
 
 ## Run the desktop application
 

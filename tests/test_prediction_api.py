@@ -20,10 +20,8 @@ def test_home_endpoint(client):
     response = client.get("/")
 
     assert response.status_code == 200
-
-    data = response.get_json()
-
-    assert data["status"] == "running"
+    assert response.mimetype == "text/html"
+    assert b"PhishGuard" in response.data
 
 
 def test_health_endpoint(client):
