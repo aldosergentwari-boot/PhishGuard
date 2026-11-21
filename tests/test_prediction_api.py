@@ -279,3 +279,34 @@ def test_account_registration_rejects_weak_password(client, tmp_path, monkeypatc
         headers={"X-CSRF-Token": token},
     )
     assert response.status_code == 400
+
+
+def test_auth_service_rate_limit_resets_after_window(tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "rate-limit.db")
+    auth_module.auth_service.initialize()
+
+    assert auth_module.auth_service.allow_auth_attempt("test-bucket", limit=2, window_seconds=900)
+    assert auth_module.auth_service.allow_auth_attempt("test-bucket", limit=2, window_seconds=900)
+    assert not auth_module.auth_service.allow_auth_attempt("test-bucket", limit=2, window_seconds=900)
+
+
+def test_login_endpoint_returns_429_after_repeated_attempts(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "login-rate.db")
+    auth_module.auth_service.initialize()
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+
+    responses = [
+        client.post(
+            "/api/auth/login",
+            json={"email": "limit-test@example.com", "password": "wrong-password"},
+            headers={"X-CSRF-Token": token},
+        )
+        for _ in range(9)
+    ]
+
+    assert all(response.status_code == 401 for response in responses[:8])
+    assert responses[8].status_code == 429
