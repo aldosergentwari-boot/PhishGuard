@@ -84,7 +84,7 @@
                     LOCAL SYSTEM
                 </div>
                 <div class="offline-pill"><span>●</span> OFFLINE MODE</div>
-                <div class="profile-avatar">PG</div>
+                <button class="profile-avatar" id="accountButton" type="button" aria-label="Account">PG</button>
             </div>
         </header>
 
@@ -475,6 +475,21 @@
     </main>
 </div>
 
+
+<div class="modal-overlay" id="accountModal" hidden>
+ <div class="modal-card account-modal-card" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+  <div class="modal-heading"><div><div class="eyebrow">PHISHGUARD ACCOUNT</div><h2 id="accountModalTitle">Your account</h2></div><button class="modal-close" id="closeAccountModal" aria-label="Close">×</button></div>
+  <div id="accountSignedIn" hidden><p class="account-status-label">SIGNED IN AS</p><strong id="accountEmail" class="account-email"></strong><p class="account-help">Your scan history is associated with this account when signed in.</p><button class="danger-button account-submit" id="logoutButton" type="button">Sign out</button></div>
+  <form id="accountForm">
+   <div class="account-tabs"><button type="button" class="account-tab active" data-auth-mode="login">Sign in</button><button type="button" class="account-tab" data-auth-mode="register">Create account</button></div>
+   <label for="accountEmailInput">EMAIL ADDRESS</label><input id="accountEmailInput" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
+   <label for="accountPasswordInput">PASSWORD</label><input id="accountPasswordInput" type="password" autocomplete="current-password" minlength="12" maxlength="128" required placeholder="At least 12 characters">
+   <p class="account-help" id="accountPasswordHint">Use your account password to sign in.</p>
+   <p class="account-error" id="accountError" role="alert" hidden></p>
+   <button class="primary-button account-submit" id="accountSubmit" type="submit">Sign in</button>
+  </form>
+ </div>
+</div>
 <!-- DETAILS MODAL -->
 <div class="modal-overlay" id="detailsModal" hidden>
     <div class="modal-card">
