@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from flask import Blueprint, jsonify, request, session
 from backend.database.auth_service import auth_service
@@ -24,6 +25,16 @@ def protect_auth_mutations():
             return jsonify({"success": False, "error": "Security token missing or invalid. Refresh and try again."}), 403
 
 
+
+def _auth_rate_limited(operation, email):
+    normalized_email = (email or "").strip().lower()
+    client_ip = request.remote_addr or "unknown"
+    ip_bucket = hashlib.sha256(f"{operation}:ip:{client_ip}".encode()).hexdigest()
+    email_bucket = hashlib.sha256(f"{operation}:email:{normalized_email}".encode()).hexdigest()
+    ip_allowed = auth_service.allow_auth_attempt(ip_bucket, limit=30, window_seconds=900)
+    email_allowed = auth_service.allow_auth_attempt(email_bucket, limit=8, window_seconds=900)
+    return not (ip_allowed and email_allowed)
+
 def _payload():
     data = request.get_json(silent=True)
     return data if isinstance(data, dict) else {}
@@ -32,6 +43,8 @@ def _payload():
 @auth_bp.post("/api/auth/register")
 def register():
     data = _payload()
+    if _auth_rate_limited("register", data.get("email")):
+        return jsonify({"success": False, "error": "Too many registration attempts. Try again in 15 minutes."}), 429
     try:
         user = auth_service.create_user(data.get("email"), data.get("password"))
     except ValueError as exc:
@@ -58,6 +71,8 @@ def register():
 @auth_bp.post("/api/auth/login")
 def login():
     data = _payload()
+    if _auth_rate_limited("login", data.get("email")):
+        return jsonify({"success": False, "error": "Too many login attempts. Try again in 15 minutes."}), 429
     user = auth_service.authenticate(data.get("email"), data.get("password"))
     if not user:
         return jsonify({"success": False, "error": "Invalid email or password."}), 401
