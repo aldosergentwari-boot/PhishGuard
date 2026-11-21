@@ -43,7 +43,7 @@ def login():
     if not user:
         return jsonify({"success": False, "error": "Invalid email or password."}), 401
 
-    anonymous_id = get_current_user_id()
+    anonymous_id = get_browser_identity()
     account_owner = f"account:{user['id']}"
     from backend.database.history_service import get_history_service
     service = get_history_service()
