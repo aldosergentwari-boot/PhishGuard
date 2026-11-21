@@ -231,9 +231,13 @@ def test_account_register_login_and_logout(client, tmp_path, monkeypatch):
     monkeypatch.setattr(history_module, "_history_service", None)
     auth_module.auth_service.initialize()
 
-    registered = client.post(
+    def post_with_csrf(path, payload):
+        token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+        return client.post(path, json=payload, headers={"X-CSRF-Token": token})
+
+    registered = post_with_csrf(
         "/api/auth/register",
-        json={"email": "serge@example.com", "password": "A-strong-test-password-2026"}
+        {"email": "serge@example.com", "password": "A-strong-test-password-2026"}
     )
     assert registered.status_code == 201
     assert registered.get_json()["user"]["email"] == "serge@example.com"
@@ -242,16 +246,24 @@ def test_account_register_login_and_logout(client, tmp_path, monkeypatch):
     assert me.status_code == 200
     assert me.get_json()["authenticated"] is True
 
-    logged_out = client.post("/api/auth/logout")
+    logged_out = post_with_csrf("/api/auth/logout", {})
     assert logged_out.status_code == 200
     assert client.get("/api/auth/me").get_json()["authenticated"] is False
 
-    logged_in = client.post(
+    logged_in = post_with_csrf(
         "/api/auth/login",
-        json={"email": "serge@example.com", "password": "A-strong-test-password-2026"}
+        {"email": "serge@example.com", "password": "A-strong-test-password-2026"}
     )
     assert logged_in.status_code == 200
     assert client.get("/api/auth/me").get_json()["authenticated"] is True
+
+
+def test_account_mutations_require_csrf_token(client):
+    response = client.post(
+        "/api/auth/logout",
+        json={},
+    )
+    assert response.status_code == 403
 
 
 def test_account_registration_rejects_weak_password(client, tmp_path, monkeypatch):
