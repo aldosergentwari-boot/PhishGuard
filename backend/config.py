@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,5 +17,10 @@ FEATURE_COLUMNS_PATH = BASE_DIR / "ml" / "dataset" / "splits" / "feature_columns
 
 MAX_URL_LENGTH = 8192
 
-DATABASE_DIR = BASE_DIR / "backend" / "database"
-DATABASE_PATH = DATABASE_DIR / "phishing_scans.db"
+# Allow production hosts with persistent disks (for example Render) to
+# store SQLite outside the deploy's ephemeral application directory.
+_default_database_path = BASE_DIR / "backend" / "database" / "phishing_scans.db"
+DATABASE_PATH = Path(
+    os.getenv("DATABASE_PATH", str(_default_database_path))
+).expanduser()
+DATABASE_DIR = DATABASE_PATH.parent
