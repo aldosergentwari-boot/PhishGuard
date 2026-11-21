@@ -48,6 +48,14 @@ class AuthService:
                     attempts INTEGER NOT NULL
                 )
             """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    token_hash TEXT PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    expires_at REAL NOT NULL,
+                    used_at REAL
+                )
+            """)
 
     def allow_auth_attempt(self, bucket, limit=8, window_seconds=900):
         """Allow a bounded number of auth attempts per opaque bucket/window."""
@@ -101,6 +109,40 @@ class AuthService:
         if not row or not row["is_active"] or not check_password_hash(row["password_hash"], password or ""):
             return None
         return {"id": row["id"], "email": row["email"]}
+
+    def create_password_reset(self, email, token_hash, expires_at):
+        email = (email or "").strip().lower()
+        with self.connection() as db:
+            row = db.execute(
+                "SELECT id FROM users WHERE email = ? AND is_active = 1", (email,)
+            ).fetchone()
+            if not row:
+                return False
+            db.execute("DELETE FROM password_reset_tokens WHERE user_id = ?", (row["id"],))
+            db.execute(
+                "INSERT INTO password_reset_tokens(token_hash, user_id, expires_at) VALUES (?, ?, ?)",
+                (token_hash, row["id"], expires_at),
+            )
+            return True
+
+    def consume_password_reset(self, token_hash, new_password):
+        if not isinstance(new_password, str) or not 12 <= len(new_password) <= 128:
+            raise ValueError("Password must contain 12 to 128 characters.")
+        password_hash = generate_password_hash(new_password, method="scrypt")
+        now = time.time()
+        with self.connection() as db:
+            row = db.execute(
+                """SELECT user_id FROM password_reset_tokens
+                   WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?""",
+                (token_hash, now),
+            ).fetchone()
+            if not row:
+                return False
+            db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, row["user_id"]))
+            db.execute("UPDATE password_reset_tokens SET used_at = ? WHERE token_hash = ?", (now, token_hash))
+            db.execute("DELETE FROM password_reset_tokens WHERE user_id = ? AND token_hash != ?",
+                       (row["user_id"], token_hash))
+            return True
 
     def get_user(self, user_id):
         with self.connection() as db:
