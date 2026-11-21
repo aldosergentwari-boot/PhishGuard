@@ -76,6 +76,17 @@ http://127.0.0.1:5000/dashboard
 
 The API runs locally. The scanner does not open the target website or download its page. If online threat-intelligence keys are configured, the URL text is sent to the selected provider(s) for reputation lookup; otherwise analysis remains local.
 
+## Session and browser-history security
+
+The web app assigns anonymous browser sessions a random owner ID so scan history is isolated between browser profiles. The session cookie is HTTP-only, uses SameSite=Lax, and lasts up to one year. Clearing browser cookies creates a new anonymous identity; anonymous history is not an account and cannot be recovered across devices.
+
+Set these environment variables before production deployment:
+
+- `SECRET_KEY`: a long, randomly generated secret used to sign Flask sessions. Keep it stable across restarts and never commit the real value.
+- `SESSION_COOKIE_SECURE=true`: required when serving the site over HTTPS. For local development over `http://127.0.0.1`, use `false`.
+
+The browser dashboard sends same-origin API requests so its session cookie is included with scan and history requests.
+
 ## Deploy on Render
 
 Create a Render **Web Service** connected to the GitHub repository and use:
