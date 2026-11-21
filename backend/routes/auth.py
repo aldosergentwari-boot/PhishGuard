@@ -1,8 +1,11 @@
 import hashlib
 import secrets
+import os
+import time
 from flask import Blueprint, jsonify, request, session
 from backend.database.auth_service import auth_service
 from backend.services.user_identity import get_browser_identity
+from backend.services.email_service import send_password_reset_email
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -18,7 +21,7 @@ def csrf_token():
 
 @auth_bp.before_app_request
 def protect_auth_mutations():
-    if request.path in ("/api/auth/register", "/api/auth/login", "/api/auth/logout") and request.method == "POST":
+    if request.path in ("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/auth/password-reset/request", "/api/auth/password-reset/confirm") and request.method == "POST":
         expected = session.get("csrf_token", "")
         supplied = request.headers.get("X-CSRF-Token", "")
         if not expected or not supplied or not secrets.compare_digest(expected, supplied):
@@ -110,3 +113,46 @@ def current_user():
 def logout():
     session.clear()
     return jsonify({"success": True, "message": "Logged out."}), 200
+
+@auth_bp.post("/api/auth/password-reset/request")
+def request_password_reset():
+    data = _payload()
+    email = (data.get("email") or "").strip().lower()
+    if _auth_rate_limited("password-reset", email):
+        return jsonify({"success": True, "message": "If that account exists, a reset link will be sent."}), 200
+
+    raw_token = secrets.token_urlsafe(48)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    expires_at = time.time() + 1800
+    created = auth_service.create_password_reset(email, token_hash, expires_at)
+    if created:
+        base_url = os.getenv("PUBLIC_APP_URL", "").rstrip("/")
+        if base_url.startswith("https://"):
+            try:
+                send_password_reset_email(email, f"{base_url}/reset-password?token={raw_token}")
+            except Exception:
+                pass
+    return jsonify({
+        "success": True,
+        "message": "If that account exists, a reset link will be sent."
+    }), 200
+
+
+@auth_bp.post("/api/auth/password-reset/confirm")
+def confirm_password_reset():
+    data = _payload()
+    token = data.get("token")
+    password = data.get("password")
+    if not isinstance(token, str) or not token or len(token) > 256:
+        return jsonify({"success": False, "error": "Invalid or expired reset link."}), 400
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    try:
+        changed = auth_service.consume_password_reset(token_hash, password)
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    if not changed:
+        return jsonify({"success": False, "error": "Invalid or expired reset link."}), 400
+    return jsonify({
+        "success": True,
+        "message": "Password updated. Please sign in with your new password."
+    }), 200
