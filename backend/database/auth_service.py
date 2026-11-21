@@ -56,6 +56,9 @@ class AuthService:
                     used_at REAL
                 )
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(users)")}
+            if "session_version" not in columns:
+                db.execute("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0")
 
     def allow_auth_attempt(self, bucket, limit=8, window_seconds=900):
         """Allow a bounded number of auth attempts per opaque bucket/window."""
@@ -103,12 +106,12 @@ class AuthService:
         email = (email or "").strip().lower()
         with self.connection() as db:
             row = db.execute(
-                "SELECT id, email, password_hash, is_active FROM users WHERE email = ?",
+                "SELECT id, email, password_hash, is_active, session_version FROM users WHERE email = ?",
                 (email,)
             ).fetchone()
         if not row or not row["is_active"] or not check_password_hash(row["password_hash"], password or ""):
             return None
-        return {"id": row["id"], "email": row["email"]}
+        return {"id": row["id"], "email": row["email"], "session_version": row["session_version"]}
 
     def create_password_reset(self, email, token_hash, expires_at):
         email = (email or "").strip().lower()
@@ -138,7 +141,7 @@ class AuthService:
             ).fetchone()
             if not row:
                 return False
-            db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, row["user_id"]))
+            db.execute("UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?", (password_hash, row["user_id"]))
             db.execute("UPDATE password_reset_tokens SET used_at = ? WHERE token_hash = ?", (now, token_hash))
             db.execute("DELETE FROM password_reset_tokens WHERE user_id = ? AND token_hash != ?",
                        (row["user_id"], token_hash))
@@ -147,7 +150,7 @@ class AuthService:
     def get_user(self, user_id):
         with self.connection() as db:
             row = db.execute(
-                "SELECT id, email, created_at FROM users WHERE id = ? AND is_active = 1",
+                "SELECT id, email, created_at, session_version FROM users WHERE id = ? AND is_active = 1",
                 (user_id,)
             ).fetchone()
         return dict(row) if row else None
