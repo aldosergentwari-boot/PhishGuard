@@ -94,6 +94,7 @@ def login():
     session.clear()
     session["account_id"] = user["id"]
     session["account_email"] = user["email"]
+    session["session_version"] = user.get("session_version", 0)
     session.permanent = True
     return jsonify({"success": True, "user": user}), 200
 
