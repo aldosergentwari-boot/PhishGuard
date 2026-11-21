@@ -572,3 +572,8 @@ tbody tr:hover { background: #ffffff05; }
 .account-email{display:block;margin-top:8px;color:var(--text);overflow-wrap:anywhere}
 .profile-avatar{border:1px solid #31577a;cursor:pointer}
 .profile-avatar:hover{border-color:var(--cyan)}
+
+.forgot-password-link,.back-to-login{display:block;margin:12px auto 0;font-size:10px}
+#forgotPasswordForm label,#resetPasswordForm label{display:block;margin:14px 0 7px;color:#8194aa;font-size:9px;font-weight:900;letter-spacing:1px}
+#forgotPasswordForm input,#resetPasswordForm input{width:100%;height:42px;padding:0 12px;border:1px solid #334b68;border-radius:7px;outline:none;background:#0b1422;color:white;font-size:12px}
+#forgotPasswordForm input:focus,#resetPasswordForm input:focus{border-color:#348bd5}
