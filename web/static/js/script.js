@@ -64,15 +64,29 @@ function showToast(message, type = 'info') {
 ========================================= */
 
 async function apiRequest(url, options = {}) {
+    const headers = {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {})
+    };
+
+    const method = String(options.method || 'GET').toUpperCase();
+    if (url.startsWith(API.auth + '/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        const csrfResponse = await fetch(API.auth + '/csrf', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (!csrfResponse.ok) {
+            throw new Error('Could not obtain a security token. Refresh the page and try again.');
+        }
+        const csrfPayload = await csrfResponse.json();
+        headers['X-CSRF-Token'] = csrfPayload.csrf_token;
+    }
+
     const response = await fetch(url, {
         credentials: 'same-origin',
         ...options,
-        headers: {
-            ...(options.body
-                ? { 'Content-Type': 'application/json' }
-                : {}),
-            ...(options.headers || {})
-        }
+        headers
     });
 
     let payload;
