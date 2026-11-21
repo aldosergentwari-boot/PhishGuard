@@ -43,7 +43,7 @@ def get_history():
                 "error": "Search query is too long."
             }), 400
 
-        if filter_by not in ("all", "phishing", "legitimate"):
+        if filter_by not in ("all", "phishing", "suspicious", "legitimate"):
             return jsonify({
                 "success": False,
                 "error": "Invalid history filter."

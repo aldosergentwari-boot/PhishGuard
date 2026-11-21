@@ -64,6 +64,16 @@ class HybridDetectionService:
             85 if brand_match else 0,
         )
 
+        # A trusted (allowlisted) domain is capped BEFORE the label is chosen.
+        # If the cap were applied afterwards, the label would still be decided
+        # from the uncapped ML score and a trusted site could be shown as
+        # SUSPICIOUS with a risk below the suspicious threshold (34 < 35).
+        if allowlist_match and not (blocklist_match or external_match):
+            final_risk_score = min(
+                ml_result["risk_score"],
+                34
+            )
+
         # Confirmed threat sources receive the PHISHING classification.
         # Strong ML results can also receive PHISHING.
         if blocklist_match or external_match:
@@ -87,12 +97,6 @@ class HybridDetectionService:
 
         else:
             final_prediction = "LEGITIMATE"
-
-        if allowlist_match and not (blocklist_match or external_match):
-            final_risk_score = min(
-                ml_result["risk_score"],
-                34
-            )
 
         decision_sources = []
 

@@ -162,10 +162,13 @@ class HistoryService:
             parameters.extend([pattern, pattern])
 
         if filter_by == "phishing":
-            conditions.append("UPPER(prediction) LIKE '%PHISH%'")
+            conditions.append("UPPER(prediction) = 'PHISHING'")
+
+        elif filter_by == "suspicious":
+            conditions.append("UPPER(prediction) = 'SUSPICIOUS'")
 
         elif filter_by == "legitimate":
-            conditions.append("UPPER(prediction) NOT LIKE '%PHISH%'")
+            conditions.append("UPPER(prediction) = 'LEGITIMATE'")
 
         where_clause = (
             " AND ".join(conditions)
@@ -212,18 +215,12 @@ class HistoryService:
             summary_row = connection.execute("""
                 SELECT
                     COUNT(*) AS total,
-                    COALESCE(SUM(
-                        CASE
-                            WHEN UPPER(prediction) LIKE '%PHISH%'
-                            THEN 1 ELSE 0
-                        END
-                    ), 0) AS phishing,
-                    COALESCE(SUM(
-                        CASE
-                            WHEN UPPER(prediction) NOT LIKE '%PHISH%'
-                            THEN 1 ELSE 0
-                        END
-                    ), 0) AS legitimate
+                    COALESCE(SUM(CASE WHEN UPPER(prediction) = 'PHISHING'
+                        THEN 1 ELSE 0 END), 0) AS phishing,
+                    COALESCE(SUM(CASE WHEN UPPER(prediction) = 'SUSPICIOUS'
+                        THEN 1 ELSE 0 END), 0) AS suspicious,
+                    COALESCE(SUM(CASE WHEN UPPER(prediction) = 'LEGITIMATE'
+                        THEN 1 ELSE 0 END), 0) AS legitimate
                 FROM scan_history
                 WHERE owner_id = ?
             """, (owner_id,)).fetchone()
@@ -237,6 +234,7 @@ class HistoryService:
                 "summary": {
                     "total": summary_row["total"],
                     "phishing": summary_row["phishing"],
+                    "suspicious": summary_row["suspicious"],
                     "legitimate": summary_row["legitimate"]
                 },
                 "scans": [

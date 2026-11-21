@@ -132,6 +132,11 @@ function extractHistory(response) {
         records.filter(isPhishing).length
     );
 
+    const suspicious = Number(
+        rawSummary.suspicious ??
+        records.filter(isSuspicious).length
+    );
+
     const legitimate = Number(
         rawSummary.legitimate ??
         records.filter(record =>
@@ -149,6 +154,8 @@ function extractHistory(response) {
                 : (Number.isFinite(total) ? total : records.length),
 
             phishing: Number.isFinite(phishing) ? phishing : 0,
+
+            suspicious: Number.isFinite(suspicious) ? suspicious : 0,
 
             legitimate: Number.isFinite(legitimate)
                 ? legitimate
@@ -408,9 +415,9 @@ function updateOverviewDonut(data) {
 
     donut.style.background = `
         conic-gradient(
-            #ef4444 0% ${phishingEnd}%,
+            #ff6278 0% ${phishingEnd}%,
             #f59e0b ${phishingEnd}% ${suspiciousEnd}%,
-            #22c55e ${suspiciousEnd}% 100%
+            #35d69a ${suspiciousEnd}% 100%
         )
     `;
 }

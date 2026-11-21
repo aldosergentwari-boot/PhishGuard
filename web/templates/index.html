@@ -210,6 +210,7 @@
                         </div>
                         <div class="legend">
                             <div><span class="legend-dot red-bg"></span> Phishing <strong id="legendPhishing">0</strong></div>
+                            <div><span class="legend-dot amber-bg"></span> Suspicious <strong id="legendSuspicious">0</strong></div>
                             <div><span class="legend-dot green-bg"></span> No threat detected <strong id="legendLegitimate">0</strong></div>
                         </div>
                         <p class="chart-note">Distribution is calculated from the latest loaded history records.</p>
@@ -345,6 +346,7 @@
                     <select id="historyFilter" aria-label="Filter scans">
                         <option value="all">All results</option>
                         <option value="phishing">Phishing</option>
+                        <option value="suspicious">Suspicious</option>
                         <option value="legitimate">No threat detected</option>
                     </select>
                     <button class="secondary-button" id="refreshHistory">↻ Refresh</button>
