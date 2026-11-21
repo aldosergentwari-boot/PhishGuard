@@ -396,3 +396,39 @@ def test_password_reset_revokes_existing_account_sessions(client, tmp_path, monk
         json={"email": "revoke@example.com", "password": "Old-strong-password-2026"},
         headers={"X-CSRF-Token": client.get("/api/auth/csrf").get_json()["csrf_token"]},
     ).status_code == 401
+
+
+def test_password_reset_token_is_discarded_when_email_delivery_fails(
+    client, tmp_path, monkeypatch
+):
+    import sqlite3
+    import backend.database.auth_service as auth_module
+    import backend.routes.auth as auth_routes
+
+    db_path = tmp_path / "failed-reset-email.db"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", db_path)
+    auth_module.auth_service.initialize()
+    auth_module.auth_service.create_user(
+        "delivery@example.com", "Old-strong-password-2026"
+    )
+    monkeypatch.setenv("PUBLIC_APP_URL", "https://phishguard.example")
+    monkeypatch.setattr(
+        auth_routes,
+        "send_password_reset_email",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("SMTP unavailable")),
+    )
+
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    response = client.post(
+        "/api/auth/password-reset/request",
+        json={"email": "delivery@example.com"},
+        headers={"X-CSRF-Token": csrf},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["success"] is True
+    with sqlite3.connect(db_path) as db:
+        remaining = db.execute(
+            "SELECT COUNT(*) FROM password_reset_tokens"
+        ).fetchone()[0]
+    assert remaining == 0
