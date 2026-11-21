@@ -2,18 +2,19 @@ import secrets
 from flask import session
 
 
-def get_current_user_id():
-    """
-    Gives each browser session a private, persistent identity.
-    No account or login is required.
-    """
+def get_browser_identity():
+    """Return the anonymous identity belonging to this browser session."""
     user_id = session.get("phishguard_user_id")
-
     if not isinstance(user_id, str) or not user_id:
         user_id = secrets.token_urlsafe(32)
         session["phishguard_user_id"] = user_id
-
-    # Keep the browser identity across browser restarts.
     session.permanent = True
-
     return user_id
+
+
+def get_current_user_id():
+    """Return the authenticated account owner or this browser's anonymous owner."""
+    account_id = session.get("account_id")
+    if isinstance(account_id, int) and account_id > 0:
+        return f"account:{account_id}"
+    return get_browser_identity()

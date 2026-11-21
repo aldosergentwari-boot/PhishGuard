@@ -3,7 +3,8 @@
 
 const API = {
     analyze: '/api/analyze',
-    history: '/api/history'
+    history: '/api/history',
+    auth: '/api/auth'
 };
 
 const PAGE_NAMES = {
@@ -63,15 +64,29 @@ function showToast(message, type = 'info') {
 ========================================= */
 
 async function apiRequest(url, options = {}) {
+    const headers = {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {})
+    };
+
+    const method = String(options.method || 'GET').toUpperCase();
+    if (url.startsWith(API.auth + '/') && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        const csrfResponse = await fetch(API.auth + '/csrf', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (!csrfResponse.ok) {
+            throw new Error('Could not obtain a security token. Refresh the page and try again.');
+        }
+        const csrfPayload = await csrfResponse.json();
+        headers['X-CSRF-Token'] = csrfPayload.csrf_token;
+    }
+
     const response = await fetch(url, {
         credentials: 'same-origin',
         ...options,
-        headers: {
-            ...(options.body
-                ? { 'Content-Type': 'application/json' }
-                : {}),
-            ...(options.headers || {})
-        }
+        headers
     });
 
     let payload;
@@ -1324,11 +1339,159 @@ async function exportHistoryCsv() {
     }
 }
 
+
+let authMode = 'login';
+function setAuthMode(mode) {
+ authMode = mode === 'register' ? 'register' : 'login';
+ document.querySelectorAll('[data-auth-mode]').forEach(b => b.classList.toggle('active', b.dataset.authMode === authMode));
+ const pw = $('accountPasswordInput');
+ if (pw) pw.autocomplete = authMode === 'register' ? 'new-password' : 'current-password';
+ if ($('accountPasswordHint')) $('accountPasswordHint').textContent = authMode === 'register' ? 'Use at least 12 characters (maximum 128).' : 'Use your account password to sign in.';
+ if ($('accountSubmit')) $('accountSubmit').textContent = authMode === 'register' ? 'Create account' : 'Sign in';
+ if ($('accountError')) $('accountError').hidden = true;
+}
+function showAccountState(user) {
+ const signedIn = Boolean(user);
+ $('accountSignedIn').hidden = !signedIn;
+ $('accountForm').hidden = signedIn;
+ $('accountEmail').textContent = user?.email || '';
+ $('accountButton').textContent = signedIn ? String(user.email || 'PG').slice(0,1).toUpperCase() : 'PG';
+ $('accountButton').title = signedIn ? user.email : 'Sign in or create an account';
+}
+async function loadAccountState() {
+ try {
+  const result = await apiRequest(API.auth + '/me');
+  showAccountState(result.authenticated ? result.user : null);
+ } catch (error) { console.error('Account state:', error); showAccountState(null); }
+}
+async function submitAccountForm(event) {
+ event.preventDefault();
+ const email = $('accountEmailInput').value.trim();
+ const password = $('accountPasswordInput').value;
+ const button = $('accountSubmit');
+ const errorBox = $('accountError');
+ errorBox.hidden = true;
+ button.disabled = true;
+ button.textContent = authMode === 'register' ? 'Creating account…' : 'Signing in…';
+ try {
+  const result = await apiRequest(API.auth + '/' + authMode, {method:'POST', body:JSON.stringify({email,password})});
+  showAccountState(result.user);
+  $('accountForm').reset();
+  $('accountModal').hidden = true;
+  showToast(authMode === 'register' ? 'Account created successfully.' : 'Signed in successfully.', 'success');
+  state.historyPage = 0;
+  await Promise.allSettled([loadOverview(), loadHistory()]);
+ } catch (error) {
+  errorBox.textContent = error.message;
+  errorBox.hidden = false;
+ } finally {
+  button.disabled = false;
+  button.textContent = authMode === 'register' ? 'Create account' : 'Sign in';
+ }
+}
+function showLoginForm() {
+ $('forgotPasswordForm').hidden = true;
+ $('resetPasswordForm').hidden = true;
+ $('accountForm').hidden = false;
+ setAuthMode('login');
+}
+async function submitForgotPassword(event) {
+ event.preventDefault();
+ const button = $('forgotPasswordSubmit');
+ const errorBox = $('forgotPasswordError');
+ errorBox.hidden = true;
+ button.disabled = true;
+ button.textContent = 'Sending…';
+ try {
+  const result = await apiRequest(API.auth + '/password-reset/request', {
+   method: 'POST',
+   body: JSON.stringify({email: $('resetRequestEmail').value.trim()})
+  });
+  $('forgotPasswordForm').reset();
+  showToast(result.message || 'If that account exists, a reset link will be sent.', 'success');
+  showLoginForm();
+ } catch (error) {
+  errorBox.textContent = error.message;
+  errorBox.hidden = false;
+ } finally {
+  button.disabled = false;
+  button.textContent = 'Send reset link';
+ }
+}
+async function submitResetPassword(event) {
+ event.preventDefault();
+ const password = $('newResetPassword').value;
+ const confirmation = $('confirmResetPassword').value;
+ const errorBox = $('resetPasswordError');
+ const button = $('resetPasswordSubmit');
+ errorBox.hidden = true;
+ if (password !== confirmation) {
+  errorBox.textContent = 'The passwords do not match.';
+  errorBox.hidden = false;
+  return;
+ }
+ const token = new URLSearchParams(window.location.search).get('token') || '';
+ if (!token) {
+  errorBox.textContent = 'The reset link is missing its token. Request a new link.';
+  errorBox.hidden = false;
+  return;
+ }
+ button.disabled = true;
+ button.textContent = 'Updating…';
+ try {
+  const result = await apiRequest(API.auth + '/password-reset/confirm', {
+   method: 'POST',
+   body: JSON.stringify({token, password})
+  });
+  $('resetPasswordForm').reset();
+  window.history.replaceState({}, document.title, window.location.pathname);
+  showLoginForm();
+  $('accountModal').hidden = false;
+  showToast(result.message || 'Password updated. Please sign in.', 'success');
+ } catch (error) {
+  errorBox.textContent = error.message;
+  errorBox.hidden = false;
+ } finally {
+  button.disabled = false;
+  button.textContent = 'Update password';
+ }
+}
+
+async function logoutAccount() {
+ const button = $('logoutButton');
+ button.disabled = true;
+ try {
+  await apiRequest(API.auth + '/logout', {method:'POST',body:'{}'});
+  showAccountState(null);
+  $('accountModal').hidden = true;
+  showToast('You have signed out.', 'success');
+  state.historyPage = 0;
+  await Promise.allSettled([loadOverview(), loadHistory()]);
+ } catch (error) { showToast('Could not sign out: ' + error.message, 'error'); }
+ finally { button.disabled = false; }
+}
+
 /* =========================================
    12. EVENT LISTENERS
 ========================================= */
 
 function bindEvents() {
+ $('accountButton')?.addEventListener('click', () => { setAuthMode('login'); $('accountModal').hidden = false; });
+ $('closeAccountModal')?.addEventListener('click', () => { $('accountModal').hidden = true; });
+ $('accountModal')?.addEventListener('click', e => { if(e.target === $('accountModal')) $('accountModal').hidden = true; });
+ document.querySelectorAll('[data-auth-mode]').forEach(b => b.addEventListener('click', () => setAuthMode(b.dataset.authMode)));
+ $('accountForm')?.addEventListener('submit', submitAccountForm);
+ $('showForgotPassword')?.addEventListener('click', () => {
+  $('accountForm').hidden = true;
+  $('forgotPasswordForm').hidden = false;
+  $('forgotPasswordError').hidden = true;
+  $('resetPasswordForm').hidden = true;
+ });
+ $('backToLogin')?.addEventListener('click', showLoginForm);
+ $('resetBackToLogin')?.addEventListener('click', showLoginForm);
+ $('forgotPasswordForm')?.addEventListener('submit', submitForgotPassword);
+ $('resetPasswordForm')?.addEventListener('submit', submitResetPassword);
+ $('logoutButton')?.addEventListener('click', logoutAccount);
 
     // Sidebar navigation
     document.querySelectorAll('.nav-link[data-page]').forEach(button => {
@@ -1487,4 +1650,15 @@ document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
 
     loadOverview();
+    loadAccountState();
+
+    const resetToken = new URLSearchParams(window.location.search).get('token');
+    if (window.location.pathname === '/reset-password' && resetToken) {
+        $('accountModal').hidden = false;
+        $('accountForm').hidden = true;
+        $('forgotPasswordForm').hidden = true;
+        $('resetPasswordForm').hidden = false;
+        $('accountSignedIn').hidden = true;
+        $('accountModalTitle').textContent = 'Reset your password';
+    }
 });

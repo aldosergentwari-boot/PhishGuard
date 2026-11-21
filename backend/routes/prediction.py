@@ -232,6 +232,7 @@ def analyze_url():
             result,
             owner_id=owner_id
         )
+        result["scan_id"] = scan_id
 
         return jsonify({
             "success": True,

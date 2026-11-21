@@ -557,3 +557,23 @@ tbody tr:hover { background: #ffffff05; }
     .tech-grid { grid-template-columns: repeat(2, 1fr); }
     .main-footer { flex-direction: column; }
 }
+
+.account-modal-card{max-width:430px}
+.account-tabs{display:flex;gap:8px;margin:4px 0 20px}
+.account-tab{flex:1;padding:10px;border:1px solid var(--border);border-radius:7px;background:#142236;color:var(--muted);font-size:11px;font-weight:700}
+.account-tab.active{border-color:#348bd5;color:#eaf5ff;background:#1b4770}
+#accountForm label{display:block;margin:14px 0 7px;color:#8194aa;font-size:9px;font-weight:900;letter-spacing:1px}
+#accountForm input{width:100%;height:42px;padding:0 12px;border:1px solid #334b68;border-radius:7px;outline:none;background:#0b1422;color:white;font-size:12px}
+#accountForm input:focus{border-color:#348bd5}
+.account-help{margin:10px 0;color:var(--muted);font-size:10px;line-height:1.6}
+.account-error{padding:10px;border:1px solid #8d3c4a;border-radius:7px;background:#64273544;color:#ff9ba7;font-size:11px}
+.account-submit{width:100%;justify-content:center;margin-top:12px}
+.account-status-label{color:var(--muted);font-size:9px;letter-spacing:1px}
+.account-email{display:block;margin-top:8px;color:var(--text);overflow-wrap:anywhere}
+.profile-avatar{border:1px solid #31577a;cursor:pointer}
+.profile-avatar:hover{border-color:var(--cyan)}
+
+.forgot-password-link,.back-to-login{display:block;margin:12px auto 0;font-size:10px}
+#forgotPasswordForm label,#resetPasswordForm label{display:block;margin:14px 0 7px;color:#8194aa;font-size:9px;font-weight:900;letter-spacing:1px}
+#forgotPasswordForm input,#resetPasswordForm input{width:100%;height:42px;padding:0 12px;border:1px solid #334b68;border-radius:7px;outline:none;background:#0b1422;color:white;font-size:12px}
+#forgotPasswordForm input:focus,#resetPasswordForm input:focus{border-color:#348bd5}

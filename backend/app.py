@@ -14,6 +14,8 @@ from flask import (
 
 from backend.routes.prediction import prediction_bp
 from backend.routes.history import history_bp
+from backend.routes.auth import auth_bp
+from backend.database.auth_service import auth_service
 from datetime import timedelta
 
 
@@ -134,19 +136,44 @@ def create_app():
     app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 
     app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=365)
+        # Bound incoming request bodies to reduce accidental or abusive oversized
+        # JSON uploads. URL validation separately enforces MAX_URL_LENGTH.
+        MAX_CONTENT_LENGTH=16 * 1024,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        # HTTPS is required for production cookies. Allow local HTTP development
+        # unless the deployment explicitly enables secure cookies.
+        SESSION_COOKIE_SECURE=os.getenv(
+            "SESSION_COOKIE_SECURE", "false"
+        ).strip().lower() in ("1", "true", "yes", "on"),
+        PERMANENT_SESSION_LIFETIME=timedelta(days=365),
     )
 
     app.register_blueprint(prediction_bp)
     app.register_blueprint(history_bp)
+    app.register_blueprint(auth_bp)
+    auth_service.initialize()
 
     def maintenance_enabled():
         return os.getenv("MAINTENANCE_MODE", "false").lower() in (
             "1", "true", "yes", "on"
         )
+
+    @app.after_request
+    def add_security_headers(response):
+        """Apply baseline browser security headers to every response."""
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()"
+        )
+        response.headers.setdefault(
+            "Cache-Control",
+            "no-store" if request.path.startswith("/api/") else "no-cache"
+        )
+        return response
 
     @app.before_request
     def protect_public_website():
@@ -193,6 +220,24 @@ def create_app():
     @app.route("/dashboard")
     def dashboard():
         return render_template("index.html")
+
+    @app.route("/reset-password")
+    def reset_password_page():
+        # The one-time token is read by the frontend and never sent to third parties.
+        return render_template("index.html")
+
+    @app.before_request
+    def validate_account_session():
+        account_id = session.get("account_id")
+        if account_id is None:
+            return None
+        user = auth_service.get_user(account_id)
+        if (
+            not user
+            or session.get("session_version") != user.get("session_version", 0)
+        ):
+            session.clear()
+        return None
 
     @app.errorhandler(404)
     def not_found(error):

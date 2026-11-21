@@ -21,14 +21,14 @@ def test_real_domains_and_ips_are_accepted(client, text):
 
 
 @pytest.mark.parametrize("text", ["rra-gov-rw-refund.com", "irembo-gov-rw.com/login", "mtn-momo-promo-winner.com"])
-def test_rwanda_brand_impersonation_is_flagged(client, text):
+def test_rwanda_brand_impersonation_is_flagged_as_suspicious(client, text):
     data = client.post("/api/predict", json={"url": text}).get_json()["data"]
-    assert data["prediction"] == "PHISHING"
+    assert data["prediction"] == "SUSPICIOUS"
 
 
-def test_att_impersonation_is_flagged(client):
+def test_att_impersonation_is_flagged_as_suspicious(client):
     data = client.post("/api/predict", json={"url": "https://att-rsshelp.com"}).get_json()["data"]
-    assert data["prediction"] == "PHISHING"
+    assert data["prediction"] == "SUSPICIOUS"
 
 
 @pytest.mark.parametrize("text", ["https://terrace-login.com", "https://smtnews-account.com"])

@@ -188,3 +188,247 @@ def test_known_brand_impersonation_is_flagged_by_prediction_api(client):
     assert result["prediction"] == "PHISHING"
     assert result["final_prediction"] == "PHISHING"
     assert result["risk_score"] >= 50
+
+
+def test_session_cookie_secure_is_configurable(monkeypatch):
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "true")
+    secure_app = create_app()
+    assert secure_app.config["SESSION_COOKIE_SECURE"] is True
+
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
+    local_app = create_app()
+    assert local_app.config["SESSION_COOKIE_SECURE"] is False
+
+
+def test_baseline_security_headers_are_present(client):
+    response = client.get("/api/health")
+
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "camera=()" in response.headers["Permissions-Policy"]
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_oversized_request_body_is_rejected(client):
+    response = client.post(
+        "/api/predict",
+        data=b"x" * (16 * 1024 + 1),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 413
+
+
+def test_account_register_login_and_logout(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+    import backend.database.history_service as history_module
+
+    db_path = tmp_path / "accounts.db"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_DIR", tmp_path)
+    monkeypatch.setattr(history_module, "_history_service", None)
+    auth_module.auth_service.initialize()
+
+    def post_with_csrf(path, payload):
+        token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+        return client.post(path, json=payload, headers={"X-CSRF-Token": token})
+
+    registered = post_with_csrf(
+        "/api/auth/register",
+        {"email": "serge@example.com", "password": "A-strong-test-password-2026"}
+    )
+    assert registered.status_code == 201
+    assert registered.get_json()["user"]["email"] == "serge@example.com"
+
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.get_json()["authenticated"] is True
+
+    logged_out = post_with_csrf("/api/auth/logout", {})
+    assert logged_out.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is False
+
+    logged_in = post_with_csrf(
+        "/api/auth/login",
+        {"email": "serge@example.com", "password": "A-strong-test-password-2026"}
+    )
+    assert logged_in.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is True
+
+
+def test_account_mutations_require_csrf_token(client):
+    response = client.post(
+        "/api/auth/logout",
+        json={},
+    )
+    assert response.status_code == 403
+
+
+def test_account_registration_rejects_weak_password(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "accounts.db")
+    auth_module.auth_service.initialize()
+
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    response = client.post(
+        "/api/auth/register",
+        json={"email": "weak@example.com", "password": "short"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert response.status_code == 400
+
+
+def test_auth_service_rate_limit_resets_after_window(tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "rate-limit.db")
+    auth_module.auth_service.initialize()
+
+    assert auth_module.auth_service.allow_auth_attempt("test-bucket", limit=2, window_seconds=900)
+    assert auth_module.auth_service.allow_auth_attempt("test-bucket", limit=2, window_seconds=900)
+    assert not auth_module.auth_service.allow_auth_attempt("test-bucket", limit=2, window_seconds=900)
+
+
+def test_login_endpoint_returns_429_after_repeated_attempts(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "login-rate.db")
+    auth_module.auth_service.initialize()
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+
+    responses = [
+        client.post(
+            "/api/auth/login",
+            json={"email": "limit-test@example.com", "password": "wrong-password"},
+            headers={"X-CSRF-Token": token},
+        )
+        for _ in range(9)
+    ]
+
+    assert all(response.status_code == 401 for response in responses[:8])
+    assert responses[8].status_code == 429
+
+def test_password_reset_tokens_are_single_use_and_expire(tmp_path, monkeypatch):
+    import hashlib
+    import time
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "reset.db")
+    service = auth_module.auth_service
+    service.initialize()
+    service.create_user("reset@example.com", "Old-strong-password-2026")
+    token = "a-long-random-reset-token"
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    assert service.create_password_reset("reset@example.com", token_hash, time.time() + 60)
+    assert service.consume_password_reset(token_hash, "New-strong-password-2026")
+    assert service.authenticate("reset@example.com", "New-strong-password-2026")
+    assert not service.consume_password_reset(token_hash, "Another-strong-password-2026")
+
+
+def test_password_reset_request_is_csrf_protected_and_non_enumerating(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "reset-api.db")
+    auth_module.auth_service.initialize()
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    headers = {"X-CSRF-Token": token}
+    first = client.post("/api/auth/password-reset/request",
+                        json={"email": "missing@example.com"}, headers=headers)
+    second = client.post("/api/auth/password-reset/request",
+                         json={"email": "missing@example.com"}, headers=headers)
+    assert first.status_code == second.status_code == 200
+    assert first.get_json()["message"] == second.get_json()["message"]
+    blocked = client.post("/api/auth/password-reset/request", json={"email": "missing@example.com"})
+    assert blocked.status_code == 403
+
+
+def test_password_reset_rejects_invalid_token(client):
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    response = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": "invalid", "password": "New-strong-password-2026"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert response.status_code == 400
+
+
+def test_password_reset_revokes_existing_account_sessions(client, tmp_path, monkeypatch):
+    import hashlib
+    import time
+    import backend.database.auth_service as auth_module
+    import backend.database.history_service as history_module
+
+    db_path = tmp_path / "session-revoke.db"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_DIR", tmp_path)
+    monkeypatch.setattr(history_module, "_history_service", None)
+    service = auth_module.auth_service
+    service.initialize()
+    service.create_user("revoke@example.com", "Old-strong-password-2026")
+
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "revoke@example.com", "password": "Old-strong-password-2026"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert login.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is True
+
+    token_hash = hashlib.sha256(b"session-revocation-token").hexdigest()
+    assert service.create_password_reset(
+        "revoke@example.com", token_hash, time.time() + 60
+    )
+    assert service.consume_password_reset(
+        token_hash, "New-strong-password-2026"
+    )
+
+    # The browser still holds its signed cookie, but its server-checked version is stale.
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.get_json()["authenticated"] is False
+    assert client.post(
+        "/api/auth/login",
+        json={"email": "revoke@example.com", "password": "Old-strong-password-2026"},
+        headers={"X-CSRF-Token": client.get("/api/auth/csrf").get_json()["csrf_token"]},
+    ).status_code == 401
+
+
+def test_password_reset_token_is_discarded_when_email_delivery_fails(
+    client, tmp_path, monkeypatch
+):
+    import sqlite3
+    import backend.database.auth_service as auth_module
+    import backend.routes.auth as auth_routes
+
+    db_path = tmp_path / "failed-reset-email.db"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", db_path)
+    auth_module.auth_service.initialize()
+    auth_module.auth_service.create_user(
+        "delivery@example.com", "Old-strong-password-2026"
+    )
+    monkeypatch.setenv("PUBLIC_APP_URL", "https://phishguard.example")
+    monkeypatch.setattr(
+        auth_routes,
+        "send_password_reset_email",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("SMTP unavailable")),
+    )
+
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    response = client.post(
+        "/api/auth/password-reset/request",
+        json={"email": "delivery@example.com"},
+        headers={"X-CSRF-Token": csrf},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["success"] is True
+    with sqlite3.connect(db_path) as db:
+        remaining = db.execute(
+            "SELECT COUNT(*) FROM password_reset_tokens"
+        ).fetchone()[0]
+    assert remaining == 0
