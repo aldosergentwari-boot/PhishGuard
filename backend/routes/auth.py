@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from backend.database.auth_service import auth_service
-from backend.services.user_identity import get_current_user_id
+from backend.services.user_identity import get_browser_identity
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -19,7 +19,7 @@ def register():
         return jsonify({"success": False, "error": str(exc)}), 400
 
     # Move only this browser's anonymous scans into the new account.
-    anonymous_id = get_current_user_id()
+    anonymous_id = get_browser_identity()
     account_owner = f"account:{user['id']}"
     from backend.database.history_service import get_history_service
     service = get_history_service()
