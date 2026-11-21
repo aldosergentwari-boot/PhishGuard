@@ -198,3 +198,23 @@ def test_session_cookie_secure_is_configurable(monkeypatch):
     monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
     local_app = create_app()
     assert local_app.config["SESSION_COOKIE_SECURE"] is False
+
+
+def test_baseline_security_headers_are_present(client):
+    response = client.get("/api/health")
+
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "camera=()" in response.headers["Permissions-Policy"]
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_oversized_request_body_is_rejected(client):
+    response = client.post(
+        "/api/predict",
+        data=b"x" * (16 * 1024 + 1),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 413
