@@ -131,11 +131,18 @@ def request_password_reset():
     created = auth_service.create_password_reset(email, token_hash, expires_at)
     if created:
         base_url = os.getenv("PUBLIC_APP_URL", "").rstrip("/")
+        delivered = False
         if base_url.startswith("https://"):
             try:
-                send_password_reset_email(email, f"{base_url}/reset-password?token={raw_token}")
+                send_password_reset_email(
+                    email, f"{base_url}/reset-password?token={raw_token}"
+                )
+                delivered = True
             except Exception:
-                pass
+                # Keep the public response generic, but do not retain an unusable token.
+                delivered = False
+        if not delivered:
+            auth_service.discard_password_reset(token_hash)
     return jsonify({
         "success": True,
         "message": "If that account exists, a reset link will be sent."
