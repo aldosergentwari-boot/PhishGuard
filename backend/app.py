@@ -134,6 +134,9 @@ def create_app():
     app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 
     app.config.update(
+        # Bound incoming request bodies to reduce accidental or abusive oversized
+        # JSON uploads. URL validation separately enforces MAX_URL_LENGTH.
+        MAX_CONTENT_LENGTH=16 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         # HTTPS is required for production cookies. Allow local HTTP development
@@ -151,6 +154,22 @@ def create_app():
         return os.getenv("MAINTENANCE_MODE", "false").lower() in (
             "1", "true", "yes", "on"
         )
+
+    @app.after_request
+    def add_security_headers(response):
+        """Apply baseline browser security headers to every response."""
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()"
+        )
+        response.headers.setdefault(
+            "Cache-Control",
+            "no-store" if request.path.startswith("/api/") else "no-cache"
+        )
+        return response
 
     @app.before_request
     def protect_public_website():
