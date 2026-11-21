@@ -97,7 +97,7 @@ Create a Render **Web Service** connected to the GitHub repository and use:
 
 Add `GOOGLE_SAFE_BROWSING_API_KEY` and/or `URLHAUS_AUTH_KEY` under Render Environment Variables if you want online reputation checks. Keep the values private; never commit `.env` or paste API keys into source files.
 
-**Storage note:** the default SQLite database is stored inside the project directory. On hosts with an ephemeral filesystem, history can be reset when the service is redeployed or restarted. Configure a persistent disk and point the database path to it if durable production history is required.
+**Storage note:** the default SQLite database is stored inside the project directory. On hosts with an ephemeral filesystem, history can be reset when the service is redeployed or restarted. For durable production history, attach a persistent disk and set `DATABASE_PATH` to a file on that disk (for example, `/var/data/phishguard.db` if your Render disk is mounted at `/var/data`). The app creates the database's parent directory when it starts. Back up the database before changing storage mounts.
 
 ## Run the desktop application
 
