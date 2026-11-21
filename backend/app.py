@@ -134,10 +134,14 @@ def create_app():
     app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 
     app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=365)
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        # HTTPS is required for production cookies. Allow local HTTP development
+        # unless the deployment explicitly enables secure cookies.
+        SESSION_COOKIE_SECURE=os.getenv(
+            "SESSION_COOKIE_SECURE", "false"
+        ).strip().lower() in ("1", "true", "yes", "on"),
+        PERMANENT_SESSION_LIFETIME=timedelta(days=365),
     )
 
     app.register_blueprint(prediction_bp)
