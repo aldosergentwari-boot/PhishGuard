@@ -1,8 +1,27 @@
+import secrets
 from flask import Blueprint, jsonify, request, session
 from backend.database.auth_service import auth_service
 from backend.services.user_identity import get_browser_identity
 
 auth_bp = Blueprint("auth", __name__)
+
+
+@auth_bp.get("/api/auth/csrf")
+def csrf_token():
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf_token"] = token
+    return jsonify({"success": True, "csrf_token": token})
+
+
+@auth_bp.before_app_request
+def protect_auth_mutations():
+    if request.path in ("/api/auth/register", "/api/auth/login", "/api/auth/logout") and request.method == "POST":
+        expected = session.get("csrf_token", "")
+        supplied = request.headers.get("X-CSRF-Token", "")
+        if not expected or not supplied or not secrets.compare_digest(expected, supplied):
+            return jsonify({"success": False, "error": "Security token missing or invalid. Refresh and try again."}), 403
 
 
 def _payload():
