@@ -3,7 +3,8 @@
 
 const API = {
     analyze: '/api/analyze',
-    history: '/api/history'
+    history: '/api/history',
+    auth: '/api/auth'
 };
 
 const PAGE_NAMES = {
@@ -1324,11 +1325,81 @@ async function exportHistoryCsv() {
     }
 }
 
+
+let authMode = 'login';
+function setAuthMode(mode) {
+ authMode = mode === 'register' ? 'register' : 'login';
+ document.querySelectorAll('[data-auth-mode]').forEach(b => b.classList.toggle('active', b.dataset.authMode === authMode));
+ const pw = $('accountPasswordInput');
+ if (pw) pw.autocomplete = authMode === 'register' ? 'new-password' : 'current-password';
+ if ($('accountPasswordHint')) $('accountPasswordHint').textContent = authMode === 'register' ? 'Use at least 12 characters (maximum 128).' : 'Use your account password to sign in.';
+ if ($('accountSubmit')) $('accountSubmit').textContent = authMode === 'register' ? 'Create account' : 'Sign in';
+ if ($('accountError')) $('accountError').hidden = true;
+}
+function showAccountState(user) {
+ const signedIn = Boolean(user);
+ $('accountSignedIn').hidden = !signedIn;
+ $('accountForm').hidden = signedIn;
+ $('accountEmail').textContent = user?.email || '';
+ $('accountButton').textContent = signedIn ? String(user.email || 'PG').slice(0,1).toUpperCase() : 'PG';
+ $('accountButton').title = signedIn ? user.email : 'Sign in or create an account';
+}
+async function loadAccountState() {
+ try {
+  const result = await apiRequest(API.auth + '/me');
+  showAccountState(result.authenticated ? result.user : null);
+ } catch (error) { console.error('Account state:', error); showAccountState(null); }
+}
+async function submitAccountForm(event) {
+ event.preventDefault();
+ const email = $('accountEmailInput').value.trim();
+ const password = $('accountPasswordInput').value;
+ const button = $('accountSubmit');
+ const errorBox = $('accountError');
+ errorBox.hidden = true;
+ button.disabled = true;
+ button.textContent = authMode === 'register' ? 'Creating account…' : 'Signing in…';
+ try {
+  const result = await apiRequest(API.auth + '/' + authMode, {method:'POST', body:JSON.stringify({email,password})});
+  showAccountState(result.user);
+  $('accountForm').reset();
+  $('accountModal').hidden = true;
+  showToast(authMode === 'register' ? 'Account created successfully.' : 'Signed in successfully.', 'success');
+  state.historyPage = 0;
+  await Promise.allSettled([loadOverview(), loadHistory()]);
+ } catch (error) {
+  errorBox.textContent = error.message;
+  errorBox.hidden = false;
+ } finally {
+  button.disabled = false;
+  button.textContent = authMode === 'register' ? 'Create account' : 'Sign in';
+ }
+}
+async function logoutAccount() {
+ const button = $('logoutButton');
+ button.disabled = true;
+ try {
+  await apiRequest(API.auth + '/logout', {method:'POST',body:'{}'});
+  showAccountState(null);
+  $('accountModal').hidden = true;
+  showToast('You have signed out.', 'success');
+  state.historyPage = 0;
+  await Promise.allSettled([loadOverview(), loadHistory()]);
+ } catch (error) { showToast('Could not sign out: ' + error.message, 'error'); }
+ finally { button.disabled = false; }
+}
+
 /* =========================================
    12. EVENT LISTENERS
 ========================================= */
 
 function bindEvents() {
+ $('accountButton')?.addEventListener('click', () => { setAuthMode('login'); $('accountModal').hidden = false; });
+ $('closeAccountModal')?.addEventListener('click', () => { $('accountModal').hidden = true; });
+ $('accountModal')?.addEventListener('click', e => { if(e.target === $('accountModal')) $('accountModal').hidden = true; });
+ document.querySelectorAll('[data-auth-mode]').forEach(b => b.addEventListener('click', () => setAuthMode(b.dataset.authMode)));
+ $('accountForm')?.addEventListener('submit', submitAccountForm);
+ $('logoutButton')?.addEventListener('click', logoutAccount);
 
     // Sidebar navigation
     document.querySelectorAll('.nav-link[data-page]').forEach(button => {
@@ -1487,4 +1558,5 @@ document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
 
     loadOverview();
+    loadAccountState();
 });
