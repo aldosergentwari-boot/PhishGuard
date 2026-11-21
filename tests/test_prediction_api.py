@@ -218,3 +218,50 @@ def test_oversized_request_body_is_rejected(client):
     )
 
     assert response.status_code == 413
+
+
+def test_account_register_login_and_logout(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+    import backend.database.history_service as history_module
+
+    db_path = tmp_path / "accounts.db"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_DIR", tmp_path)
+    monkeypatch.setattr(history_module, "_history_service", None)
+    auth_module.auth_service.initialize()
+
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "serge@example.com", "password": "A-strong-test-password-2026"}
+    )
+    assert registered.status_code == 201
+    assert registered.get_json()["user"]["email"] == "serge@example.com"
+
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.get_json()["authenticated"] is True
+
+    logged_out = client.post("/api/auth/logout")
+    assert logged_out.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is False
+
+    logged_in = client.post(
+        "/api/auth/login",
+        json={"email": "serge@example.com", "password": "A-strong-test-password-2026"}
+    )
+    assert logged_in.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is True
+
+
+def test_account_registration_rejects_weak_password(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "accounts.db")
+    auth_module.auth_service.initialize()
+
+    response = client.post(
+        "/api/auth/register",
+        json={"email": "weak@example.com", "password": "short"}
+    )
+    assert response.status_code == 400
