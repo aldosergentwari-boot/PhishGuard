@@ -310,3 +310,46 @@ def test_login_endpoint_returns_429_after_repeated_attempts(client, tmp_path, mo
 
     assert all(response.status_code == 401 for response in responses[:8])
     assert responses[8].status_code == 429
+
+def test_password_reset_tokens_are_single_use_and_expire(tmp_path, monkeypatch):
+    import hashlib
+    import time
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "reset.db")
+    service = auth_module.auth_service
+    service.initialize()
+    service.create_user("reset@example.com", "Old-strong-password-2026")
+    token = "a-long-random-reset-token"
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    assert service.create_password_reset("reset@example.com", token_hash, time.time() + 60)
+    assert service.consume_password_reset(token_hash, "New-strong-password-2026")
+    assert service.authenticate("reset@example.com", "New-strong-password-2026")
+    assert not service.consume_password_reset(token_hash, "Another-strong-password-2026")
+
+
+def test_password_reset_request_is_csrf_protected_and_non_enumerating(client, tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "reset-api.db")
+    auth_module.auth_service.initialize()
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    headers = {"X-CSRF-Token": token}
+    first = client.post("/api/auth/password-reset/request",
+                        json={"email": "missing@example.com"}, headers=headers)
+    second = client.post("/api/auth/password-reset/request",
+                         json={"email": "missing@example.com"}, headers=headers)
+    assert first.status_code == second.status_code == 200
+    assert first.get_json()["message"] == second.get_json()["message"]
+    blocked = client.post("/api/auth/password-reset/request", json={"email": "missing@example.com"})
+    assert blocked.status_code == 403
+
+
+def test_password_reset_rejects_invalid_token(client):
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    response = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": "invalid", "password": "New-strong-password-2026"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert response.status_code == 400
