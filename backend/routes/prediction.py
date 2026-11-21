@@ -233,6 +233,9 @@ def analyze_url():
             owner_id=owner_id
         )
 
+        # Return the saved scan's id so the client can refer to it later.
+        result["scan_id"] = scan_id
+
         return jsonify({
             "success": True,
             "data": result

@@ -269,7 +269,7 @@ function resultBadge(record) {
 function riskMarkup(record) {
     const risk = getRisk(record);
 
-    const riskClass = risk >= 70
+    const riskClass = risk >= 80
         ? 'risk-high'
         : risk >= 35
             ? 'risk-medium'
@@ -457,7 +457,7 @@ function renderRecentScans(records) {
 
         let riskClass = 'risk-low';
 
-        if (risk >= 70) {
+        if (risk >= 80) {
             riskClass = 'risk-high';
         } else if (risk >= 35) {
             riskClass = 'risk-medium';
