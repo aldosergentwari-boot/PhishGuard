@@ -221,6 +221,11 @@ def create_app():
     def dashboard():
         return render_template("index.html")
 
+    @app.route("/reset-password")
+    def reset_password_page():
+        # The one-time token is read by the frontend and never sent to third parties.
+        return render_template("index.html")
+
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({
