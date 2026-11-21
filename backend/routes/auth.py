@@ -67,6 +67,7 @@ def register():
     session.clear()
     session["account_id"] = user["id"]
     session["account_email"] = user["email"]
+    session["session_version"] = user.get("session_version", 0)
     session.permanent = True
     return jsonify({"success": True, "user": user}), 201
 
@@ -103,10 +104,12 @@ def current_user():
     if not user_id:
         return jsonify({"success": True, "authenticated": False, "user": None}), 200
     user = auth_service.get_user(user_id)
-    if not user:
+    if not user or session.get("session_version") != user.get("session_version", 0):
         session.clear()
         return jsonify({"success": True, "authenticated": False, "user": None}), 200
-    return jsonify({"success": True, "authenticated": True, "user": user}), 200
+    return jsonify({"success": True, "authenticated": True, "user": {
+        "id": user["id"], "email": user["email"], "created_at": user["created_at"]
+    }}), 200
 
 
 @auth_bp.post("/api/auth/logout")
