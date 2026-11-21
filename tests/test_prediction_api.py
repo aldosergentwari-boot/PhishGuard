@@ -353,3 +353,46 @@ def test_password_reset_rejects_invalid_token(client):
         headers={"X-CSRF-Token": token},
     )
     assert response.status_code == 400
+
+
+def test_password_reset_revokes_existing_account_sessions(client, tmp_path, monkeypatch):
+    import hashlib
+    import time
+    import backend.database.auth_service as auth_module
+    import backend.database.history_service as history_module
+
+    db_path = tmp_path / "session-revoke.db"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_PATH", db_path)
+    monkeypatch.setattr(history_module, "DATABASE_DIR", tmp_path)
+    monkeypatch.setattr(history_module, "_history_service", None)
+    service = auth_module.auth_service
+    service.initialize()
+    service.create_user("revoke@example.com", "Old-strong-password-2026")
+
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "revoke@example.com", "password": "Old-strong-password-2026"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert login.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is True
+
+    token_hash = hashlib.sha256(b"session-revocation-token").hexdigest()
+    assert service.create_password_reset(
+        "revoke@example.com", token_hash, time.time() + 60
+    )
+    assert service.consume_password_reset(
+        token_hash, "New-strong-password-2026"
+    )
+
+    # The browser still holds its signed cookie, but its server-checked version is stale.
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.get_json()["authenticated"] is False
+    assert client.post(
+        "/api/auth/login",
+        json={"email": "revoke@example.com", "password": "Old-strong-password-2026"},
+        headers={"X-CSRF-Token": client.get("/api/auth/csrf").get_json()["csrf_token"]},
+    ).status_code == 401
