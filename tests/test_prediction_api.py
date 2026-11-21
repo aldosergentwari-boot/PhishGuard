@@ -272,8 +272,10 @@ def test_account_registration_rejects_weak_password(client, tmp_path, monkeypatc
     monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "accounts.db")
     auth_module.auth_service.initialize()
 
+    token = client.get("/api/auth/csrf").get_json()["csrf_token"]
     response = client.post(
         "/api/auth/register",
-        json={"email": "weak@example.com", "password": "short"}
+        json={"email": "weak@example.com", "password": "short"},
+        headers={"X-CSRF-Token": token},
     )
     assert response.status_code == 400
