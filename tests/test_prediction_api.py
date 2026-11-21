@@ -188,3 +188,13 @@ def test_known_brand_impersonation_is_flagged_by_prediction_api(client):
     assert result["prediction"] == "PHISHING"
     assert result["final_prediction"] == "PHISHING"
     assert result["risk_score"] >= 50
+
+
+def test_session_cookie_secure_is_configurable(monkeypatch):
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "true")
+    secure_app = create_app()
+    assert secure_app.config["SESSION_COOKIE_SECURE"] is True
+
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
+    local_app = create_app()
+    assert local_app.config["SESSION_COOKIE_SECURE"] is False
