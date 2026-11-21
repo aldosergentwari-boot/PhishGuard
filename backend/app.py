@@ -226,6 +226,19 @@ def create_app():
         # The one-time token is read by the frontend and never sent to third parties.
         return render_template("index.html")
 
+    @app.before_request
+    def validate_account_session():
+        account_id = session.get("account_id")
+        if account_id is None:
+            return None
+        user = auth_service.get_user(account_id)
+        if (
+            not user
+            or session.get("session_version") != user.get("session_version", 0)
+        ):
+            session.clear()
+        return None
+
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({
