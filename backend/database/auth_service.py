@@ -128,6 +128,14 @@ class AuthService:
             )
             return True
 
+    def discard_password_reset(self, token_hash):
+        """Remove a reset token when its delivery could not be completed."""
+        with self.connection() as db:
+            db.execute(
+                "DELETE FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL",
+                (token_hash,),
+            )
+
     def consume_password_reset(self, token_hash, new_password):
         if not isinstance(new_password, str) or not 12 <= len(new_password) <= 128:
             raise ValueError("Password must contain 12 to 128 characters.")
