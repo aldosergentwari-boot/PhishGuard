@@ -1389,6 +1389,74 @@ async function submitAccountForm(event) {
   button.textContent = authMode === 'register' ? 'Create account' : 'Sign in';
  }
 }
+function showLoginForm() {
+ $('forgotPasswordForm').hidden = true;
+ $('resetPasswordForm').hidden = true;
+ $('accountForm').hidden = false;
+ setAuthMode('login');
+}
+async function submitForgotPassword(event) {
+ event.preventDefault();
+ const button = $('forgotPasswordSubmit');
+ const errorBox = $('forgotPasswordError');
+ errorBox.hidden = true;
+ button.disabled = true;
+ button.textContent = 'Sending…';
+ try {
+  const result = await apiRequest(API.auth + '/password-reset/request', {
+   method: 'POST',
+   body: JSON.stringify({email: $('resetRequestEmail').value.trim()})
+  });
+  $('forgotPasswordForm').reset();
+  showToast(result.message || 'If that account exists, a reset link will be sent.', 'success');
+  showLoginForm();
+ } catch (error) {
+  errorBox.textContent = error.message;
+  errorBox.hidden = false;
+ } finally {
+  button.disabled = false;
+  button.textContent = 'Send reset link';
+ }
+}
+async function submitResetPassword(event) {
+ event.preventDefault();
+ const password = $('newResetPassword').value;
+ const confirmation = $('confirmResetPassword').value;
+ const errorBox = $('resetPasswordError');
+ const button = $('resetPasswordSubmit');
+ errorBox.hidden = true;
+ if (password !== confirmation) {
+  errorBox.textContent = 'The passwords do not match.';
+  errorBox.hidden = false;
+  return;
+ }
+ const token = new URLSearchParams(window.location.search).get('token') || '';
+ if (!token) {
+  errorBox.textContent = 'The reset link is missing its token. Request a new link.';
+  errorBox.hidden = false;
+  return;
+ }
+ button.disabled = true;
+ button.textContent = 'Updating…';
+ try {
+  const result = await apiRequest(API.auth + '/password-reset/confirm', {
+   method: 'POST',
+   body: JSON.stringify({token, password})
+  });
+  $('resetPasswordForm').reset();
+  window.history.replaceState({}, document.title, window.location.pathname);
+  showLoginForm();
+  $('accountModal').hidden = false;
+  showToast(result.message || 'Password updated. Please sign in.', 'success');
+ } catch (error) {
+  errorBox.textContent = error.message;
+  errorBox.hidden = false;
+ } finally {
+  button.disabled = false;
+  button.textContent = 'Update password';
+ }
+}
+
 async function logoutAccount() {
  const button = $('logoutButton');
  button.disabled = true;
@@ -1413,6 +1481,16 @@ function bindEvents() {
  $('accountModal')?.addEventListener('click', e => { if(e.target === $('accountModal')) $('accountModal').hidden = true; });
  document.querySelectorAll('[data-auth-mode]').forEach(b => b.addEventListener('click', () => setAuthMode(b.dataset.authMode)));
  $('accountForm')?.addEventListener('submit', submitAccountForm);
+ $('showForgotPassword')?.addEventListener('click', () => {
+  $('accountForm').hidden = true;
+  $('forgotPasswordForm').hidden = false;
+  $('forgotPasswordError').hidden = true;
+  $('resetPasswordForm').hidden = true;
+ });
+ $('backToLogin')?.addEventListener('click', showLoginForm);
+ $('resetBackToLogin')?.addEventListener('click', showLoginForm);
+ $('forgotPasswordForm')?.addEventListener('submit', submitForgotPassword);
+ $('resetPasswordForm')?.addEventListener('submit', submitResetPassword);
  $('logoutButton')?.addEventListener('click', logoutAccount);
 
     // Sidebar navigation
@@ -1573,4 +1651,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadOverview();
     loadAccountState();
+
+    const resetToken = new URLSearchParams(window.location.search).get('token');
+    if (window.location.pathname === '/reset-password' && resetToken) {
+        $('accountModal').hidden = false;
+        $('accountForm').hidden = true;
+        $('forgotPasswordForm').hidden = true;
+        $('resetPasswordForm').hidden = false;
+        $('accountSignedIn').hidden = true;
+        $('accountModalTitle').textContent = 'Reset your password';
+    }
 });
