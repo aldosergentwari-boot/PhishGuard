@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#080d18">
+    <meta name="referrer" content="no-referrer">
     <!-- Ad scripts are intentionally disabled until approved placements and consent handling are configured. -->
     <title>PhishGuard | Security Operations Center</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M32%204%208%2013v18c0%2015%2010%2026%2024%2031%2014-5%2024-16%2024-31V13z'%20fill='%23c0392b'/%3E%3Cpath%20d='M22%2032l7%207%2013-15'%20fill='none'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
@@ -485,8 +486,24 @@
    <label for="accountEmailInput">EMAIL ADDRESS</label><input id="accountEmailInput" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
    <label for="accountPasswordInput">PASSWORD</label><input id="accountPasswordInput" type="password" autocomplete="current-password" minlength="12" maxlength="128" required placeholder="At least 12 characters">
    <p class="account-help" id="accountPasswordHint">Use your account password to sign in.</p>
+   <button class="text-button forgot-password-link" id="showForgotPassword" type="button">Forgot password?</button>
    <p class="account-error" id="accountError" role="alert" hidden></p>
    <button class="primary-button account-submit" id="accountSubmit" type="submit">Sign in</button>
+  </form>
+  <form id="forgotPasswordForm" hidden>
+   <p class="account-help">Enter the email address associated with your PhishGuard account. If it exists, we will send a secure reset link.</p>
+   <label for="resetRequestEmail">EMAIL ADDRESS</label><input id="resetRequestEmail" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
+   <p class="account-error" id="forgotPasswordError" role="alert" hidden></p>
+   <button class="primary-button account-submit" id="forgotPasswordSubmit" type="submit">Send reset link</button>
+   <button class="text-button back-to-login" id="backToLogin" type="button">← Back to sign in</button>
+  </form>
+  <form id="resetPasswordForm" hidden>
+   <p class="account-help">Choose a new password. Reset links are single-use and expire after 30 minutes.</p>
+   <label for="newResetPassword">NEW PASSWORD</label><input id="newResetPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required placeholder="At least 12 characters">
+   <label for="confirmResetPassword">CONFIRM NEW PASSWORD</label><input id="confirmResetPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required placeholder="Enter it again">
+   <p class="account-error" id="resetPasswordError" role="alert" hidden></p>
+   <button class="primary-button account-submit" id="resetPasswordSubmit" type="submit">Update password</button>
+   <button class="text-button back-to-login" id="resetBackToLogin" type="button">← Back to sign in</button>
   </form>
  </div>
 </div>
