@@ -1,5 +1,6 @@
 import re
 import sqlite3
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +41,38 @@ class AuthService:
                     is_active INTEGER NOT NULL DEFAULT 1
                 )
             """)
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS auth_rate_limits (
+                    bucket TEXT PRIMARY KEY,
+                    window_started REAL NOT NULL,
+                    attempts INTEGER NOT NULL
+                )
+            """)
+
+    def allow_auth_attempt(self, bucket, limit=8, window_seconds=900):
+        """Allow a bounded number of auth attempts per opaque bucket/window."""
+        now = time.time()
+        with self.connection() as db:
+            row = db.execute(
+                "SELECT window_started, attempts FROM auth_rate_limits WHERE bucket = ?",
+                (bucket,)
+            ).fetchone()
+            if row is None or now - row["window_started"] >= window_seconds:
+                db.execute(
+                    """INSERT INTO auth_rate_limits(bucket, window_started, attempts)
+                       VALUES (?, ?, 1)
+                       ON CONFLICT(bucket) DO UPDATE SET
+                       window_started=excluded.window_started, attempts=1""",
+                    (bucket, now),
+                )
+                return True
+            if row["attempts"] >= limit:
+                return False
+            db.execute(
+                "UPDATE auth_rate_limits SET attempts = attempts + 1 WHERE bucket = ?",
+                (bucket,),
+            )
+            return True
 
     def create_user(self, email, password):
         email = (email or "").strip().lower()
