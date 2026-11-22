@@ -3,8 +3,11 @@
 
 const API = {
     analyze: '/api/analyze',
-    history: '/api/history'
+    history: '/api/history',
+    status: '/api/status'
 };
+
+const MODE_STORAGE_KEY = 'phishguard.onlineMode';
 
 const PAGE_NAMES = {
     overview: 'Overview',
@@ -22,7 +25,9 @@ const state = {
     historyFilter: 'all',
     searchTimer: null,
     lastHistoryRecords: [],
-    lastOverviewRecords: []
+    lastOverviewRecords: [],
+    onlineMode: true,       // user's choice (Online / Offline switch)
+    internet: null          // true / false once /api/status has answered
 };
 
 const $ = (id) => document.getElementById(id);
@@ -464,7 +469,7 @@ function renderRecentScans(records) {
         }
 
         return `
-            <tr>
+            <tr data-id="${escapeHtml(getScanId(record))}">
                 <td>
                     <strong>${escapeHtml(domain)}</strong>
                     <small class="table-subtext">
@@ -486,6 +491,8 @@ function renderRecentScans(records) {
             </tr>
         `;
     }).join('');
+
+    labelTableCells(tbody, RECENT_COLUMNS);
 }
 
 // Main overview function
@@ -580,7 +587,7 @@ function setActivePage(pageName) {
         $('breadcrumbPage').textContent = PAGE_NAMES[pageName];
     }
 
-    document.body.classList.remove('sidebar-open');
+    setSidebar(false);
 
     if (pageName === 'overview') {
         loadOverview();
@@ -625,7 +632,7 @@ function renderHistory(records) {
         const id = getScanId(record);
 
         return `
-            <tr>
+            <tr data-id="${escapeHtml(id)}">
                 <td>#${escapeHtml(id)}</td>
 
                 <td>
@@ -669,6 +676,8 @@ function renderHistory(records) {
             </tr>
         `;
     }).join('');
+
+    labelTableCells(tbody, HISTORY_COLUMNS);
 }
 
 function updatePagination(total, currentCount) {
@@ -1166,17 +1175,33 @@ async function handleScanSubmit(event) {
     try {
         const response = await apiRequest(API.analyze, {
             method: 'POST',
-            body: JSON.stringify({ url })
+            body: JSON.stringify({
+                url,
+                mode: state.onlineMode ? 'online' : 'offline'
+            })
         });
 
         const result = normalizeAnalysis(response);
 
         showScanResult(result);
 
-        showToast(
-            'URL analysis completed.',
-            'success'
-        );
+        if (result?.detection_mode === 'OFFLINE_FALLBACK_NO_INTERNET') {
+            // Online mode was on, but this computer has no internet.
+            state.internet = false;
+            renderModeUI();
+
+            showToast(
+                'No internet connection: analyzed with the offline engine.',
+                'warning'
+            );
+        } else {
+            showToast(
+                result?.detection_mode === 'HYBRID_ONLINE_AND_OFFLINE'
+                    ? 'URL analysis completed (online + offline checks).'
+                    : 'URL analysis completed.',
+                'success'
+            );
+        }
 
         // Refresh background panels without delaying the scan result or
         // making the scanner feel as if it navigated away from the result.
@@ -1438,7 +1463,14 @@ function bindEvents() {
             'button[data-action]'
         );
 
-        if (!button) return;
+        if (!button) {
+            // Tapping anywhere on a row opens its details.
+            const row = event.target.closest('tr[data-id]');
+
+            if (row) openDetails(row.dataset.id);
+
+            return;
+        }
 
         const id = button.dataset.id;
 
@@ -1449,6 +1481,13 @@ function bindEvents() {
         if (button.dataset.action === 'delete') {
             deleteHistoryRecord(id);
         }
+    });
+
+    // Recent scans on the overview: tap a row to see its details.
+    $('recentScans')?.addEventListener('click', event => {
+        const row = event.target.closest('tr[data-id]');
+
+        if (row) openDetails(row.dataset.id);
     });
 
     // Details modal
@@ -1466,25 +1505,188 @@ function bindEvents() {
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
             closeDetails();
+            setSidebar(false);
         }
     });
 
-    // Mobile sidebar
-    $('menuToggle')?.addEventListener('click', () => {
-        document.body.classList.add('sidebar-open');
-    });
+    // Mobile sidebar: open with the menu button, close with the X button,
+    // by tapping the dark area, with Escape, or after choosing a page.
+    $('menuToggle')?.addEventListener('click', () => setSidebar(true));
+    $('closeSidebar')?.addEventListener('click', () => setSidebar(false));
+    $('sidebarBackdrop')?.addEventListener('click', () => setSidebar(false));
 
-    $('closeSidebar')?.addEventListener('click', () => {
-        document.body.classList.remove('sidebar-open');
-    });
+    window.matchMedia('(min-width: 801px)').addEventListener?.(
+        'change',
+        event => { if (event.matches) setSidebar(false); }
+    );
 }
 
 /* =========================================
    13. APPLICATION INITIALIZATION
 ========================================= */
 
+/* =========================================
+   PHONE HELPERS
+========================================= */
+
+const HISTORY_COLUMNS = [
+    'SCAN ID', 'URL / DOMAIN', 'CLASSIFICATION',
+    'RISK SCORE', 'DETECTION MODE', 'DATE', 'ACTION'
+];
+
+const RECENT_COLUMNS = ['URL / DOMAIN', 'RESULT', 'RISK', 'TIME'];
+
+// On a phone each table row becomes a card; the CSS prints these labels
+// in front of every value (see .responsive-table in style.css).
+function labelTableCells(tbody, labels) {
+    tbody.querySelectorAll('tr').forEach(row => {
+        row.querySelectorAll('td').forEach((cell, index) => {
+            if (labels[index]) cell.dataset.label = labels[index];
+        });
+    });
+}
+
+function setSidebar(open) {
+    const sidebar = $('sidebar');
+    const toggle = $('menuToggle');
+
+    document.body.classList.toggle('sidebar-open', open);
+    toggle?.setAttribute('aria-expanded', String(open));
+
+    if (open) {
+        $('closeSidebar')?.focus({ preventScroll: true });
+    } else if (sidebar?.contains(document.activeElement)) {
+        toggle?.focus({ preventScroll: true });
+    }
+}
+
+/* =========================================
+   ONLINE / OFFLINE MODE
+========================================= */
+
+function loadModePreference() {
+    try {
+        const saved = window.localStorage.getItem(MODE_STORAGE_KEY);
+
+        // Online mode is the default; only an explicit "offline" turns it off.
+        state.onlineMode = saved !== 'offline';
+    } catch {
+        state.onlineMode = true;
+    }
+}
+
+function saveModePreference() {
+    try {
+        window.localStorage.setItem(
+            MODE_STORAGE_KEY,
+            state.onlineMode ? 'online' : 'offline'
+        );
+    } catch {
+        /* storage can be blocked; the switch still works for this visit */
+    }
+}
+
+function renderModeUI() {
+    const button = $('modeToggle');
+    const label = $('modeToggleText');
+    const hint = $('modeHintText');
+    const sidebar = $('sidebarMode');
+
+    const online = state.onlineMode;
+    const noInternet = online && state.internet === false;
+
+    let text;
+    let cssClass;
+    let hintText;
+    let sidebarText;
+
+    if (!online) {
+        text = 'OFFLINE MODE';
+        cssClass = 'mode-offline';
+        hintText = 'Offline mode: the URLs you scan are not sent anywhere. ' +
+            'Only the local model, rules and lists are used.';
+        sidebarText = 'Offline protection enabled';
+    } else if (noInternet) {
+        text = 'ONLINE MODE · NO INTERNET';
+        cssClass = 'mode-fallback';
+        hintText = 'Online mode is on, but no internet connection was found. ' +
+            'Scans use the offline engine until you are connected.';
+        sidebarText = 'No internet: offline protection active';
+    } else {
+        text = 'ONLINE MODE';
+        cssClass = 'mode-online';
+        hintText = 'Online mode: each scan also checks a live phishing feed ' +
+            'and the domain\u2019s registration age (to catch brand-new sites). ' +
+            'The page is never opened. Only the domain name is sent for the ' +
+            'age check; if API keys are set, Google Safe Browsing and ' +
+            'URLhaus receive the full URL.';
+        sidebarText = 'Online + offline protection enabled';
+    }
+
+    if (button) {
+        button.classList.remove('mode-online', 'mode-offline', 'mode-fallback');
+        button.classList.add(cssClass);
+        button.setAttribute('aria-pressed', String(online));
+    }
+
+    if (label) {
+        // "ONLINE" always shows; " MODE" / "· NO INTERNET" are hidden on
+        // narrow screens by CSS, where a warning sign is shown instead.
+        const word = text.split(' ')[0];
+
+        label.innerHTML =
+            word +
+            (noInternet ? '<span class="mode-warn"> ⚠</span>' : '') +
+            '<span class="mode-long">' + text.slice(word.length) + '</span>';
+    }
+
+    button?.setAttribute('aria-label', text);
+    if (hint) hint.textContent = hintText;
+    if (sidebar) sidebar.textContent = sidebarText;
+}
+
+async function refreshInternetStatus() {
+    try {
+        const response = await fetch(API.status, {
+            credentials: 'same-origin'
+        });
+        const payload = await response.json();
+
+        state.internet = payload?.internet === true;
+    } catch {
+        // The dashboard cannot reach its own server: treat as unknown.
+        state.internet = null;
+    }
+
+    renderModeUI();
+}
+
+function toggleMode() {
+    state.onlineMode = !state.onlineMode;
+
+    saveModePreference();
+    renderModeUI();
+
+    showToast(
+        state.onlineMode
+            ? 'Online mode on: scans also use live online checks.'
+            : 'Offline mode on: scanned URLs stay on this computer.',
+        'info'
+    );
+
+    if (state.onlineMode) {
+        void refreshInternetStatus();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
+
+    loadModePreference();
+    renderModeUI();
+    $('modeToggle')?.addEventListener('click', toggleMode);
+    void refreshInternetStatus();
+    window.setInterval(refreshInternetStatus, 30000);
 
     loadOverview();
 });

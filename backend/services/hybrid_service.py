@@ -16,6 +16,20 @@ SUSPICIOUS_RISK_MIN = 35
 PHISHING_RISK_MIN = PHISHING_ML_THRESHOLD
 SUSPICIOUS_RISK_MAX = PHISHING_RISK_MIN - 0.01
 
+# A domain registered very recently is shown with at least this risk.
+NEW_DOMAIN_RISK_MIN = 50
+
+# Result of the online lookups when online mode is off or there is no internet.
+OFFLINE_THREAT_RESULT = {
+    "configured": False,
+    "status": "not_configured",
+    "match": False,
+    "providers": [],
+    "cached": False,
+    "domain_age_days": None,
+    "newly_registered": False,
+}
+
 # Hosts where anybody can publish content.
 SHARED_PLATFORM_HOSTS = (
     "docs.google.com", "sites.google.com", "forms.gle", "drive.google.com",
@@ -80,10 +94,33 @@ class HybridDetectionService:
         self.local_service = get_local_intelligence_service()
         self.threat_service = get_threat_intelligence_service()
 
-    def analyze(self, url):
+    def analyze(self, url, online=False):
+        """Analyze a URL.
+
+        online=False : only the local ML model, local rules and local lists.
+                       No network request is made.
+        online=True  : also ask the online sources (reputation feeds and
+                       domain age) when the internet is reachable. Without
+                       internet the analysis silently falls back to offline.
+        """
         ml_result = self.model_service.predict(url)
         local_result = self.local_service.analyze(url)
-        threat_result = self.threat_service.analyze(url)
+
+        internet = None
+        online_used = False
+
+        if online:
+            check = getattr(self.threat_service, "is_online", None)
+            internet = bool(check()) if callable(check) else True
+            online_used = internet
+
+        if online_used:
+            threat_result = self.threat_service.analyze(
+                url,
+                include_keyless=True
+            )
+        else:
+            threat_result = dict(OFFLINE_THREAT_RESULT)
 
         ml_is_phishing = ml_result["prediction"] == "PHISHING"
 
@@ -107,11 +144,22 @@ class HybridDetectionService:
             rule_is_phishing = False
             brand_match = False
 
+        # A very new domain is a strong sign of a fresh phishing site.
+        # Trusted (allowlisted) domains are never treated as "new".
+        new_domain = bool(
+            threat_result.get("newly_registered")
+            and not (
+                allowlist_match
+                and not (blocklist_match or external_match)
+            )
+        )
+
         final_risk_score = max(
             ml_result["risk_score"],
             local_result["rule_risk_score"],
             100 if external_match or blocklist_match else 0,
             85 if brand_match else 0,
+            NEW_DOMAIN_RISK_MIN if new_domain else 0,
         )
 
         # Round first: the label must be decided from the same number that
@@ -171,10 +219,15 @@ class HybridDetectionService:
         ):
             final_prediction = "PHISHING"
 
+        # Registered only days ago AND the ML model already sees phishing.
+        elif new_domain and ml_is_phishing and not ml_only_ambiguous:
+            final_prediction = "PHISHING"
+
         elif (
             ml_is_phishing
             or rule_is_phishing
             or brand_match
+            or new_domain
             or final_risk_score >= SUSPICIOUS_RISK_MIN
         ):
             final_prediction = "SUSPICIOUS"
@@ -206,6 +259,11 @@ class HybridDetectionService:
                     "Private network address, not a public website"
                 )
 
+        if new_domain:
+            decision_sources.append(
+                "Domain age check (newly registered domain)"
+            )
+
         if blocklist_match:
             decision_sources.append("Local blocklist")
 
@@ -224,8 +282,10 @@ class HybridDetectionService:
                 "No threat detected by configured checks"
             )
 
-        if threat_result["configured"]:
+        if online_used:
             detection_mode = "HYBRID_ONLINE_AND_OFFLINE"
+        elif online:
+            detection_mode = "OFFLINE_FALLBACK_NO_INTERNET"
         else:
             detection_mode = "OFFLINE_ML_AND_LOCAL_RULES"
 
@@ -263,9 +323,22 @@ class HybridDetectionService:
                     ["Matched an external threat-intelligence database"]
                     if external_match else []
                 )
+                + (
+                    [
+                        "Domain registered only "
+                        f"{threat_result.get('domain_age_days')} day(s) ago"
+                    ]
+                    if new_domain else []
+                )
             ),
             "detection_mode": detection_mode,
             "internet_required": False,
+            "online": {
+                "requested": bool(online),
+                "internet": internet,
+                "used": online_used,
+                "domain_age_days": threat_result.get("domain_age_days"),
+            },
             "message": message,
         }
 

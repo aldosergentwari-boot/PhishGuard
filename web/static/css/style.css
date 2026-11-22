@@ -139,6 +139,22 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 .offline-pill { color: #9e8bf4; background: #5a43951c; border-color: #5a43954d; }
 .offline-pill span { font-size: 8px; }
+
+/* Online / Offline switch in the top bar */
+.mode-pill {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 8px 11px; border-radius: 7px; font: inherit;
+    font-size: 9px; font-weight: 800; letter-spacing: .7px;
+    border: 1px solid transparent; transition: filter .15s ease;
+}
+.mode-pill:hover { filter: brightness(1.25); }
+.mode-pill:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.mode-pill span { font-size: 8px; }
+.mode-pill b { font-weight: 800; }
+.mode-pill.mode-online   { color: #35d69a; background: #35d69a1c; border-color: #35d69a55; }
+.mode-pill.mode-offline  { color: #9e8bf4; background: #5a43951c; border-color: #5a43954d; }
+.mode-pill.mode-fallback { color: #f5b942; background: #f59e0b1c; border-color: #f59e0b55; }
+#modeHint em { font-style: normal; }
 .profile-avatar {
     width: 34px; height: 34px; display: grid; place-items: center;
     border-radius: 10px; background: #1b3650; color: #8fd9ee;
@@ -556,4 +572,130 @@ tbody tr:hover { background: #ffffff05; }
     .about-logo { width: 55px; height: 55px; }
     .tech-grid { grid-template-columns: repeat(2, 1fr); }
     .main-footer { flex-direction: column; }
+}
+
+
+/* =====================================================================
+   PHONE & TOUCH SUPPORT
+   (the sidebar menu, table cards, toasts, details window)
+===================================================================== */
+
+html { -webkit-text-size-adjust: 100%; }
+body { overflow-x: hidden; }
+
+/* Details window (these classes had no styles before) */
+.details-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.details-grid > div, .details-url { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: #0c1626; }
+.details-grid span, .details-url span { display: block; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
+.details-grid strong { display: block; margin-top: 6px; color: #dbe7f5; font-size: 12px; overflow-wrap: anywhere; }
+.details-url { margin-bottom: 10px; }
+.details-url p { margin: 6px 0 0; color: #dbe7f5; font-size: 12px; overflow-wrap: anywhere; word-break: break-all; }
+.details-indicators h3 { margin: 16px 0 8px; font-size: 13px; }
+.details-indicators ul { margin: 0; padding-left: 18px; color: #b8c6d7; font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; }
+.details-indicators p { margin: 0; color: var(--muted); font-size: 11px; }
+
+.sidebar-backdrop { display: none; }
+tr[data-id] { cursor: pointer; }
+.mode-pill { white-space: nowrap; }
+.mode-pill .mode-warn { display: none; }
+.toast-container { pointer-events: none; }
+
+@media (max-width: 800px) {
+    /* --- the menu: the old CSS looked for ".sidebar.open" but the script
+           sets "body.sidebar-open", so the menu never opened. */
+    body.sidebar-open { overflow: hidden; }
+    body.sidebar-open .sidebar { transform: translateX(0); }
+    .sidebar {
+        width: min(82vw, 300px);
+        height: 100%; height: 100dvh;
+        overflow-y: auto; overscroll-behavior: contain;
+        padding-top: calc(25px + env(safe-area-inset-top));
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+    .sidebar-backdrop { position: fixed; inset: 0; z-index: 15; background: #020711b8; backdrop-filter: blur(3px); }
+    body.sidebar-open .sidebar-backdrop { display: block; }
+    .menu-toggle, .mobile-close { min-width: 44px; min-height: 44px; }
+
+    /* --- top bar: keep clear of the phone notch */
+    .topbar { height: calc(67px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+    .topbar-left { min-width: 0; gap: 6px; }
+    .topbar-right { gap: 8px; flex-shrink: 0; }
+    .content-area { padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
+
+    /* --- typing must not make iPhones zoom the page */
+    input, select, textarea { font-size: 16px; }
+    .url-input-wrap input { font-size: 16px; }
+
+    /* --- tables become cards: nothing is hidden to the right any more */
+    .table-wrap { overflow-x: visible; }
+    .responsive-table, .responsive-table tbody { display: block; width: 100%; }
+    .history-table.responsive-table { min-width: 0; }   /* was 780px: forced the page wider than the phone */
+    .responsive-table thead { display: none; }
+    .responsive-table tr {
+        display: block; margin-bottom: 10px; padding: 8px 14px 10px;
+        border: 1px solid var(--border); border-radius: 12px; background: #0d1727;
+    }
+    .responsive-table tbody tr:last-child { margin-bottom: 0; }
+    .responsive-table td {
+        display: flex; align-items: center; justify-content: space-between; gap: 14px;
+        padding: 7px 0; border: 0; font-size: 12px; text-align: right; min-width: 0;
+    }
+    .responsive-table td::before {
+        content: attr(data-label); flex: 0 0 auto; color: #72839a;
+        font-size: 9px; font-weight: 800; letter-spacing: .7px; text-align: left;
+    }
+    .responsive-table td[data-label="URL / DOMAIN"] {
+        display: block; text-align: left; margin-bottom: 4px; padding: 4px 0 10px;
+        border-bottom: 1px solid #1e2b3d;
+    }
+    .responsive-table td[data-label="URL / DOMAIN"]::before { content: none; }
+    .responsive-table td[data-label="URL / DOMAIN"] strong { font-size: 13px; overflow-wrap: anywhere; }
+    .responsive-table td[data-label="URL / DOMAIN"] small { display: block; margin-top: 4px; color: #7d8ea5; overflow-wrap: anywhere; word-break: break-all; }
+    .responsive-table td.empty-cell { display: block; text-align: center; padding: 24px 0; }
+    .responsive-table td.empty-cell::before { content: none; }
+    .responsive-table td[data-label="ACTION"] { padding-top: 10px; }
+    .responsive-table td[data-label="ACTION"]::before { content: none; }
+    .responsive-table .table-actions { display: flex; gap: 10px; width: 100%; }
+    .responsive-table .table-actions .text-button {
+        flex: 1; min-height: 42px; border: 1px solid var(--border);
+        border-radius: 9px; background: #142236; font-size: 12px;
+    }
+    .responsive-table .table-actions [data-action="delete"] { color: #ff8798; border-color: #6a2f3d; background: #1d1620; }
+
+    /* --- toasts at the top, below the bar, never covering the buttons */
+    .toast-container {
+        top: calc(74px + env(safe-area-inset-top)); bottom: auto;
+        left: 12px; right: 12px;
+    }
+    .toast { min-width: 0; max-width: none; font-size: 12px; }
+
+    /* --- details window */
+    .modal-overlay { padding: 12px; }
+    .modal-card { max-height: 90vh; max-height: 90dvh; padding: 18px; }
+}
+
+@media (max-width: 560px) {
+    .breadcrumb { font-size: 0; }                       /* hide "Security Center /" */
+    .breadcrumb strong { font-size: 14px; font-weight: 700; }
+    .mode-pill { padding: 8px 10px; font-size: 9px; }
+    .mode-pill .mode-long { display: none; }
+    .mode-pill .mode-warn { display: inline; }
+    .details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .details-grid > div:nth-child(n+5) { grid-column: 1 / -1; }    /* detection mode, date */
+    .page-heading h1, .page-heading h2 { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 360px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .tech-grid { grid-template-columns: 1fr; }
+}
+
+/* fingers need bigger targets than mouse pointers */
+@media (pointer: coarse) {
+    .nav-link { min-height: 46px; }
+    .text-button { min-height: 40px; }
+    .page-button { width: 44px; height: 44px; }
+    .modal-close { width: 44px; height: 44px; }
+    .history-toolbar select, .history-toolbar button { min-height: 44px; }
+    .url-input-wrap button { min-height: 44px; }
 }

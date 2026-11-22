@@ -3,7 +3,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#080d18">
     <meta name="theme-color" content="#080d18">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6525133803017030"
      crossorigin="anonymous"></script>
@@ -57,7 +58,7 @@
                 <span class="status-indicator"></span>
                 <div>
                     <strong>Local engine active</strong>
-                    <small>Offline protection enabled</small>
+                    <small id="sidebarMode">Offline protection enabled</small>
                 </div>
             </div>
             <div class="sidebar-footer">
@@ -68,11 +69,13 @@
     </aside>
 
     <!-- MAIN AREA -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
     <main class="main-area">
 
         <header class="topbar">
             <div class="topbar-left">
-                <button class="menu-toggle" id="menuToggle" aria-label="Open menu">☰</button>
+                <button class="menu-toggle" id="menuToggle" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">☰</button>
                 <div>
                     <div class="breadcrumb">Security Center <span>/</span> <strong id="breadcrumbPage">Overview</strong></div>
                     <div class="topbar-subtitle">AI-powered phishing detection platform</div>
@@ -84,7 +87,11 @@
                     <span class="status-indicator"></span>
                     LOCAL SYSTEM
                 </div>
-                <div class="offline-pill"><span>●</span> OFFLINE MODE</div>
+                <button type="button" class="mode-pill mode-online" id="modeToggle"
+                        aria-pressed="true"
+                        title="Click to switch between Online and Offline mode">
+                    <span>●</span> <b id="modeToggleText">ONLINE MODE</b>
+                </button>
                 <div class="profile-avatar">PG</div>
             </div>
         </header>
@@ -177,7 +184,7 @@
                             <button class="text-button" data-goto="history">View all →</button>
                         </div>
                         <div class="table-wrap">
-                            <table>
+                            <table class="responsive-table">
                                 <thead>
                                     <tr>
                                         <th>URL / DOMAIN</th>
@@ -256,6 +263,7 @@
                                 <button type="submit" id="scanButton">Analyze URL <span>→</span></button>
                             </div>
                             <div class="input-hint"><span>ⓘ</span> Include http:// or https:// in the URL.</div>
+                            <div class="input-hint" id="modeHint"><span>ⓘ</span> <em id="modeHintText"></em></div>
                         </form>
 
                         <div class="scan-progress" id="scanProgress" hidden>
@@ -357,7 +365,7 @@
                         <div><h3>Analysis records</h3><p id="historyCount">Loading records...</p></div>
                     </div>
                     <div class="table-wrap">
-                        <table class="history-table">
+                        <table class="history-table responsive-table">
                             <thead>
                                 <tr>
                                     <th>SCAN ID</th>
@@ -411,7 +419,7 @@
                         <div class="large-feature-icon red">⚑</div>
                         <span class="feature-label">LAYER 03</span>
                         <h3>Threat Lists</h3>
-                        <p>Local blocklist and allowlist files provide offline domain intelligence. If API keys are configured in the project .env file, Google Safe Browsing and URLhaus are also queried for known malicious URLs.</p>
+                        <p>Local blocklist and allowlist files provide offline domain intelligence. In Online mode (with internet), PhishGuard also compares the URL with the live OpenPhish phishing feed and checks how recently the domain was registered. If API keys are configured in the project .env file, Google Safe Browsing and URLhaus are queried too.</p>
                         <div class="feature-footer"><span class="mini-status"></span> Local lists enabled</div>
                     </article>
                 </div>

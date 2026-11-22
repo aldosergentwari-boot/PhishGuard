@@ -131,13 +131,22 @@ def create_app():
         static_url_path="/static"
     )
 
-    app.secret_key = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+    secret_key = os.getenv("SECRET_KEY")
+
+    if not secret_key:
+        if os.getenv("RENDER"):
+            raise RuntimeError("SECRET_KEY must be configured on Render.")
+        secret_key = secrets.token_hex(32)
+
+    app.secret_key = secret_key
 
     app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=365)
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.getenv(
+            "SESSION_COOKIE_SECURE", "true"
+        ).lower() == "true",
+        PERMANENT_SESSION_LIFETIME=timedelta(days=365)
     )
 
     app.register_blueprint(prediction_bp)
@@ -215,8 +224,15 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    # By default the app is reachable only from this computer.
+    # To open it from a phone on the same Wi-Fi, set PHISHGUARD_HOST=0.0.0.0
+    # (see .env.example). The debugger is switched off in that case, because
+    # it would let anybody on the network run code on this computer.
+    host = os.getenv("PHISHGUARD_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    port = int(os.getenv("PHISHGUARD_PORT", "5000"))
+
     app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=True
+        host=host,
+        port=port,
+        debug=host in ("127.0.0.1", "localhost")
     )

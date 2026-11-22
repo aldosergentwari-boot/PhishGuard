@@ -7,6 +7,7 @@ import tldextract
 from backend.config import MAX_URL_LENGTH
 from backend.services.model_service import get_model_service
 from backend.services.hybrid_service import get_hybrid_service
+from backend.services.threat_intelligence import get_threat_intelligence_service
 from backend.services.user_identity import get_current_user_id
 from backend.database.history_service import (
     get_history_service
@@ -93,6 +94,23 @@ def validate_url(url):
         return False, "Invalid URL format."
 
 
+def parse_mode(data):
+    """Read the optional "mode" field.
+
+    Returns (online, error_message). Missing mode means "offline" so that
+    no network request is ever made unless the client asks for it.
+    """
+    mode = data.get("mode", "offline")
+
+    if not isinstance(mode, str) or mode.strip().lower() not in (
+        "offline",
+        "online"
+    ):
+        return False, 'The mode field must be "offline" or "online".'
+
+    return mode.strip().lower() == "online", None
+
+
 @prediction_bp.route(
     "/api/predict",
     methods=["POST"]
@@ -129,10 +147,19 @@ def predict_url():
 
     url = url.strip()
 
+    online, mode_error = parse_mode(data)
+
+    if mode_error:
+
+        return jsonify({
+            "success": False,
+            "error": mode_error
+        }), 400
+
     try:
 
         service = get_hybrid_service()
-        analysis = service.analyze(url)
+        analysis = service.analyze(url, online=online)
         result = dict(analysis["ml_result"])
         result.update({
             "prediction": analysis["final_prediction"],
@@ -157,6 +184,23 @@ def predict_url():
             "success": False,
             "error": "Prediction failed. Check the server logs."
         }), 500
+
+
+@prediction_bp.route(
+    "/api/status",
+    methods=["GET"]
+)
+def online_status():
+    """Tell the dashboard whether the internet is reachable and which online
+    sources are ready. No URL is sent or received here."""
+
+    service = get_threat_intelligence_service()
+
+    return jsonify({
+        "success": True,
+        "internet": service.is_online(),
+        "providers": service.provider_overview()
+    }), 200
 
 
 @prediction_bp.route(
@@ -219,11 +263,20 @@ def analyze_url():
             "error": error_message
         }), 400
 
+    online, mode_error = parse_mode(data)
+
+    if mode_error:
+
+        return jsonify({
+            "success": False,
+            "error": mode_error
+        }), 400
+
     try:
 
         service = get_hybrid_service()
 
-        result = service.analyze(url.strip())
+        result = service.analyze(url.strip(), online=online)
 
         # Save scan under the current browser's identity
         history_service = get_history_service()
