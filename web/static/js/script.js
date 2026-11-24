@@ -1834,25 +1834,38 @@ async function requestPlanUpgrade(planId) {
         return;
     }
 
-    const selected = window.prompt(
-        'Choose payment method: enter 1 for international card (USD) or 2 for MTN/Airtel Mobile Money (RWF).',
-        '1'
-    );
-    if (selected === null) return;
-    const paymentMethod = selected.trim() === '1' ? 'card' :
-        selected.trim() === '2' ? 'mobile_money' : null;
-    if (!paymentMethod) {
-        showToast('Choose 1 for card or 2 for Mobile Money.', 'error');
-        return;
-    }
-
-    let phoneNumber;
-    if (paymentMethod === 'mobile_money') {
-        phoneNumber = window.prompt('Enter the MTN or Airtel Rwanda phone number used for payment:');
-        if (!phoneNumber) return;
-    }
-
     try {
+        const catalog = await apiRequest(API.plans);
+        const available = catalog.checkout || {};
+        const methods = [];
+        if (available.card) methods.push('card');
+        if (available.mobile_money) methods.push('mobile_money');
+        if (!methods.length) {
+            showToast('Paid checkout is not available yet. Payment-provider setup is still pending.', 'info');
+            return;
+        }
+
+        let paymentMethod = methods[0];
+        if (methods.length > 1) {
+            const selected = window.prompt(
+                'Choose payment method: enter 1 for international card (USD) or 2 for MTN/Airtel Mobile Money (RWF).',
+                '1'
+            );
+            if (selected === null) return;
+            paymentMethod = selected.trim() === '1' ? 'card' :
+                selected.trim() === '2' ? 'mobile_money' : null;
+            if (!paymentMethod || !methods.includes(paymentMethod)) {
+                showToast('Choose one of the payment methods currently available.', 'error');
+                return;
+            }
+        }
+
+        let phoneNumber;
+        if (paymentMethod === 'mobile_money') {
+            phoneNumber = window.prompt('Enter the MTN or Airtel Rwanda phone number used for payment:');
+            if (!phoneNumber) return;
+        }
+
         const headers = await csrfHeader();
         const result = await apiRequest('/api/billing/checkout', {
             method: 'POST',
@@ -1922,6 +1935,8 @@ async function loadPricing() {
     try {
         const payload = await apiRequest(API.plans);
         const plans = payload.plans || {};
+        const checkout = payload.checkout || {};
+        const checkoutReady = Boolean(checkout.card || checkout.mobile_money);
         const order = ['free', 'pro', 'business'];
         grid.innerHTML = order.filter(key => plans[key]).map(key => {
             const plan = plans[key];
@@ -1939,8 +1954,10 @@ async function loadPricing() {
                 '<h2>' + escapeHtml(plan.name) + '</h2>' +
                 '<div class="pricing-price">$' + price + '<span>' + interval + '</span></div>' +
                 '<ul>' + features + '</ul>' +
-                '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '">' +
-                (key === 'free' ? 'Included by default' : 'Choose payment method') + '</button>' +
+                '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '"' +
+                (key !== 'free' && !checkoutReady ? ' disabled aria-disabled="true"' : '') + '>' +
+                (key === 'free' ? 'Included by default' :
+                    checkoutReady ? 'Choose payment method' : 'Payments not available yet') + '</button>' +
                 '</article>';
         }).join('');
     } catch {
