@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, redirect, request, session
 
 from backend.services.plan_service import (
     PLANS, PLAN_LIMITS, get_account_plan, get_usage
@@ -63,17 +63,16 @@ def create_paid_checkout():
 
 @billing_bp.get("/api/billing/callback")
 def payment_callback():
-    # Browser redirects are not proof of payment. Always verify with Flutterwave.
+    # A browser redirect is not proof of payment; verify with Flutterwave.
     tx_ref = request.args.get("tx_ref", "")
     transaction_id = request.args.get("transaction_id", "")
     if request.args.get("status", "").lower() != "successful":
-        return jsonify({"success": False, "error": "Payment was not completed."}), 400
+        return redirect("/?payment=not_completed")
     try:
-        result = verify_and_activate(tx_ref, transaction_id)
-    except (FlutterwaveError, TypeError, ValueError) as exc:
-        return jsonify({"success": False, "error": str(exc)}), 400
-    return jsonify({"success": True, "message": "Payment verified.", **result}), 200
-
+        verify_and_activate(tx_ref, transaction_id)
+    except (FlutterwaveError, TypeError, ValueError):
+        return redirect("/?payment=verification_failed")
+    return redirect("/?payment=success")
 
 @billing_bp.post("/api/billing/webhook")
 def flutterwave_webhook():
