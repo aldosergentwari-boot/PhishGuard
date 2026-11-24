@@ -1,5 +1,3 @@
-import sqlite3
-
 import pytest
 
 from backend.app import create_app
@@ -159,3 +157,26 @@ def test_password_reset_rejects_short_password(client, monkeypatch):
         json={"token": sent["token"], "password": "short"},
     )
     assert response.status_code == 400
+
+
+
+def test_email_service_builds_verification_and_fragment_reset_links(monkeypatch):
+    import backend.services.email_service as email_service
+
+    captured = []
+    monkeypatch.setenv("MAIL_SERVER", "smtp-relay.brevo.com")
+    monkeypatch.setenv("MAIL_PORT", "587")
+    monkeypatch.setenv("MAIL_USERNAME", "smtp-login")
+    monkeypatch.setenv("MAIL_PASSWORD", "smtp-secret")
+    monkeypatch.setenv("MAIL_DEFAULT_SENDER", "security@example.com")
+    monkeypatch.setenv("PUBLIC_APP_URL", "https://phishguard.example")
+    monkeypatch.setattr(
+        email_service, "_send",
+        lambda subject, recipient, text_body, html_body:
+            captured.append((subject, text_body, html_body)) or True,
+    )
+
+    assert email_service.send_verification_email("member@example.com", "verify-token_123")
+    assert email_service.send_password_reset_email("member@example.com", "reset-token_456")
+    assert "https://phishguard.example/api/auth/verify-email?token=verify-token_123" in captured[0][1]
+    assert "https://phishguard.example/#reset_token=reset-token_456" in captured[1][1]
