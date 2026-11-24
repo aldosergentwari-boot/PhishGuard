@@ -7,6 +7,7 @@ import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
 from html import escape
+from urllib.parse import urlencode, urlsplit
 
 
 def _settings():
@@ -24,11 +25,11 @@ def _settings():
 
 def is_configured():
     cfg = _settings()
+    parsed = urlsplit(cfg["base_url"])
     trusted_origin = (
-        cfg["base_url"].startswith("https://")
-        or cfg["base_url"].startswith("http://127.0.0.1")
-        or cfg["base_url"].startswith("http://localhost")
-    )
+        parsed.scheme == "https" and bool(parsed.hostname)
+        or parsed.scheme == "http" and parsed.hostname in ("127.0.0.1", "localhost")
+    ) and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment
     return bool(
         cfg["host"] and cfg["username"] and cfg["password"]
         and cfg["sender"] and trusted_origin
