@@ -1948,7 +1948,33 @@ async function loadPricing() {
     }
 }
 
+function handlePaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const paymentState = params.get('payment');
+    if (!paymentState) return;
+
+    const messages = {
+        success: ['Payment verified. Your subscription is now active.', 'success'],
+        not_completed: ['Payment was not completed. No plan change was made.', 'info'],
+        verification_failed: ['We could not verify the payment yet. Please contact support before trying again.', 'error']
+    };
+    const message = messages[paymentState];
+    if (message) {
+        showToast(message[0], message[1]);
+        if (paymentState === 'success' || paymentState === 'verification_failed') {
+            void loadAccount();
+        }
+    }
+
+    params.delete('payment');
+    const cleanUrl = window.location.pathname +
+        (params.toString() ? '?' + params.toString() : '') +
+        window.location.hash;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    handlePaymentReturn();
     bindEvents();
     void loadPricing();
     void loadAdPlacement();
