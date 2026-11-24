@@ -1,4 +1,7 @@
-from flask import Blueprint, request, jsonify, session
+import hashlib
+import hmac
+
+from flask import Blueprint, request, jsonify, session, current_app
 from urllib.parse import urlparse
 import ipaddress
 
@@ -9,6 +12,7 @@ from backend.services.model_service import get_model_service
 from backend.services.hybrid_service import get_hybrid_service
 from backend.services.threat_intelligence import get_threat_intelligence_service
 from backend.services.user_identity import get_current_user_id
+from backend.database.auth_service import auth_service
 from backend.database.history_service import (
     get_history_service
 )
@@ -111,6 +115,28 @@ def parse_mode(data):
     return mode.strip().lower() == "online", None
 
 
+
+
+def _scan_rate_limit_exceeded(owner_id):
+    """Limit each signed-in account or anonymous browser identity to 30 scans/minute."""
+    secret = str(current_app.secret_key).encode("utf-8")
+    digest = hmac.new(secret, str(owner_id).encode("utf-8"), hashlib.sha256).hexdigest()
+    return not auth_service.allow_scan_attempt(
+        f"scan:{digest}",
+        limit=30,
+        window_seconds=60,
+    )
+
+
+def _rate_limit_response():
+    response = jsonify({
+        "success": False,
+        "error": "Too many scan requests. Please wait before trying again.",
+        "code": "RATE_LIMIT_EXCEEDED",
+    })
+    response.headers["Retry-After"] = "60"
+    return response, 429
+
 @prediction_bp.route(
     "/api/predict",
     methods=["POST"]
@@ -158,6 +184,9 @@ def predict_url():
 
     try:
         owner_id = get_current_user_id()
+        if _scan_rate_limit_exceeded(owner_id):
+            return _rate_limit_response()
+
         account_id = session.get("account_id")
         from backend.services.plan_service import can_scan, get_account_plan
         plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
