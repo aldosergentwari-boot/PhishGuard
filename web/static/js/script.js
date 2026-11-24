@@ -1761,7 +1761,8 @@ async function loadAccount() {
         signedOut.hidden = state.authenticated;
         signedIn.hidden = !state.authenticated;
         if (!state.authenticated) {
-            setAuthMode('login');
+            const resetToken = new URLSearchParams(window.location.hash.slice(1)).get('reset_token');
+            setAuthMode(resetToken ? 'reset' : 'login');
             return;
         }
 
@@ -1850,9 +1851,7 @@ async function confirmPasswordReset(event) {
         $('passwordResetConfirmForm').reset();
         setAuthMode('login');
         feedback.textContent = result.message;
-        const url = new URL(window.location.href);
-        url.searchParams.delete('reset_token');
-        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+        window.history.replaceState({}, '', window.location.pathname + window.location.search);
     } catch (error) {
         feedback.textContent = error.message;
     }
@@ -2059,7 +2058,8 @@ function handlePaymentReturn() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const query = new URLSearchParams(window.location.search);
-    const resetToken = query.get('reset_token');
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const resetToken = fragment.get('reset_token');
     if (resetToken) {
         $('resetToken').value = resetToken;
         goToPage('account');
