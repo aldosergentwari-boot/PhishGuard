@@ -38,6 +38,9 @@ class AuthService:
                 is_active INTEGER NOT NULL DEFAULT 1,
                 session_version INTEGER NOT NULL DEFAULT 0
             )""")
+            user_columns = {row["name"] for row in db.execute("PRAGMA table_info(users)")}
+            if "session_version" not in user_columns:
+                db.execute("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0")
             db.execute("""CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket TEXT PRIMARY KEY,
                 window_started REAL NOT NULL,
