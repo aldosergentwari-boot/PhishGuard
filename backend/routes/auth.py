@@ -20,7 +20,7 @@ def csrf_token():
 
 @auth_bp.before_app_request
 def protect_auth_mutations():
-    protected = ("/api/auth/register", "/api/auth/login", "/api/auth/logout")
+    protected = ("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/billing/checkout")
     if request.path in protected and request.method == "POST":
         expected = session.get("csrf_token", "")
         supplied = request.headers.get("X-CSRF-Token", "")
