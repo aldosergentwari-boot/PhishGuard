@@ -167,13 +167,17 @@ def create_app():
 
     app.secret_key = _load_secret_key()
 
-    secure_cookie_default = bool(os.getenv("RENDER"))
-    secure_cookie_setting = os.getenv("SESSION_COOKIE_SECURE")
-    secure_cookie = (
-        secure_cookie_default
-        if secure_cookie_setting is None
-        else secure_cookie_setting.strip().lower() in ("1", "true", "yes", "on")
-    )
+    # Render terminates HTTPS at its edge. Never allow an environment
+    # override to disable Secure cookies on the public production service.
+    if os.getenv("RENDER"):
+        secure_cookie = True
+    else:
+        secure_cookie_setting = os.getenv("SESSION_COOKIE_SECURE")
+        secure_cookie = (
+            secure_cookie_setting.strip().lower() in ("1", "true", "yes", "on")
+            if secure_cookie_setting is not None
+            else False
+        )
 
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
@@ -194,6 +198,26 @@ def create_app():
         return os.getenv("MAINTENANCE_MODE", "false").lower() in (
             "1", "true", "yes", "on"
         )
+
+    @app.after_request
+    def add_security_headers(response):
+        """Apply baseline browser security headers to every web response."""
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=()"
+        )
+
+        # Render serves the public application over HTTPS at its edge.
+        if os.getenv("RENDER"):
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000"
+            )
+
+        return response
 
     @app.before_request
     def protect_public_website():
