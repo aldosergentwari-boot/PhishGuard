@@ -1,8 +1,15 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+import calendar
 
 from backend.database.auth_service import auth_service
 
-# Public prices are USD. Business intentionally renews every seven months.
+# Initial product limits; keep centralized so they can be tuned without changing routes.
+PLAN_LIMITS = {
+    "free": {"scans_per_month": 50, "history_records": 50},
+    "pro": {"scans_per_month": 2000, "history_records": 2000},
+    "business": {"scans_per_month": 10000, "history_records": 10000},
+}
+
 PLANS = {
     "free": {
         "name": "Free", "price_usd": 0, "billing_interval_months": 0,
@@ -25,19 +32,56 @@ def get_account_plan(user_id):
             current_period_end,provider FROM subscriptions
             WHERE user_id=? ORDER BY id DESC LIMIT 1""", (user_id,)).fetchone()
     if not row:
-        return {"plan_id": "free", "status": "active", **PLANS["free"]}
+        return {"plan_id": "free", "status": "active",
+                "limits": PLAN_LIMITS["free"], **PLANS["free"]}
     plan_id = row["plan_id"] if row["plan_id"] in PLANS else "free"
-    # Expired paid subscriptions fall back to Free; no client can self-activate a plan.
+    status = row["status"]
+    if status != "active":
+        plan_id = "free"
     if plan_id != "free" and row["current_period_end"]:
         expiry = datetime.fromisoformat(row["current_period_end"])
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
         if expiry <= datetime.now(timezone.utc):
             plan_id = "free"
     return {
-        "plan_id": plan_id, "status": row["status"],
+        "plan_id": plan_id, "status": status,
         "billing_interval_months": row["billing_interval_months"],
         "current_period_end": row["current_period_end"],
-        "provider": row["provider"], **PLANS[plan_id]
+        "provider": row["provider"],
+        "limits": PLAN_LIMITS[plan_id], **PLANS[plan_id]
     }
+
+
+def get_usage(owner_id, plan_id="free"):
+    """Count scans in the current UTC calendar month for this browser/account."""
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    limits = PLAN_LIMITS.get(plan_id, PLAN_LIMITS["free"])
+    with auth_service.connection() as db:
+        exists = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_history'"
+        ).fetchone()
+        if not exists:
+            used = 0
+        else:
+            used = db.execute(
+                "SELECT COUNT(*) FROM scan_history WHERE owner_id=? AND scanned_at>=?",
+                (owner_id, month_start)
+            ).fetchone()[0]
+    return {
+        "scans_used": used,
+        "scans_limit": limits["scans_per_month"],
+        "scans_remaining": max(0, limits["scans_per_month"] - used),
+        "history_limit": limits["history_records"],
+        "period": "calendar_month_utc",
+        "period_starts_at": month_start,
+    }
+
+
+def can_scan(owner_id, plan_id="free"):
+    usage = get_usage(owner_id, plan_id)
+    return usage["scans_used"] < usage["scans_limit"], usage
 
 
 def activate_subscription(user_id, plan_id, provider, provider_subscription_id, period_start=None):
@@ -50,11 +94,9 @@ def activate_subscription(user_id, plan_id, provider, provider_subscription_id, 
     if start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
     months = PLANS[plan_id]["billing_interval_months"]
-    # Calendar-month arithmetic without adding an external dependency.
     month_index = start.month - 1 + months
     year = start.year + month_index // 12
     month = month_index % 12 + 1
-    import calendar
     day = min(start.day, calendar.monthrange(year, month)[1])
     end = start.replace(year=year, month=month, day=day)
     now = datetime.now(timezone.utc).isoformat()
