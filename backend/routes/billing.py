@@ -5,7 +5,7 @@ from backend.services.plan_service import (
 )
 from backend.services.user_identity import get_current_user_id
 from backend.services.flutterwave_service import (
-    FlutterwaveError, create_checkout, is_configured,
+    FlutterwaveError, create_checkout, is_configured, checkout_availability,
     validate_webhook_signature, verify_and_activate,
 )
 
@@ -18,7 +18,12 @@ def list_plans():
         key: {**value, "limits": PLAN_LIMITS[key]}
         for key, value in PLANS.items()
     }
-    return jsonify({"success": True, "currency": "USD", "plans": public_plans}), 200
+    return jsonify({
+        "success": True,
+        "currency": "USD",
+        "plans": public_plans,
+        "checkout": checkout_availability(),
+    }), 200
 
 
 @billing_bp.get("/api/billing/me")
