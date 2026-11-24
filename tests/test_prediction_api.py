@@ -220,12 +220,14 @@ def test_production_session_cookie_is_secure_by_default(monkeypatch):
     assert app.config["SESSION_COOKIE_SECURE"] is True
 
 
-def test_session_cookie_secure_can_be_explicitly_overridden(monkeypatch):
+def test_render_forces_secure_cookie_even_when_env_disables_it(monkeypatch):
     monkeypatch.setenv("RENDER", "true")
     monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
     monkeypatch.setenv("SECRET_KEY", "test-production-secret")
 
     app = create_app()
 
-    assert app.config["SESSION_COOKIE_SECURE"] is False
+    # Render is HTTPS-only in production; an environment override must not
+    # weaken the Secure attribute on authentication session cookies.
+    assert app.config["SESSION_COOKIE_SECURE"] is True
 
