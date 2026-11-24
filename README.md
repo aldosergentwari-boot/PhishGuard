@@ -33,7 +33,7 @@ The scanner works without API keys. To add live lookups, copy `.env.example` to 
 - `GOOGLE_SAFE_BROWSING_API_KEY` — Google Safe Browsing Lookup API.
 - `URLHAUS_AUTH_KEY` — URLhaus community API Auth-Key.
 
-A positive match from either provider marks the URL as phishing. A no-match response does **not** override an ML or local-rule warning. If the APIs are not configured or cannot be reached, the app falls back to the local model and rules. Online checks are cached in memory for 15 minutes. The dashboard starts in Offline mode; online lookups run only after the user explicitly switches to Online mode. **Privacy note:** when you enable a provider, the URL text you submit is sent to that provider for reputation lookup; with both keys blank, scans stay local.
+A positive match from either provider marks the URL as phishing. A no-match response does **not** override an ML or local-rule warning. If the APIs are not configured or cannot be reached, the app falls back to the local model and rules. Online checks are cached in memory for 15 minutes. The dashboard starts in Offline mode; online lookups run only after the user explicitly switches to Online mode. **Privacy note:** Google Safe Browsing and URLhaus receive the full submitted URL only when their API keys are configured and Online mode is enabled. In Online mode, the app can also download the OpenPhish feed and send only the registered domain name to RDAP for its age check. Offline mode performs none of these network lookups.
 
 ## Requirements
 
