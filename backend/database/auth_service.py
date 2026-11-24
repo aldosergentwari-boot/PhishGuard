@@ -90,7 +90,9 @@ class AuthService:
             return True
 
     def create_user(self, email, password):
-        email = (email or "").strip().lower()
+        if not isinstance(email, str):
+            raise ValueError("Enter a valid email address.")
+        email = email.strip().lower()
         if len(email) > 254 or not EMAIL_RE.match(email):
             raise ValueError("Enter a valid email address.")
         if not isinstance(password, str) or not 12 <= len(password) <= 128:
@@ -108,7 +110,9 @@ class AuthService:
             raise ValueError("An account with this email already exists.") from exc
 
     def authenticate(self, email, password):
-        email = (email or "").strip().lower()
+        if not isinstance(email, str) or not isinstance(password, str):
+            return None
+        email = email.strip().lower()
         with self.connection() as db:
             row = db.execute("SELECT id,email,password_hash,is_active,session_version FROM users WHERE email=?", (email,)).fetchone()
         if not row or not row["is_active"] or not check_password_hash(row["password_hash"], password or ""):
