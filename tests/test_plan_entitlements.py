@@ -23,6 +23,7 @@ def test_plan_limits_are_returned_by_billing_api(client):
     response = client.get("/api/billing/plans")
     assert response.status_code == 200
     plans = response.get_json()["plans"]
+    assert plans["guest"]["limits"] == {"scans_per_month": 10, "history_records": 10}
     assert plans["free"]["limits"] == {"scans_per_month": 50, "history_records": 50}
     assert plans["pro"]["limits"] == {"scans_per_month": 2000, "history_records": 2000}
     assert plans["business"]["price_usd"] == 19.99
@@ -76,8 +77,15 @@ def test_free_account_receives_monthly_usage(client):
     assert usage["scans_remaining"] == 50
 
 
-def test_scan_api_blocks_requests_when_plan_quota_is_exhausted(client, monkeypatch):
+def test_scan_api_blocks_requests_when_free_account_quota_is_exhausted(client, monkeypatch):
     import backend.services.plan_service as plans
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "quota-analyze@example.com", "password": "correct horse battery"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert registered.status_code == 201
     monkeypatch.setattr(plans, "can_scan", lambda owner_id, plan_id: (
         False,
         {"scans_used": 50, "scans_limit": 50, "scans_remaining": 0}
@@ -89,6 +97,7 @@ def test_scan_api_blocks_requests_when_plan_quota_is_exhausted(client, monkeypat
     assert response.status_code == 429
     payload = response.get_json()
     assert payload["code"] == "SCAN_LIMIT_REACHED"
+    assert payload["plan"] == "free"
     assert payload["usage"]["scans_remaining"] == 0
 
 
@@ -114,8 +123,15 @@ def test_history_service_respects_maximum_visible_records(tmp_path, monkeypatch)
     assert service.get_scan(oldest_id, "account:1", max_records=2) is None
 
 
-def test_predict_api_also_obeys_monthly_scan_quota(client, monkeypatch):
+def test_predict_api_also_obeys_free_account_monthly_scan_quota(client, monkeypatch):
     import backend.services.plan_service as plans
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "quota-predict@example.com", "password": "correct horse battery"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert registered.status_code == 201
     monkeypatch.setattr(plans, "can_scan", lambda owner_id, plan_id: (
         False,
         {"scans_used": 50, "scans_limit": 50, "scans_remaining": 0}
@@ -125,7 +141,9 @@ def test_predict_api_also_obeys_monthly_scan_quota(client, monkeypatch):
         json={"url": "https://example.com", "mode": "offline"},
     )
     assert response.status_code == 429
-    assert response.get_json()["code"] == "SCAN_LIMIT_REACHED"
+    payload = response.get_json()
+    assert payload["code"] == "SCAN_LIMIT_REACHED"
+    assert payload["plan"] == "free"
 
 
 def test_history_endpoint_limits_free_history_records(client, tmp_path, monkeypatch):
