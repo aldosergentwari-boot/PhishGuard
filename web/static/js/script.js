@@ -1796,7 +1796,7 @@ async function loadAccount() {
         ]);
         state.authenticated = Boolean(auth.authenticated);
         state.account = auth.user || null;
-        state.planId = state.authenticated ? (billing.plan?.plan_id || 'free') : 'free';
+        state.planId = billing.plan?.plan_id || (state.authenticated ? 'free' : 'guest');
         const exportButton = $('exportHistory');
         if (exportButton) exportButton.hidden = !['pro', 'business'].includes(state.planId);
         signedOut.hidden = state.authenticated;
@@ -1931,8 +1931,13 @@ async function signOutAccount() {
 }
 
 async function requestPlanUpgrade(planId) {
+    if (planId === 'guest') {
+        goToPage('scanner');
+        return;
+    }
     if (planId === 'free') {
         goToPage('account');
+        setAuthMode('register');
         return;
     }
     if (!state.authenticated) {
@@ -2044,11 +2049,11 @@ async function loadPricing() {
         const plans = payload.plans || {};
         const checkout = payload.checkout || {};
         const checkoutReady = Boolean(checkout.card || checkout.mobile_money);
-        const order = ['free', 'pro', 'business'];
+        const order = ['guest', 'free', 'pro', 'business'];
         grid.innerHTML = order.filter(key => plans[key]).map(key => {
             const plan = plans[key];
             const interval = key === 'business' ? ' / 7 months' :
-                key === 'pro' ? ' / month' : ' / forever';
+                key === 'pro' ? ' / month' : key === 'guest' ? ' / month' : ' / forever';
             const price = Number(plan.price_usd).toFixed(2);
             const usageFeature = plan.limits?.scans_per_month
                 ? [Number(plan.limits.scans_per_month).toLocaleString() + ' scans per month']
@@ -2063,7 +2068,7 @@ async function loadPricing() {
                 '<ul>' + features + '</ul>' +
                 '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '"' +
                 (key !== 'free' && !checkoutReady ? ' disabled aria-disabled="true"' : '') + '>' +
-                (key === 'free' ? 'Included by default' :
+                (key === 'guest' ? 'Start scanning' : key === 'free' ? 'Create a free account' :
                     checkoutReady ? 'Choose payment method' : 'Payments not available yet') + '</button>' +
                 '</article>';
         }).join('');
