@@ -156,6 +156,20 @@ MAINTENANCE_PAGE = """
 """
 
 
+def _session_cookie_secure():
+    """Return whether session cookies must use the Secure attribute."""
+    if os.getenv("RENDER"):
+        # Render terminates HTTPS at its edge; production must stay secure.
+        return True
+
+    setting = os.getenv("SESSION_COOKIE_SECURE")
+    return (
+        setting.strip().lower() in ("1", "true", "yes", "on")
+        if setting is not None
+        else False
+    )
+
+
 def create_app():
 
     app = Flask(
@@ -167,17 +181,7 @@ def create_app():
 
     app.secret_key = _load_secret_key()
 
-    # Render terminates HTTPS at its edge. Never allow an environment
-    # override to disable Secure cookies on the public production service.
-    if os.getenv("RENDER"):
-        secure_cookie = True
-    else:
-        secure_cookie_setting = os.getenv("SESSION_COOKIE_SECURE")
-        secure_cookie = (
-            secure_cookie_setting.strip().lower() in ("1", "true", "yes", "on")
-            if secure_cookie_setting is not None
-            else False
-        )
+    secure_cookie = _session_cookie_secure()
 
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
