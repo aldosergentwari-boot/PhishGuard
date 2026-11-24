@@ -1378,6 +1378,12 @@ function bindEvents() {
     });
     $('loginForm')?.addEventListener('submit', event => submitAccountForm(event, 'login'));
     $('registerForm')?.addEventListener('submit', event => submitAccountForm(event, 'register'));
+    $('forgotPasswordLink')?.addEventListener('click', () => setAuthMode('forgot'));
+    $('backToLogin')?.addEventListener('click', () => setAuthMode('login'));
+    $('cancelPasswordReset')?.addEventListener('click', () => setAuthMode('login'));
+    $('passwordResetRequestForm')?.addEventListener('submit', requestPasswordReset);
+    $('passwordResetConfirmForm')?.addEventListener('submit', confirmPasswordReset);
+    $('resendVerification')?.addEventListener('click', resendVerificationEmail);
     $('accountLogout')?.addEventListener('click', signOutAccount);
     $('accountViewPlans')?.addEventListener('click', () => goToPage('pricing'));
     $('pricingGrid')?.addEventListener('click', event => {
@@ -1728,11 +1734,12 @@ async function csrfHeader() {
 }
 
 function setAuthMode(mode) {
-    const loginMode = mode !== 'register';
-    $('loginForm').hidden = !loginMode;
-    $('registerForm').hidden = loginMode;
+    $('loginForm').hidden = mode !== 'login';
+    $('registerForm').hidden = mode !== 'register';
+    $('passwordResetRequestForm').hidden = mode !== 'forgot';
+    $('passwordResetConfirmForm').hidden = mode !== 'reset';
     document.querySelectorAll('[data-auth-mode]').forEach(button => {
-        button.classList.toggle('active', button.dataset.authMode === (loginMode ? 'login' : 'register'));
+        button.classList.toggle('active', button.dataset.authMode === mode);
     });
     if ($('accountFeedback')) $('accountFeedback').textContent = '';
 }
@@ -1761,6 +1768,8 @@ async function loadAccount() {
         const plan = billing.plan || {};
         const usage = billing.usage || {};
         $('accountEmail').textContent = auth.user.email;
+        const verificationNotice = $('emailVerificationNotice');
+        if (verificationNotice) verificationNotice.hidden = Boolean(auth.user.email_verified);
         $('accountPlanName').textContent = plan.name || 'Free';
         $('accountPlanStatus').textContent = String(plan.status || 'active').toUpperCase();
         $('accountUsageText').textContent = Number(usage.scans_used || 0) + ' / ' + Number(usage.scans_limit || 50);
@@ -1804,9 +1813,63 @@ async function submitAccountForm(event, mode) {
         await loadOverview();
         await loadHistory();
         await loadAdPlacement();
-        showToast(mode === 'register' ? 'Your Free account is ready.' : 'You are signed in.', 'success');
+        showToast(mode === 'register' ? (response.message || 'Your Free account is ready.') : 'You are signed in.', response.email_sent === false ? 'info' : 'success');
     } catch (error) {
         feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    }
+}
+
+async function requestPasswordReset(event) {
+    event.preventDefault();
+    const email = $('resetRequestEmail').value.trim();
+    const feedback = $('accountFeedback');
+    feedback.textContent = 'If the account exists, reset instructions will be sent.';
+    try {
+        const headers = await csrfHeader();
+        const result = await apiRequest('/api/auth/password-reset/request', {
+            method: 'POST', headers, body: JSON.stringify({ email })
+        });
+        feedback.textContent = result.message;
+        $('passwordResetRequestForm').reset();
+    } catch (error) {
+        feedback.textContent = error.message;
+    }
+}
+
+async function confirmPasswordReset(event) {
+    event.preventDefault();
+    const token = $('resetToken').value;
+    const password = $('newPassword').value;
+    const feedback = $('accountFeedback');
+    feedback.textContent = 'Updating your password…';
+    try {
+        const result = await apiRequest('/api/auth/password-reset/confirm', {
+            method: 'POST', body: JSON.stringify({ token, password })
+        });
+        $('passwordResetConfirmForm').reset();
+        setAuthMode('login');
+        feedback.textContent = result.message;
+        const url = new URL(window.location.href);
+        url.searchParams.delete('reset_token');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    } catch (error) {
+        feedback.textContent = error.message;
+    }
+}
+
+async function resendVerificationEmail() {
+    const feedback = $('accountFeedbackSigned');
+    if (feedback) feedback.textContent = 'Sending verification email…';
+    try {
+        const headers = await csrfHeader();
+        const result = await apiRequest('/api/auth/verification/resend', {
+            method: 'POST', headers, body: '{}'
+        });
+        if (feedback) feedback.textContent = result.message;
+        showToast(result.message, result.email_sent ? 'success' : 'info');
+    } catch (error) {
+        if (feedback) feedback.textContent = error.message;
         showToast(error.message, 'error');
     }
 }
@@ -1995,6 +2058,26 @@ function handlePaymentReturn() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    const query = new URLSearchParams(window.location.search);
+    const resetToken = query.get('reset_token');
+    if (resetToken) {
+        $('resetToken').value = resetToken;
+        goToPage('account');
+        setAuthMode('reset');
+    }
+    if (query.get('email_verified') === '1') {
+        showToast('Your email address has been verified.', 'success');
+        query.delete('email_verified');
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('email_verified');
+        window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+    } else if (query.get('email_verified') === '0') {
+        showToast('That verification link is invalid or has expired.', 'error');
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('email_verified');
+        window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+    }
+
     handlePaymentReturn();
     bindEvents();
     void loadPricing();
