@@ -227,11 +227,7 @@ $body = @{
     reason = "Support-approved extra scans"
 } | ConvertTo-Json
 
-Invoke-RestMethod -Method Post \\
-  -Uri "https://YOUR-DOMAIN/api/admin/scan-credits" \\
-  -Headers @{ "X-Admin-Token" = $adminToken } \\
-  -ContentType "application/json" \\
-  -Body $body
+Invoke-RestMethod -Method Post -Uri "https://YOUR-DOMAIN/api/admin/scan-credits" -Headers @{ "X-Admin-Token" = $adminToken } -ContentType "application/json" -Body $body
 ```
 
 The admin token must be set in the server environment before this endpoint can authorize requests. If it is absent or shorter than 32 characters, admin access remains disabled.
