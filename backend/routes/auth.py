@@ -53,7 +53,7 @@ def _payload():
 
 
 def _rate_limited(operation, email):
-    normalized = (email or "").strip().lower()
+    normalized = email.strip().lower() if isinstance(email, str) else ""
     ip = request.remote_addr or "unknown"
     ip_bucket = hashlib.sha256(f"{operation}:ip:{ip}".encode()).hexdigest()
     email_bucket = hashlib.sha256(f"{operation}:email:{normalized}".encode()).hexdigest()
