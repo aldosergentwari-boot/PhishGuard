@@ -117,12 +117,26 @@ def parse_mode(data):
 
 
 
-def _scan_rate_limit_exceeded(owner_id):
-    """Limit each signed-in account or anonymous browser identity to 30 scans/minute."""
+def _scan_rate_limit_exceeded(owner_id, remote_addr=None):
+    """Limit both a client IP and its signed-in account/browser identity."""
     secret = str(current_app.secret_key).encode("utf-8")
-    digest = hmac.new(secret, str(owner_id).encode("utf-8"), hashlib.sha256).hexdigest()
+
+    if remote_addr:
+        ip_digest = hmac.new(
+            secret, str(remote_addr).encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        if not auth_service.allow_scan_attempt(
+            f"scan-ip:{ip_digest}",
+            limit=300,
+            window_seconds=60,
+        ):
+            return True
+
+    identity_digest = hmac.new(
+        secret, str(owner_id).encode("utf-8"), hashlib.sha256
+    ).hexdigest()
     return not auth_service.allow_scan_attempt(
-        f"scan:{digest}",
+        f"scan-identity:{identity_digest}",
         limit=30,
         window_seconds=60,
     )
@@ -184,7 +198,7 @@ def predict_url():
 
     try:
         owner_id = get_current_user_id()
-        if _scan_rate_limit_exceeded(owner_id):
+        if _scan_rate_limit_exceeded(owner_id, request.remote_addr):
             return _rate_limit_response()
 
         account_id = session.get("account_id")
