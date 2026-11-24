@@ -26,7 +26,7 @@ const state = {
     searchTimer: null,
     lastHistoryRecords: [],
     lastOverviewRecords: [],
-    onlineMode: true,       // user's choice (Online / Offline switch)
+    onlineMode: false,      // Offline-first: online checks require an explicit choice
     internet: null          // true / false once /api/status has answered
 };
 
@@ -1568,10 +1568,10 @@ function loadModePreference() {
     try {
         const saved = window.localStorage.getItem(MODE_STORAGE_KEY);
 
-        // Online mode is the default; only an explicit "offline" turns it off.
-        state.onlineMode = saved !== 'offline';
+        // Offline is the default; only an explicit "online" enables lookups.
+        state.onlineMode = saved === 'online';
     } catch {
-        state.onlineMode = true;
+        state.onlineMode = false;
     }
 }
 
@@ -1646,6 +1646,13 @@ function renderModeUI() {
 }
 
 async function refreshInternetStatus() {
+    // Do not even call the local status endpoint while Offline mode is active.
+    if (!state.onlineMode) {
+        state.internet = false;
+        renderModeUI();
+        return;
+    }
+
     try {
         const response = await fetch(API.status, {
             credentials: 'same-origin'
@@ -1676,6 +1683,9 @@ function toggleMode() {
 
     if (state.onlineMode) {
         void refreshInternetStatus();
+    } else {
+        state.internet = false;
+        renderModeUI();
     }
 }
 
@@ -1685,8 +1695,12 @@ document.addEventListener('DOMContentLoaded', () => {
     loadModePreference();
     renderModeUI();
     $('modeToggle')?.addEventListener('click', toggleMode);
-    void refreshInternetStatus();
-    window.setInterval(refreshInternetStatus, 30000);
+    if (state.onlineMode) {
+        void refreshInternetStatus();
+    }
+    window.setInterval(() => {
+        if (state.onlineMode) void refreshInternetStatus();
+    }, 30000);
 
     loadOverview();
 });
