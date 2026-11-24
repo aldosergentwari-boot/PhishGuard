@@ -30,12 +30,13 @@ def test_plan_catalog_has_confirmed_seven_month_business_term(client):
     assert plans["business"]["billing_interval_months"] == 7
 
 
-def test_anonymous_visitors_receive_free_plan(client):
+def test_anonymous_visitors_receive_guest_plan(client):
     response = client.get("/api/billing/me")
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["authenticated"] is False
-    assert payload["plan"]["plan_id"] == "free"
+    assert payload["plan"]["plan_id"] == "guest"
+    assert payload["usage"]["scans_limit"] == 10
 
 
 def test_registration_creates_free_subscription(client):
