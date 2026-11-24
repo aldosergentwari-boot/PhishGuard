@@ -4,7 +4,9 @@
 const API = {
     analyze: '/api/analyze',
     history: '/api/history',
-    status: '/api/status'
+    status: '/api/status',
+    plans: '/api/billing/plans',
+    subscription: '/api/billing/me'
 };
 
 const MODE_STORAGE_KEY = 'phishguard.onlineMode';
@@ -14,7 +16,8 @@ const PAGE_NAMES = {
     scanner: 'URL Scanner',
     history: 'Scan History',
     intelligence: 'Intelligence',
-    about: 'About Project'
+    about: 'About Project',
+    pricing: 'Plans & Pricing'
 };
 
 const state = {
