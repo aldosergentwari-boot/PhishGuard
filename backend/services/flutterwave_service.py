@@ -28,6 +28,24 @@ def is_configured():
     return bool(_config("FLW_SECRET_KEY") and _config("FLW_SECRET_HASH"))
 
 
+def checkout_availability():
+    """Expose only whether each checkout path is fully configured."""
+    base_ready = bool(
+        _config("FLW_SECRET_KEY")
+        and _config("FLW_SECRET_HASH")
+        and _config("FLW_REDIRECT_URL").startswith("https://")
+    )
+    mobile_prices_ready = all(
+        _config(f"FLW_{plan.upper()}_PRICE_RWF").isdigit()
+        and int(_config(f"FLW_{plan.upper()}_PRICE_RWF") or "0") > 0
+        for plan in ("pro", "business")
+    )
+    return {
+        "card": base_ready,
+        "mobile_money": base_ready and mobile_prices_ready,
+    }
+
+
 def _amount_for(plan_id, method):
     if plan_id not in ("pro", "business"):
         raise FlutterwaveError("Choose a paid plan.")
