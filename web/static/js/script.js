@@ -40,7 +40,7 @@ const state = {
     internet: null,         // true / false once /api/status has answered
     authenticated: false,
     account: null,
-    planId: 'free'
+    planId: 'guest'
 };
 
 const $ = (id) => document.getElementById(id);
@@ -1937,7 +1937,7 @@ async function requestPlanUpgrade(planId) {
     }
     if (planId === 'free') {
         goToPage('account');
-        setAuthMode('register');
+        if (!state.authenticated) setAuthMode('register');
         return;
     }
     if (!state.authenticated) {
@@ -2068,7 +2068,7 @@ async function loadPricing() {
                 '<ul>' + features + '</ul>' +
                 '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '"' +
                 (key !== 'free' && !checkoutReady ? ' disabled aria-disabled="true"' : '') + '>' +
-                (key === 'guest' ? 'Start scanning' : key === 'free' ? 'Create a free account' :
+                (key === 'guest' ? 'Start scanning' : key === 'free' ? (state.authenticated ? 'Current plan' : 'Create a free account') :
                     checkoutReady ? 'Choose payment method' : 'Payments not available yet') + '</button>' +
                 '</article>';
         }).join('');
