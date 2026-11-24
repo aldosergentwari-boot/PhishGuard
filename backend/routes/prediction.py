@@ -333,6 +333,9 @@ def analyze_url():
     try:
 
         owner_id = get_current_user_id()
+        if _scan_rate_limit_exceeded(owner_id, request.remote_addr):
+            return _rate_limit_response()
+
         account_id = session.get("account_id")
         from backend.services.plan_service import can_scan, get_account_plan
         plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
