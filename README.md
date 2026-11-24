@@ -90,6 +90,8 @@ Add `GOOGLE_SAFE_BROWSING_API_KEY` and/or `URLHAUS_AUTH_KEY` under Render Enviro
 
 **Storage note:** the default SQLite database is stored inside the project directory. On hosts with an ephemeral filesystem, history and account records can be reset when the service is redeployed or restarted. For Render, attach a persistent disk (for example mounted at `/var/data`) and set `PHISHGUARD_DATABASE_PATH=/var/data/phishguard.db` in the service environment. The application uses this same database path for accounts, subscriptions, payment records, and scan history. Back up the persistent disk regularly; a persistent disk is not itself a backup.
 
+**Database backups:** run `python -m scripts.backup_database` from the repository root to create a timestamped, integrity-checked SQLite backup under `backups/`. You can choose an exact output path with `python -m scripts.backup_database --output "D:\\PhishGuardBackups\\phishguard.sqlite3"` on Windows or `python -m scripts.backup_database --output /secure-backups/phishguard.sqlite3` on Linux. The utility uses SQLite's online backup API, so it is safe to run while the app is open and includes committed WAL data. Keep backup copies outside the live persistent disk (for example, in a separate secure storage location); a second file on the same disk is not disaster recovery. Protect backups because they contain account, scan-history, and payment-reference data.
+
 ## Run the desktop application
 
 Open a second terminal in the project root:
@@ -103,7 +105,7 @@ The desktop client uses the same local model and local intelligence services. It
 ## Run tests
 
 ```powershell
-pytest -q
+python -m pytest -q
 ```
 
 ## Retrain the model
@@ -124,6 +126,7 @@ Do not change the feature extraction logic in only one place. The extractor is s
 
 ```text
 backend/                 Flask API and services
+scripts/                 Operational utilities (database backup)
 desktop/main.py          Tkinter desktop application
 web/                     Dashboard HTML, CSS and JavaScript
 ml/features/             URL normalization and feature extraction
