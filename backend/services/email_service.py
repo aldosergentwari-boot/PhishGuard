@@ -7,13 +7,12 @@ import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
 from html import escape
-from urllib.parse import urlencode
 
 
 def _settings():
     return {
         "host": os.getenv("MAIL_SERVER", "smtp-relay.brevo.com").strip(),
-        "port": int(os.getenv("MAIL_PORT", "587")),
+        "port": int(os.getenv("MAIL_PORT") or "587"),
         "username": os.getenv("MAIL_USERNAME", "").strip(),
         "password": os.getenv("MAIL_PASSWORD", ""),
         "sender": os.getenv("MAIL_DEFAULT_SENDER", "").strip(),
@@ -25,10 +24,15 @@ def _settings():
 
 def is_configured():
     cfg = _settings()
-    return bool(cfg["host"] and cfg["username"] and cfg["password"]
-                and cfg["sender"] and cfg["base_url"].startswith("https://")
-                or cfg["host"] and cfg["username"] and cfg["password"]
-                and cfg["sender"] and cfg["base_url"].startswith("http://127.0.0.1"))
+    trusted_origin = (
+        cfg["base_url"].startswith("https://")
+        or cfg["base_url"].startswith("http://127.0.0.1")
+        or cfg["base_url"].startswith("http://localhost")
+    )
+    return bool(
+        cfg["host"] and cfg["username"] and cfg["password"]
+        and cfg["sender"] and trusted_origin
+    )
 
 
 def _send(subject, recipient, text_body, html_body):
