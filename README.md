@@ -177,3 +177,18 @@ AdSense is disabled by default. The website only requests an ad placement for Fr
 - `ADSENSE_SLOT_ID=...`
 
 The ad configuration endpoint is `GET /api/ads/config`. No ad script is loaded when the publisher is not approved, configuration is incomplete, the visitor is on a paid plan, or the browser is offline. Complete applicable privacy disclosures and consent requirements before enabling ads.
+
+
+### Account management and server-side entitlements
+
+The dashboard includes a My Account page for registration, sign-in, sign-out, current plan, and monthly scan usage. New accounts begin on Free, and anonymous scan history is linked to the account when the visitor registers or signs in.
+
+Initial configurable plan limits are centralized in `backend/services/plan_service.py`:
+
+| Plan | Scans per UTC calendar month | Visible history records |
+| --- | ---: | ---: |
+| Free | 50 | 50 |
+| Pro | 2,000 | 2,000 |
+| Business | 10,000 | 10,000 |
+
+The backend enforces scan quotas on both `/api/analyze` and `/api/predict`, and applies the plan's history cap to history listing and individual scan detail retrieval. These are initial launch defaults and should be reviewed against infrastructure and threat-intelligence costs before public launch. Limits are not enforced only in the browser.
