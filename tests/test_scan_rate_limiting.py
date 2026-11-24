@@ -1,6 +1,17 @@
+import pytest
+
 import backend.database.auth_service as auth_module
+from backend.app import create_app
 import backend.routes.prediction as prediction_module
 from backend.database.auth_service import AuthService
+
+@pytest.fixture
+def client():
+    test_app = create_app()
+    test_app.config["TESTING"] = True
+    with test_app.test_client() as test_client:
+        yield test_client
+
 
 
 def test_scan_rate_limit_allows_limit_then_blocks_and_resets(monkeypatch, tmp_path):
