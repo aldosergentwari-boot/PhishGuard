@@ -699,3 +699,21 @@ tr[data-id] { cursor: pointer; }
     .history-toolbar select, .history-toolbar button { min-height: 44px; }
     .url-input-wrap button { min-height: 44px; }
 }
+
+
+/* =========================================
+   SUBSCRIPTION PRICING
+========================================= */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    align-items: stretch;
+}
+.pricing-card { padding: 26px; display: flex; flex-direction: column; min-width: 0; }
+.pricing-card h2 { margin: 12px 0 8px; font-size: 22px; }
+.pricing-price { font-size: 34px; font-weight: 750; letter-spacing: -1px; margin: 12px 0 20px; }
+.pricing-price span { font-size: 13px; font-weight: 500; color: var(--text-muted, #94a3b8); letter-spacing: 0; }
+.pricing-card ul { padding-left: 20px; margin: 0 0 24px; color: var(--text-secondary, #aab6ca); line-height: 1.9; flex: 1; }
+.pricing-action { width: 100%; }
+@media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } }
