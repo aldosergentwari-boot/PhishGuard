@@ -6,7 +6,8 @@ const API = {
     history: '/api/history',
     status: '/api/status',
     plans: '/api/billing/plans',
-    subscription: '/api/billing/me'
+    subscription: '/api/billing/me',
+    ads: '/api/ads/config'
 };
 
 const MODE_STORAGE_KEY = 'phishguard.onlineMode';
@@ -1715,7 +1716,7 @@ async function loadPricing() {
                 '<h2>' + escapeHtml(plan.name) + '</h2>' +
                 '<div class="pricing-price">
     bindEvents();
-    void loadPricing();
+    void loadPricing();\n    void loadAdPlacement();
 
     loadModePreference();
     renderModeUI();
