@@ -87,7 +87,7 @@ Create a Render **Web Service** connected to the GitHub repository and use:
 
 Add `GOOGLE_SAFE_BROWSING_API_KEY` and/or `URLHAUS_AUTH_KEY` under Render Environment Variables if you want online reputation checks. Keep the values private; never commit `.env` or paste API keys into source files.
 
-**Storage note:** the default SQLite database is stored inside the project directory. On hosts with an ephemeral filesystem, history can be reset when the service is redeployed or restarted. Configure a persistent disk and point the database path to it if durable production history is required.
+**Storage note:** the default SQLite database is stored inside the project directory. On hosts with an ephemeral filesystem, history and account records can be reset when the service is redeployed or restarted. For Render, attach a persistent disk (for example mounted at `/var/data`) and set `PHISHGUARD_DATABASE_PATH=/var/data/phishguard.db` in the service environment. The application uses this same database path for accounts, subscriptions, payment records, and scan history. Back up the persistent disk regularly; a persistent disk is not itself a backup.
 
 ## Run the desktop application
 
@@ -233,3 +233,16 @@ The web app provides these public pages and links them from the dashboard footer
 - `/security-disclaimer` — detection limitations and safe-use guidance.
 
 Set `PUBLIC_SUPPORT_EMAIL` to a monitored support address in the deployment environment. The pages display a setup notice until this is configured. These starter policies describe the current product behavior but are not a substitute for legal review. Before public launch, the owner must add the correct legal entity, operating jurisdiction, governing-law details, retention periods, and refund/cancellation process, and review applicable privacy, consumer, cookie/consent, and advertising requirements.
+
+
+For a production Render deployment, configure at minimum:
+
+- `SECRET_KEY`: a long, random secret unique to the production service.
+- `PHISHGUARD_DATABASE_PATH`: path inside the mounted persistent disk, such as `/var/data/phishguard.db`.
+- `PUBLIC_APP_URL`: the canonical public HTTPS origin, with no trailing slash.
+- `PUBLIC_SUPPORT_EMAIL`: a monitored support address.
+- `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`: verified Brevo SMTP credentials and sender.
+- `FLW_SECRET_KEY`, `FLW_SECRET_HASH`, and `FLW_REDIRECT_URL`: only after Flutterwave merchant onboarding and webhook configuration are approved.
+- `SESSION_COOKIE_SECURE=true` (Render defaults this to true unless explicitly overridden).
+
+Use the Render start command `gunicorn --bind 0.0.0.0:$PORT backend.app:app`. Do not enable AdSense until publisher approval and the required privacy/consent setup are complete.
