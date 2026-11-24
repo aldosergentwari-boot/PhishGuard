@@ -130,7 +130,7 @@ def verify_and_activate(tx_ref, transaction_id):
         str(data.get("tx_ref", "")) != tx_ref
         or str(data.get("status", "")).lower() != "successful"
         or str(data.get("currency", "")).upper() != payment["currency"]
-        or float(data.get("amount", 0)) < float(payment["amount"])
+        or round(float(data.get("amount", 0)), 2) != round(float(payment["amount"]), 2)
         or str(data.get("id", "")) != str(transaction_id)
     ):
         raise FlutterwaveError("Payment verification failed. No subscription was activated.")
