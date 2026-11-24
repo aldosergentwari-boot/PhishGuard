@@ -1,6 +1,3 @@
-import hashlib
-import hmac
-
 import backend.database.auth_service as auth_module
 from backend.app import create_app
 from backend.database.auth_service import auth_service
