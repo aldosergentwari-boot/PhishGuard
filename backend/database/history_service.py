@@ -183,7 +183,8 @@ class HistoryService:
         limit=20,
         offset=0,
         search="",
-        filter_by="all"
+        filter_by="all",
+        max_records=None
     ):
         if not owner_id:
             raise ValueError("A valid history owner is required.")
@@ -195,6 +196,10 @@ class HistoryService:
 
         where_clause = f"owner_id = ? AND ({filters})"
         parameters = [owner_id, *filter_parameters]
+        if max_records is not None:
+            max_records = max(1, int(max_records))
+            where_clause = f"owner_id = ? AND id IN (SELECT id FROM scan_history WHERE owner_id = ? ORDER BY id DESC LIMIT ?) AND ({filters})"
+            parameters = [owner_id, owner_id, max_records, *filter_parameters]
 
         with self.get_connection() as connection:
 
@@ -243,13 +248,24 @@ class HistoryService:
                 ]
             }
 
-    def get_scan(self, scan_id, owner_id):
+    def get_scan(self, scan_id, owner_id, max_records=None):
         with self.get_connection() as connection:
-            row = connection.execute("""
-                SELECT *
-                FROM scan_history
-                WHERE id = ? AND owner_id = ?
-            """, (scan_id, owner_id)).fetchone()
+            if max_records is None:
+                row = connection.execute("""
+                    SELECT *
+                    FROM scan_history
+                    WHERE id = ? AND owner_id = ?
+                """, (scan_id, owner_id)).fetchone()
+            else:
+                row = connection.execute("""
+                    SELECT *
+                    FROM scan_history
+                    WHERE id = ? AND owner_id = ?
+                      AND id IN (
+                          SELECT id FROM scan_history
+                          WHERE owner_id = ? ORDER BY id DESC LIMIT ?
+                      )
+                """, (scan_id, owner_id, owner_id, max(1, int(max_records)))).fetchone()
 
             if row is None:
                 return None
