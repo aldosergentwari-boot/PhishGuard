@@ -1797,6 +1797,20 @@ async function loadAccount() {
         state.authenticated = Boolean(auth.authenticated);
         state.account = auth.user || null;
         state.planId = billing.plan?.plan_id || (state.authenticated ? 'free' : 'guest');
+
+        // Show monthly scan usage on the main dashboard for Guests and signed-in users.
+        const usage = billing.usage || {};
+        const used = Math.max(0, Number(usage.scans_used) || 0);
+        const limit = Math.max(0, Number(usage.scans_limit) || 0);
+        const remaining = Math.max(0, Number(usage.scans_remaining ?? (limit - used)) || 0);
+        const usageText = $('overviewUsageText');
+        const usageBar = $('overviewUsageBar');
+        const usageNote = $('overviewUsageNote');
+        if (usageText) usageText.textContent = used.toLocaleString() + ' / ' + limit.toLocaleString();
+        if (usageBar) usageBar.style.width = (limit ? Math.min(100, used / limit * 100) : 0) + '%';
+        if (usageNote) usageNote.textContent = remaining.toLocaleString() +
+            ' URL scans remaining this month on your ' + (billing.plan?.name || 'Guest') +
+            ' plan. Allowance resets at the start of each UTC calendar month.';
         const exportButton = $('exportHistory');
         if (exportButton) exportButton.hidden = !['pro', 'business'].includes(state.planId);
         signedOut.hidden = state.authenticated;
