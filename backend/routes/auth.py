@@ -2,12 +2,14 @@ import hashlib
 import secrets
 import os
 import time
+import logging
 from flask import Blueprint, jsonify, request, session
 from backend.database.auth_service import auth_service
 from backend.services.user_identity import get_browser_identity
 from backend.services.email_service import send_password_reset_email
 
 auth_bp = Blueprint("auth", __name__)
+logger = logging.getLogger(__name__)
 
 
 @auth_bp.get("/api/auth/csrf")
@@ -129,20 +131,24 @@ def request_password_reset():
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     expires_at = time.time() + 1800
     created = auth_service.create_password_reset(email, token_hash, expires_at)
-    if created:
+    if not created:
+        # Do not log the submitted email or reveal whether an account exists.
+        logger.info("Password reset requested; no matching account was found.")
+    else:
         base_url = os.getenv("PUBLIC_APP_URL", "").rstrip("/")
-        delivered = False
-        if base_url.startswith("https://"):
+        if not base_url.startswith("https://"):
+            logger.error("Password reset email not sent: PUBLIC_APP_URL is missing or is not HTTPS.")
+            auth_service.discard_password_reset(token_hash)
+        else:
             try:
                 send_password_reset_email(
                     email, f"{base_url}/reset-password?token={raw_token}"
                 )
-                delivered = True
+                logger.info("Password reset email handed to the SMTP server.")
             except Exception:
-                # Keep the public response generic, but do not retain an unusable token.
-                delivered = False
-        if not delivered:
-            auth_service.discard_password_reset(token_hash)
+                # Keep the public response generic and never log the email or reset token.
+                logger.exception("Password reset email delivery failed.")
+                auth_service.discard_password_reset(token_hash)
     return jsonify({
         "success": True,
         "message": "If that account exists, a reset link will be sent."
