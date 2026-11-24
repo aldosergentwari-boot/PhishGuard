@@ -18,6 +18,7 @@ from backend.routes.history import history_bp
 from backend.routes.auth import auth_bp
 from backend.routes.billing import billing_bp
 from backend.routes.ads import ads_bp
+from backend.routes.admin import admin_bp
 from backend.database.auth_service import auth_service
 from datetime import timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -202,6 +203,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(billing_bp)
     app.register_blueprint(ads_bp)
+    app.register_blueprint(admin_bp)
     auth_service.initialize()
 
     def maintenance_enabled():
