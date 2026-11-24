@@ -44,6 +44,7 @@ def get_account_plan(user_id):
             expiry = expiry.replace(tzinfo=timezone.utc)
         if expiry <= datetime.now(timezone.utc):
             plan_id = "free"
+            status = "expired"
     return {
         "plan_id": plan_id, "status": status,
         "billing_interval_months": row["billing_interval_months"],
