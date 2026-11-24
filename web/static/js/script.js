@@ -1851,6 +1851,8 @@ async function requestPlanUpgrade(planId) {
 async function loadAdPlacement() {
     const slot = $('overviewAd');
     if (!slot) return;
+    slot.hidden = true;
+    slot.replaceChildren();
     try {
         const [adConfig, account] = await Promise.all([
             apiRequest(API.ads),
