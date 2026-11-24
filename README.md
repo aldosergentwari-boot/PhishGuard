@@ -155,7 +155,19 @@ The web dashboard now exposes account and plan APIs:
 - `GET /api/auth/me` returns the signed-in account and its current subscription.
 - `GET /api/billing/plans` returns the public plan catalog.
 - `GET /api/billing/me` returns the current account plan (anonymous visitors are treated as Free).
-- `POST /api/billing/checkout` intentionally remains unavailable until a payment provider and verified webhook flow are configured.
+- `POST /api/billing/checkout` creates a Flutterwave hosted checkout for signed-in users.
+- `GET /api/billing/callback` and `POST /api/billing/webhook` verify successful transactions directly with Flutterwave before activating a plan.
+- Payment attempts are stored as pending transactions; browser redirects and client-supplied plan IDs never grant paid access.
+
+Flutterwave setup (all values are server-side environment variables):
+
+- `FLW_SECRET_KEY`: Flutterwave secret API key.
+- `FLW_SECRET_HASH`: webhook secret hash; configure the same value in the Flutterwave dashboard.
+- `FLW_REDIRECT_URL`: public HTTPS URL ending in `/api/billing/callback`.
+- `FLW_PRO_PRICE_RWF` and `FLW_BUSINESS_PRICE_RWF`: local-currency Mobile Money amounts, set only after deciding RWF prices.
+- Optional `FLW_LOGO_URL`.
+
+Card checkout is charged in USD using the published plan price. Rwanda Mobile Money checkout uses RWF and requires the configured RWF amount plus the customer's MTN/Airtel number. Both are currently one-time charges: paid access lasts for the plan's stated period, and renewal is manual. Automatic recurring card billing is not enabled until the corresponding Flutterwave payment plans have been created and configured. Never place secret keys in frontend code or commit them to Git.
 
 Plan catalog (USD):
 
