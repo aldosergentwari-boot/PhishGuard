@@ -177,6 +177,8 @@ Plan catalog (USD):
 | Pro | $4.99 | Monthly |
 | Business | $19.99 | Every 7 months |
 
+Current advertised plan features are limited to capabilities already implemented: monthly scan quotas, visible history caps, CSV scan-history export, and ad-free access for paid web plans. The catalog does not currently promise API keys, team workspaces/reporting, advanced analytics, or priority support. Subscription entitlements currently apply to the web dashboard only; the standalone desktop client does not yet sync account plans or monthly usage.
+
 A new account receives Free automatically. A browser cannot grant itself a paid plan: paid subscription activation is reserved for verified server-side payment events. Payment collection is integrated through Flutterwave hosted checkout with server-side transaction verification and webhook signature validation. Subscriptions are currently one-time payments with manual renewal; recurring card billing, customer self-service cancellation, and automated refunds are not enabled yet.
 
 ### Advertising rollout
