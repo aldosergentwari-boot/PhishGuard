@@ -717,3 +717,7 @@ tr[data-id] { cursor: pointer; }
 .pricing-card ul { padding-left: 20px; margin: 0 0 24px; color: var(--text-secondary, #aab6ca); line-height: 1.9; flex: 1; }
 .pricing-action { width: 100%; }
 @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } }
+
+
+.ad-placement { width: 100%; min-height: 90px; margin: 0 0 24px; overflow: hidden; text-align: center; }
+.ad-placement[hidden] { display: none; }
