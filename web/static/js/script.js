@@ -7,7 +7,12 @@ const API = {
     status: '/api/status',
     plans: '/api/billing/plans',
     subscription: '/api/billing/me',
-    ads: '/api/ads/config'
+    ads: '/api/ads/config',
+    csrf: '/api/auth/csrf',
+    authMe: '/api/auth/me',
+    login: '/api/auth/login',
+    register: '/api/auth/register',
+    logout: '/api/auth/logout'
 };
 
 const MODE_STORAGE_KEY = 'phishguard.onlineMode';
@@ -18,7 +23,8 @@ const PAGE_NAMES = {
     history: 'Scan History',
     intelligence: 'Intelligence',
     about: 'About Project',
-    pricing: 'Plans & Pricing'
+    pricing: 'Plans & Pricing',
+    account: 'My Account'
 };
 
 const state = {
@@ -31,7 +37,9 @@ const state = {
     lastHistoryRecords: [],
     lastOverviewRecords: [],
     onlineMode: false,      // Offline-first: online checks require an explicit choice
-    internet: null          // true / false once /api/status has answered
+    internet: null,         // true / false once /api/status has answered
+    authenticated: false,
+    account: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -599,6 +607,10 @@ function setActivePage(pageName) {
 
     if (pageName === 'history') {
         loadHistory();
+    }
+
+    if (pageName === 'account') {
+        loadAccount();
     }
 }
 
@@ -1359,6 +1371,19 @@ async function exportHistoryCsv() {
 
 function bindEvents() {
 
+    // Account access and authentication
+    document.querySelectorAll('[data-auth-mode]').forEach(button => {
+        button.addEventListener('click', () => setAuthMode(button.dataset.authMode));
+    });
+    $('loginForm')?.addEventListener('submit', event => submitAccountForm(event, 'login'));
+    $('registerForm')?.addEventListener('submit', event => submitAccountForm(event, 'register'));
+    $('accountLogout')?.addEventListener('click', signOutAccount);
+    $('accountViewPlans')?.addEventListener('click', () => goToPage('pricing'));
+    $('pricingGrid')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-plan]');
+        if (button) void requestPlanUpgrade(button.dataset.plan);
+    });
+
     // Sidebar navigation
     document.querySelectorAll('.nav-link[data-page]').forEach(button => {
         button.addEventListener('click', () => {
@@ -1694,6 +1719,133 @@ function toggleMode() {
 }
 
 /* =========================================
+   ACCOUNT MANAGEMENT
+========================================= */
+async function csrfHeader() {
+    const token = await apiRequest(API.csrf);
+    return { 'X-CSRF-Token': token.csrf_token };
+}
+
+function setAuthMode(mode) {
+    const loginMode = mode !== 'register';
+    $('loginForm').hidden = !loginMode;
+    $('registerForm').hidden = loginMode;
+    document.querySelectorAll('[data-auth-mode]').forEach(button => {
+        button.classList.toggle('active', button.dataset.authMode === (loginMode ? 'login' : 'register'));
+    });
+    if ($('accountFeedback')) $('accountFeedback').textContent = '';
+}
+
+async function loadAccount() {
+    const signedOut = $('accountSignedOut');
+    const signedIn = $('accountSignedIn');
+    if (!signedOut || !signedIn) return;
+    try {
+        const [auth, billing] = await Promise.all([
+            apiRequest(API.authMe),
+            apiRequest(API.subscription)
+        ]);
+        state.authenticated = Boolean(auth.authenticated);
+        state.account = auth.user || null;
+        signedOut.hidden = state.authenticated;
+        signedIn.hidden = !state.authenticated;
+        if (!state.authenticated) {
+            setAuthMode('login');
+            return;
+        }
+
+        const plan = billing.plan || {};
+        const usage = billing.usage || {};
+        $('accountEmail').textContent = auth.user.email;
+        $('accountPlanName').textContent = plan.name || 'Free';
+        $('accountPlanStatus').textContent = String(plan.status || 'active').toUpperCase();
+        $('accountUsageText').textContent = Number(usage.scans_used || 0) + ' / ' + Number(usage.scans_limit || 50);
+        const percent = usage.scans_limit
+            ? Math.min(100, (Number(usage.scans_used || 0) / Number(usage.scans_limit)) * 100)
+            : 0;
+        $('accountUsageBar').style.width = percent + '%';
+        $('accountUsageNote').textContent =
+            Number(usage.scans_remaining || 0) + ' scans remaining this month. Usage resets at the start of each UTC calendar month.';
+        const end = plan.current_period_end
+            ? new Date(plan.current_period_end).toLocaleDateString()
+            : 'No paid renewal date';
+        $('accountPlanDetails').innerHTML =
+            '<div><span>Billing</span><strong>' +
+            (plan.plan_id === 'business' ? '$19.99 every 7 months' :
+                plan.plan_id === 'pro' ? '$4.99 per month' : 'Free plan') +
+            '</strong></div><div><span>Plan period ends</span><strong>' +
+            escapeHtml(end) + '</strong></div>';
+    } catch (error) {
+        showToast('Could not load account details: ' + error.message, 'error');
+    }
+}
+
+async function submitAccountForm(event, mode) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const email = form.elements.email.value.trim();
+    const password = form.elements.password.value;
+    const feedback = $('accountFeedback');
+    feedback.textContent = mode === 'register' ? 'Creating your account…' : 'Signing in…';
+    try {
+        const headers = await csrfHeader();
+        const response = await apiRequest(mode === 'register' ? API.register : API.login, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ email, password })
+        });
+        feedback.textContent = '';
+        form.reset();
+        await loadAccount();
+        await loadOverview();
+        await loadHistory();
+        await loadAdPlacement();
+        showToast(mode === 'register' ? 'Your Free account is ready.' : 'You are signed in.', 'success');
+    } catch (error) {
+        feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    }
+}
+
+async function signOutAccount() {
+    try {
+        const headers = await csrfHeader();
+        await apiRequest(API.logout, { method: 'POST', headers, body: '{}' });
+        state.authenticated = false;
+        state.account = null;
+        await loadAccount();
+        await loadOverview();
+        await loadHistory();
+        await loadAdPlacement();
+        showToast('You have signed out.', 'success');
+    } catch (error) {
+        showToast('Sign out failed: ' + error.message, 'error');
+    }
+}
+
+async function requestPlanUpgrade(planId) {
+    if (planId === 'free') {
+        goToPage('account');
+        return;
+    }
+    if (!state.authenticated) {
+        goToPage('account');
+        showToast('Create a Free account or sign in before upgrading.', 'info');
+        return;
+    }
+    try {
+        const headers = await csrfHeader();
+        await apiRequest('/api/billing/checkout', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ plan_id: planId })
+        });
+    } catch (error) {
+        showToast(error.message, 'info');
+    }
+}
+
+/* =========================================
    SUBSCRIPTION PLANS
 ========================================= */
 async function loadAdPlacement() {
@@ -1771,6 +1923,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
     void loadPricing();
     void loadAdPlacement();
+    void loadAccount();
 
     loadModePreference();
     renderModeUI();
