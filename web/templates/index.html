@@ -462,7 +462,7 @@
                         <label for="loginEmail">Email address</label>
                         <input id="loginEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
                         <label for="loginPassword">Password</label>
-                        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+                        <div class="password-input-wrap"><input id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="password-toggle" type="button" data-password-toggle="loginPassword" aria-label="Show password" aria-pressed="false">Show</button></div>
                         <button class="primary-button" type="submit">Sign in</button>
                         <button class="text-button" type="button" id="forgotPasswordLink">Forgot password?</button>
                     </form>
@@ -472,7 +472,7 @@
                         <label for="registerEmail">Email address</label>
                         <input id="registerEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
                         <label for="registerPassword">Password</label>
-                        <input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                        <div class="password-input-wrap"><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button class="password-toggle" type="button" data-password-toggle="registerPassword" aria-label="Show password" aria-pressed="false">Show</button></div>
                         <button class="primary-button" type="submit">Create Free account</button>
                         <p class="input-hint">We will send a verification link to this email address.</p>
                     </form>
@@ -489,7 +489,7 @@
                         <p>Use at least 12 characters. This will sign out your other active sessions.</p>
                         <input id="resetToken" name="token" type="hidden">
                         <label for="newPassword">New password</label>
-                        <input id="newPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                        <div class="password-input-wrap"><input id="newPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button class="password-toggle" type="button" data-password-toggle="newPassword" aria-label="Show password" aria-pressed="false">Show</button></div>
                         <button class="primary-button" type="submit">Update password</button>
                         <button class="text-button" type="button" id="cancelPasswordReset">Back to sign in</button>
                     </form>
