@@ -103,11 +103,15 @@ async function apiRequest(url, options = {}) {
     }
 
     if (!response.ok || payload?.success === false) {
-        throw new Error(
+        const error = new Error(
             payload?.message ||
             payload?.error ||
             `Request failed (HTTP ${response.status}).`
         );
+        error.code = payload?.code || null;
+        error.payload = payload;
+        error.status = response.status;
+        throw error;
     }
 
     return payload;
@@ -1231,10 +1235,15 @@ async function handleScanSubmit(event) {
     } catch (error) {
         console.error('URL analysis failed:', error);
 
-        showToast(
-            `URL analysis failed: ${error.message}`,
-            'error'
-        );
+        if (error.code === 'GUEST_SCAN_LIMIT_REACHED') {
+            await promptGuestRegistration();
+            showToast('Guest limit reached. Create a free account or sign in to continue.', 'warning');
+        } else {
+            showToast(
+                `URL analysis failed: ${error.message}`,
+                'error'
+            );
+        }
 
     } finally {
         if (button) {
@@ -1246,6 +1255,17 @@ async function handleScanSubmit(event) {
             progress.hidden = true;
         }
     }
+}
+
+async function promptGuestRegistration() {
+    goToPage('account');
+    await loadAccount();
+    setAuthMode('register');
+    const feedback = $('accountFeedback');
+    if (feedback) {
+        feedback.textContent = 'Your 10 guest scans are used. Create a free account to continue scanning. Your guest scan history will be linked to your new account.';
+    }
+    $('registerEmail')?.focus();
 }
 
 /* =========================================
