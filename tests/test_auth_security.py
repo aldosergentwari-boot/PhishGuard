@@ -84,3 +84,14 @@ def test_login_rejects_non_string_password_without_server_error(client):
     )
     assert response.status_code == 401
     assert response.get_json()["error"] == "Invalid email or password."
+
+
+def test_registration_rejects_non_string_email_without_server_error(client):
+    token = csrf(client)
+    response = client.post(
+        "/api/auth/register",
+        json={"email": {"unexpected": "object"}, "password": "correct horse battery"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Enter a valid email address."
