@@ -177,7 +177,7 @@ Plan catalog (USD):
 | Pro | $4.99 | Monthly |
 | Business | $19.99 | Every 7 months |
 
-A new account receives Free automatically. A browser cannot grant itself a paid plan: paid subscription activation is reserved for verified server-side payment events. Payment collection, renewal, cancellation, refunds, and webhook verification are not enabled yet.
+A new account receives Free automatically. A browser cannot grant itself a paid plan: paid subscription activation is reserved for verified server-side payment events. Payment collection is integrated through Flutterwave hosted checkout with server-side transaction verification and webhook signature validation. Subscriptions are currently one-time payments with manual renewal; recurring card billing, customer self-service cancellation, and automated refunds are not enabled yet.
 
 ### Advertising rollout
 
