@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,5 +17,12 @@ FEATURE_COLUMNS_PATH = BASE_DIR / "ml" / "dataset" / "splits" / "feature_columns
 
 MAX_URL_LENGTH = 8192
 
-DATABASE_DIR = BASE_DIR / "backend" / "database"
-DATABASE_PATH = DATABASE_DIR / "phishing_scans.db"
+_configured_database_path = os.getenv("PHISHGUARD_DATABASE_PATH", "").strip()
+if _configured_database_path:
+    DATABASE_PATH = Path(_configured_database_path).expanduser()
+    if not DATABASE_PATH.is_absolute():
+        DATABASE_PATH = (BASE_DIR / DATABASE_PATH).resolve()
+else:
+    DATABASE_PATH = BASE_DIR / "backend" / "database" / "phishing_scans.db"
+
+DATABASE_DIR = DATABASE_PATH.parent
