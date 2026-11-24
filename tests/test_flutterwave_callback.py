@@ -1,3 +1,19 @@
+import pytest
+
+from backend.app import create_app
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    import backend.database.auth_service as auth_module
+
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "auth_test.db")
+    app = create_app()
+    app.config.update(TESTING=True, SECRET_KEY="test-secret")
+    with app.test_client() as test_client:
+        yield test_client
+
+
 def test_payment_callback_redirects_with_success_after_server_verification(client, monkeypatch):
     import backend.routes.billing as billing
 
