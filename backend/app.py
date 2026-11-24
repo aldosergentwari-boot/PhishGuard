@@ -15,6 +15,9 @@ from flask import (
 
 from backend.routes.prediction import prediction_bp
 from backend.routes.history import history_bp
+from backend.routes.auth import auth_bp
+from backend.routes.billing import billing_bp
+from backend.database.auth_service import auth_service
 from datetime import timedelta
 
 
@@ -181,6 +184,9 @@ def create_app():
 
     app.register_blueprint(prediction_bp)
     app.register_blueprint(history_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(billing_bp)
+    auth_service.initialize()
 
     def maintenance_enabled():
         return os.getenv("MAINTENANCE_MODE", "false").lower() in (
