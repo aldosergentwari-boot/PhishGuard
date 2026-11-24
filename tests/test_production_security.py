@@ -44,3 +44,16 @@ def test_render_responses_include_hsts(monkeypatch):
     response = app.test_client().get("/security-disclaimer")
 
     assert response.headers["Strict-Transport-Security"] == "max-age=31536000"
+
+
+
+def test_render_app_uses_proxy_fix_for_forwarded_client_ip(monkeypatch):
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    from backend.app import create_app
+
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("SECRET_KEY", "test-production-secret")
+
+    production_app = create_app()
+
+    assert isinstance(production_app.wsgi_app, ProxyFix)
