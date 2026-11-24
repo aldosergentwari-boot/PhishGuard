@@ -31,3 +31,6 @@ jobs:
 
       - name: Run test suite
         run: python -m pytest -q
+
+      - name: Check dashboard JavaScript syntax
+        run: node --check web/static/js/script.js
