@@ -1756,22 +1756,7 @@ async function loadPricing() {
             return '<article class="panel pricing-card pricing-' + key + '">' +
                 '<div class="eyebrow">' + escapeHtml(key.toUpperCase()) + ' PLAN</div>' +
                 '<h2>' + escapeHtml(plan.name) + '</h2>' +
-                '<div class="pricing-price">
-    bindEvents();
-    void loadPricing();\n    void loadAdPlacement();
-
-    loadModePreference();
-    renderModeUI();
-    $('modeToggle')?.addEventListener('click', toggleMode);
-    if (state.onlineMode) {
-        void refreshInternetStatus();
-    }
-    window.setInterval(() => {
-        if (state.onlineMode) void refreshInternetStatus();
-    }, 30000);
-
-    loadOverview();
-}); + price + '<span>' + interval + '</span></div>' +
+                '<div class="pricing-price">$' + price + '<span>' + interval + '</span></div>' +
                 '<ul>' + features + '</ul>' +
                 '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '">' +
                 (key === 'free' ? 'Included by default' : 'Upgrade soon') + '</button>' +
