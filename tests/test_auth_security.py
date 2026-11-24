@@ -8,9 +8,16 @@ from backend.app import create_app
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     import backend.database.auth_service as auth_module
+    import backend.database.history_service as history_module
     import backend.config as config_module
-    monkeypatch.setattr(auth_module, "DATABASE_PATH", tmp_path / "auth_security.db")
-    monkeypatch.setattr(config_module, "DATABASE_PATH", tmp_path / "auth_security.db")
+
+    database_path = tmp_path / "auth_security.db"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", database_path)
+    monkeypatch.setattr(config_module, "DATABASE_PATH", database_path)
+    monkeypatch.setattr(history_module, "DATABASE_PATH", database_path)
+    monkeypatch.setattr(history_module, "DATABASE_DIR", tmp_path)
+    monkeypatch.setattr(history_module, "_history_service", None)
+
     app = create_app()
     app.config.update(TESTING=True, SECRET_KEY="test-secret")
     with app.test_client() as test_client:
@@ -47,18 +54,20 @@ def test_history_delete_accepts_valid_csrf(client):
     register(client)
     token = csrf(client)
     response = client.delete("/api/history/123", headers={"X-CSRF-Token": token})
-    # The request passes CSRF and reaches the owner-scoped history handler.
     assert response.status_code == 404
 
 
-def test_stale_session_is_cleared_before_billing_or_history_access(client, tmp_path):
+def test_stale_session_is_cleared_before_billing_or_history_access(client):
     register(client)
     with client.session_transaction() as session:
         account_id = session["account_id"]
 
     import backend.database.auth_service as auth_module
     with sqlite3.connect(auth_module.DATABASE_PATH) as db:
-        db.execute("UPDATE users SET session_version = session_version + 1 WHERE id = ?", (account_id,))
+        db.execute(
+            "UPDATE users SET session_version = session_version + 1 WHERE id = ?",
+            (account_id,),
+        )
 
     response = client.get("/api/billing/me")
     assert response.status_code == 200
