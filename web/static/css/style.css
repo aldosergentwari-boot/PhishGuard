@@ -740,6 +740,17 @@ tr[data-id] { cursor: pointer; }
 .account-form label { color: var(--muted); font-size: 10px; font-weight: 700; }
 .account-form input { width: 100%; min-height: 42px; padding: 10px 12px; color: var(--text); background: #0c1523; border: 1px solid var(--border); border-radius: 7px; outline: none; }
 .account-form input:focus { border-color: var(--cyan); }
+.password-input-wrap { position: relative; width: 100%; }
+.account-form .password-input-wrap input { padding-right: 68px; }
+.account-form .password-toggle {
+    position: absolute; top: 50%; right: 9px; transform: translateY(-50%);
+    min-height: 30px; margin: 0; padding: 0 7px; border: 0;
+    border-radius: 5px; background: transparent; color: var(--cyan);
+    font-size: 10px; font-weight: 800; cursor: pointer;
+}
+.account-form .password-toggle:hover { color: var(--text); background: #20364a; }
+.account-form .password-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
 .account-form button { margin-top: 8px; min-height: 43px; }
 .account-feedback { min-height: 18px; margin: 13px 0 0; color: var(--muted); font-size: 11px; }
 .account-profile { display: flex; align-items: center; gap: 15px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
