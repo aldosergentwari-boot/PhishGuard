@@ -13,15 +13,15 @@ PLAN_LIMITS = {
 PLANS = {
     "free": {
         "name": "Free", "price_usd": 0, "billing_interval_months": 0,
-        "features": ["Basic URL scanning", "Basic risk result", "Limited scan history", "Ads may be shown"]
+        "features": ["URL scanning with a risk score and security indicators", "Up to 50 visible scan-history records", "Ads may be shown when the publisher is approved"]
     },
     "pro": {
         "name": "Pro", "price_usd": 4.99, "billing_interval_months": 1,
-        "features": ["Higher scan limits", "Detailed threat reports", "Report export", "Ad-free experience", "Extended scan history"]
+        "features": ["Up to 2,000 scans per month", "CSV scan-history export", "Up to 2,000 visible scan-history records", "Ad-free dashboard"]
     },
     "business": {
         "name": "Business", "price_usd": 19.99, "billing_interval_months": 7,
-        "features": ["Higher usage limits", "API access", "Team reporting", "Advanced analytics", "Priority support"]
+        "features": ["Up to 10,000 scans per month", "CSV scan-history export", "Up to 10,000 visible scan-history records", "Ad-free dashboard"]
     },
 }
 
