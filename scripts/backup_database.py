@@ -5,6 +5,8 @@ live database file while it is being written.
 """
 import argparse
 import sqlite3
+import tempfile
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,22 +30,36 @@ def create_backup(destination=None):
         raise ValueError("Backup destination must be different from the source database.")
 
     destination_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
 
     try:
-        with sqlite3.connect(source_path, timeout=30) as source:
-            with sqlite3.connect(destination_path, timeout=30) as target:
+        # Build beside the destination, then atomically replace it only after
+        # SQLite confirms that the completed backup is structurally sound.
+        with tempfile.NamedTemporaryFile(
+            prefix=f".{destination_path.name}.",
+            suffix=".tmp",
+            dir=destination_path.parent,
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+
+        with closing(sqlite3.connect(source_path, timeout=30)) as source:
+            with closing(sqlite3.connect(temporary_path, timeout=30)) as target:
                 source.backup(target)
+                target.commit()
                 check = target.execute("PRAGMA integrity_check").fetchone()
                 if not check or check[0] != "ok":
+                    detail = check[0] if check else "no result"
                     raise sqlite3.DatabaseError(
-                        f"Backup integrity check failed: {check[0] if check else 'no result'}"
+                        f"Backup integrity check failed: {detail}"
                     )
-    except Exception:
-        # Never leave a partial backup that could be mistaken for a valid one.
-        destination_path.unlink(missing_ok=True)
-        raise
 
-    return destination_path
+        temporary_path.replace(destination_path)
+        return destination_path
+    except Exception:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+        raise
 
 
 def main():
