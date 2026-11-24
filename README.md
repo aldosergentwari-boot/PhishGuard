@@ -206,3 +206,19 @@ Initial configurable plan limits are centralized in `backend/services/plan_servi
 | Business | 10,000 | 10,000 |
 
 The backend enforces scan quotas on both `/api/analyze` and `/api/predict`, and applies the plan's history cap to history listing and individual scan detail retrieval. These are initial launch defaults and should be reviewed against infrastructure and threat-intelligence costs before public launch. Limits are not enforced only in the browser.
+
+
+### Brevo account email security
+
+PhishGuard supports transactional email for account verification and password reset through Brevo SMTP. Add these variables to your local `.env` file (or your production host's environment settings):
+
+- `MAIL_SERVER=smtp-relay.brevo.com`
+- `MAIL_PORT=587`
+- `MAIL_USE_TLS=true`
+- `MAIL_USERNAME`: your Brevo SMTP login (not your account email unless Brevo shows that as the SMTP login).
+- `MAIL_PASSWORD`: your Brevo SMTP key.
+- `MAIL_DEFAULT_SENDER`: the sender address you verified in Brevo.
+- `MAIL_SENDER_NAME=PhishGuard Security`
+- `PUBLIC_APP_URL`: trusted app origin used in email links. For local development use `http://127.0.0.1:5000`; production must use your real HTTPS domain.
+
+Never commit `.env`, SMTP keys, or production credentials. `.env.example` contains blank placeholders only. Verification links expire after 24 hours; password-reset links expire after 30 minutes. Tokens are random, single-use, and only SHA-256 digests are stored in the database. Password reset increments the account session version to revoke existing sessions. If SMTP is not configured or delivery fails, the account flow remains available and the user can request another email after mail settings are fixed.
