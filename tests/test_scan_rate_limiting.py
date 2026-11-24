@@ -37,3 +37,31 @@ def test_prediction_api_returns_429_when_scan_rate_limit_is_exceeded(
     assert response.status_code == 429
     assert response.get_json()["code"] == "RATE_LIMIT_EXCEEDED"
     assert response.headers["Retry-After"] == "60"
+
+
+
+def test_scan_rate_limiter_checks_ip_and_identity_buckets(monkeypatch):
+    from backend.app import app
+
+    calls = []
+
+    def allow(bucket, limit, window_seconds):
+        calls.append((bucket, limit, window_seconds))
+        return True
+
+    monkeypatch.setattr(
+        prediction_module.auth_service,
+        "allow_scan_attempt",
+        allow,
+    )
+
+    with app.app_context():
+        assert prediction_module._scan_rate_limit_exceeded(
+            "account:42", "203.0.113.10"
+        ) is False
+
+    assert len(calls) == 2
+    assert calls[0][0].startswith("scan-ip:")
+    assert calls[0][1:] == (300, 60)
+    assert calls[1][0].startswith("scan-identity:")
+    assert calls[1][1:] == (30, 60)
