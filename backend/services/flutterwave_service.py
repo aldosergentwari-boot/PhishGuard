@@ -135,24 +135,19 @@ def verify_and_activate(tx_ref, transaction_id):
     ):
         raise FlutterwaveError("Payment verification failed. No subscription was activated.")
 
+    # Subscription upsert is keyed by the verified provider transaction ID.
+    # It is safe to retry if the callback/webhook is delivered more than once.
+    activate_subscription(
+        payment["user_id"], payment["plan_id"], "flutterwave",
+        f"flutterwave-tx-{transaction_id}",
+    )
     now = datetime.now(timezone.utc).isoformat()
     with auth_service.connection() as db:
-        current = db.execute(
-            "SELECT status FROM payment_transactions WHERE tx_ref=?", (tx_ref,)
-        ).fetchone()
-        if not current or current["status"] == "successful":
-            return {"already_processed": True, "plan_id": payment["plan_id"]}
         db.execute(
             """UPDATE payment_transactions SET status='successful',
             provider_transaction_id=?,updated_at=? WHERE tx_ref=? AND status='pending'""",
             (str(transaction_id), now, tx_ref),
         )
-    # The provider transaction ID is unique per successful charge, making
-    # duplicate webhook/callback deliveries safe.
-    activate_subscription(
-        payment["user_id"], payment["plan_id"], "flutterwave",
-        f"flutterwave-tx-{transaction_id}",
-    )
     return {"already_processed": False, "plan_id": payment["plan_id"]}
 
 
