@@ -5,12 +5,17 @@ from backend.database.auth_service import auth_service
 
 # Initial product limits; keep centralized so they can be tuned without changing routes.
 PLAN_LIMITS = {
+    "guest": {"scans_per_month": 10, "history_records": 10},
     "free": {"scans_per_month": 50, "history_records": 50},
     "pro": {"scans_per_month": 2000, "history_records": 2000},
     "business": {"scans_per_month": 10000, "history_records": 10000},
 }
 
 PLANS = {
+    "guest": {
+        "name": "Guest", "price_usd": 0, "billing_interval_months": 0,
+        "features": ["Up to 10 URL scans per UTC calendar month", "No account required; create a free account to continue scanning"]
+    },
     "free": {
         "name": "Free", "price_usd": 0, "billing_interval_months": 0,
         "features": ["URL scanning with a risk score and security indicators", "Up to 50 visible scan-history records", "Ads may be shown when the publisher is approved"]
