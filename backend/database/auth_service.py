@@ -62,6 +62,7 @@ class AuthService:
                 window_started REAL NOT NULL,
                 attempts INTEGER NOT NULL
             )""")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_auth_rate_limits_window ON auth_rate_limits(window_started)")
             db.execute("""CREATE TABLE IF NOT EXISTS subscriptions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -111,6 +112,11 @@ class AuthService:
         with self.connection() as db:
             # Serialize updates so concurrent requests cannot all pass the limit.
             db.execute("BEGIN IMMEDIATE")
+            # Keep old scan buckets from growing without bound.
+            db.execute(
+                "DELETE FROM auth_rate_limits WHERE bucket LIKE 'scan-%' AND window_started < ?",
+                (now - 86400,),
+            )
             row = db.execute(
                 "SELECT window_started, attempts FROM auth_rate_limits WHERE bucket=?",
                 (bucket,),
