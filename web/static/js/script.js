@@ -1784,6 +1784,8 @@ async function loadPricing() {
 
 document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
+    void loadPricing();
+    void loadAdPlacement();
 
     loadModePreference();
     renderModeUI();
