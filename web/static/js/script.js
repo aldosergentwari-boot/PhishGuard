@@ -1696,6 +1696,48 @@ function toggleMode() {
 /* =========================================
    SUBSCRIPTION PLANS
 ========================================= */
+async function loadAdPlacement() {
+    const slot = $('overviewAd');
+    if (!slot) return;
+    try {
+        const [adConfig, account] = await Promise.all([
+            apiRequest(API.ads),
+            apiRequest(API.subscription)
+        ]);
+        const planId = account?.plan?.plan_id || 'free';
+        if (!adConfig.enabled || planId !== 'free' || !navigator.onLine) return;
+
+        slot.hidden = false;
+        const ad = document.createElement('ins');
+        ad.className = 'adsbygoogle';
+        ad.style.display = 'block';
+        ad.dataset.adClient = adConfig.client_id;
+        ad.dataset.adSlot = adConfig.slot_id;
+        ad.dataset.adFormat = 'auto';
+        ad.dataset.fullWidthResponsive = 'true';
+        slot.appendChild(ad);
+
+        if (!document.querySelector('script[data-phishguard-adsense]')) {
+            const script = document.createElement('script');
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+            script.dataset.phishguardAdsense = 'true';
+            script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' +
+                encodeURIComponent(adConfig.client_id);
+            script.onload = () => {
+                try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
+                catch { slot.hidden = true; }
+            };
+            document.head.appendChild(script);
+        } else {
+            try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
+            catch { slot.hidden = true; }
+        }
+    } catch {
+        // Ads are optional and must never affect offline scanning.
+    }
+}
+
 async function loadPricing() {
     const grid = $('pricingGrid');
     if (!grid) return;
