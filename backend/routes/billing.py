@@ -33,8 +33,8 @@ def current_subscription():
     if user_id:
         plan = get_account_plan(user_id)
     else:
-        plan = {"plan_id": "free", "status": "active",
-                "limits": PLAN_LIMITS["free"], **PLANS["free"]}
+        plan = {"plan_id": "guest", "status": "active",
+                "limits": PLAN_LIMITS["guest"], **PLANS["guest"]}
     usage = get_usage(owner_id, plan["plan_id"])
     return jsonify({
         "success": True,
