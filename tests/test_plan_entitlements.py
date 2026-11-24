@@ -59,6 +59,7 @@ def test_account_page_is_available(client):
     assert b'id="page-account"' in response.data
     assert b'id="registerForm"' in response.data
     assert b'id="loginForm"' in response.data
+    assert b'id="exportHistory" hidden' in response.data
 
 
 def test_free_account_receives_monthly_usage(client):
