@@ -26,7 +26,7 @@ def test_prediction_api_returns_429_when_scan_rate_limit_is_exceeded(
     monkeypatch.setattr(
         prediction_module,
         "_scan_rate_limit_exceeded",
-        lambda owner_id: True,
+        lambda owner_id, remote_addr=None: True,
     )
 
     response = client.post(
