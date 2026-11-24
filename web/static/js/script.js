@@ -1833,15 +1833,39 @@ async function requestPlanUpgrade(planId) {
         showToast('Create a Free account or sign in before upgrading.', 'info');
         return;
     }
+
+    const selected = window.prompt(
+        'Choose payment method: enter 1 for international card (USD) or 2 for MTN/Airtel Mobile Money (RWF).',
+        '1'
+    );
+    if (selected === null) return;
+    const paymentMethod = selected.trim() === '1' ? 'card' :
+        selected.trim() === '2' ? 'mobile_money' : null;
+    if (!paymentMethod) {
+        showToast('Choose 1 for card or 2 for Mobile Money.', 'error');
+        return;
+    }
+
+    let phoneNumber;
+    if (paymentMethod === 'mobile_money') {
+        phoneNumber = window.prompt('Enter the MTN or Airtel Rwanda phone number used for payment:');
+        if (!phoneNumber) return;
+    }
+
     try {
         const headers = await csrfHeader();
-        await apiRequest('/api/billing/checkout', {
+        const result = await apiRequest('/api/billing/checkout', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ plan_id: planId })
+            body: JSON.stringify({
+                plan_id: planId,
+                payment_method: paymentMethod,
+                phone_number: phoneNumber
+            })
         });
+        window.location.assign(result.checkout_url);
     } catch (error) {
-        showToast(error.message, 'info');
+        showToast(error.message, 'error');
     }
 }
 
@@ -1916,7 +1940,7 @@ async function loadPricing() {
                 '<div class="pricing-price">$' + price + '<span>' + interval + '</span></div>' +
                 '<ul>' + features + '</ul>' +
                 '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '">' +
-                (key === 'free' ? 'Included by default' : 'Upgrade soon') + '</button>' +
+                (key === 'free' ? 'Included by default' : 'Choose payment method') + '</button>' +
                 '</article>';
         }).join('');
     } catch {
