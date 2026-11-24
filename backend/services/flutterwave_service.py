@@ -25,7 +25,11 @@ def _config(name, default=""):
 
 
 def is_configured():
-    return bool(_config("FLW_SECRET_KEY") and _config("FLW_SECRET_HASH"))
+    return bool(
+        _config("FLW_SECRET_KEY")
+        and _config("FLW_SECRET_HASH")
+        and _config("FLW_REDIRECT_URL").startswith("https://")
+    )
 
 
 def checkout_availability():
