@@ -157,6 +157,19 @@ def predict_url():
         }), 400
 
     try:
+        owner_id = get_current_user_id()
+        account_id = session.get("account_id")
+        from backend.services.plan_service import can_scan, get_account_plan
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
+        allowed, usage = can_scan(owner_id, plan_id)
+        if not allowed:
+            return jsonify({
+                "success": False,
+                "error": "You have reached this plan's monthly scan limit. Upgrade your plan to continue.",
+                "code": "SCAN_LIMIT_REACHED",
+                "usage": usage,
+                "plan": plan_id
+            }), 429
 
         service = get_hybrid_service()
         analysis = service.analyze(url, online=online)
@@ -172,6 +185,8 @@ def predict_url():
             "message": analysis["message"],
         })
 
+        scan_id = get_history_service().save_scan(analysis, owner_id=owner_id)
+        result["scan_id"] = scan_id
         return jsonify({
             "success": True,
             "data": result
@@ -272,22 +287,23 @@ def analyze_url():
             "error": mode_error
         }), 400
 
-    owner_id = get_current_user_id()
-    account_id = session.get("account_id")
-    from backend.services.plan_service import can_scan, get_account_plan
-    plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
-    allowed, usage = can_scan(owner_id, plan_id)
-    if not allowed:
-        return jsonify({
-            "success": False,
-            "error": "You have reached this plan's monthly scan limit. Upgrade your plan to continue.",
-            "code": "SCAN_LIMIT_REACHED",
-            "usage": usage,
-            "plan": plan_id
-        }), 429
-
     try:
 
+        owner_id = get_current_user_id()
+        account_id = session.get("account_id")
+        from backend.services.plan_service import can_scan, get_account_plan
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
+        allowed, usage = can_scan(owner_id, plan_id)
+        if not allowed:
+            return jsonify({
+                "success": False,
+                "error": "You have reached this plan's monthly scan limit. Upgrade your plan to continue.",
+                "code": "SCAN_LIMIT_REACHED",
+                "usage": usage,
+                "plan": plan_id
+            }), 429
+    
+    
         service = get_hybrid_service()
 
         result = service.analyze(url.strip(), online=online)
