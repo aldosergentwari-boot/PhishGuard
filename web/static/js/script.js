@@ -2003,7 +2003,7 @@ async function loadAdPlacement() {
             apiRequest(API.subscription)
         ]);
         const planId = account?.plan?.plan_id || 'free';
-        if (!adConfig.enabled || planId !== 'free' || !navigator.onLine) return;
+        if (!adConfig.enabled || !['free', 'guest'].includes(planId) || !navigator.onLine) return;
 
         slot.hidden = false;
         const ad = document.createElement('ins');
