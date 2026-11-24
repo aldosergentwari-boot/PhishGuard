@@ -23,6 +23,8 @@ def test_home_endpoint(client):
     assert response.status_code == 200
     assert response.mimetype == "text/html"
     assert b"PhishGuard" in response.data
+    assert response.data.count(b'name="theme-color"') == 1
+    assert b"adsbygoogle" not in response.data
 
 
 def test_health_endpoint(client):
