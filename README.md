@@ -136,10 +136,10 @@ tests/                   Automated tests
 ## Local intelligence behavior
 
 - A blocklist match always marks the domain as phishing.
-- An allowlist match can suppress generic local heuristic scoring, but never overrides the machine-learning result, brand-impersonation evidence, an external threat match, or a blocklist match.
+- An allowlist match suppresses model-only false positives and local heuristic/brand warnings for that trusted host. Blocklist and positive external threat-intelligence matches always take precedence.
 - Brand-impersonation rules check common brands used with login/account/security wording on unrelated domains.
 - The final decision flags a URL when the model, local rules, local blocklist, or an online threat-intelligence provider identifies a threat.
-- Allowlisting never overrides a model, brand-impersonation, external intelligence, or blocklist warning.
+- Allowlisting is intended for known trusted hosts; do not add a domain unless you are confident it is legitimate. A blocklist or positive external threat-intelligence match still overrides the allowlist.
 
 ## Model limitations
 
