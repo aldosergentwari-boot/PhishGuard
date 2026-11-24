@@ -144,3 +144,36 @@ tests/                   Automated tests
 ## Model limitations
 
 The model is a machine-learning classifier, not a guarantee that a website is safe. A low risk score does not prove that a site is legitimate. Keep the dataset and local threat lists updated, and use caution before entering passwords or payment details on unfamiliar websites.
+
+
+## Accounts and monetization foundation
+
+The web dashboard now exposes account and plan APIs:
+
+- `GET /api/auth/csrf` returns the CSRF token required for account mutations.
+- `POST /api/auth/register`, `POST /api/auth/login`, and `POST /api/auth/logout` manage browser accounts.
+- `GET /api/auth/me` returns the signed-in account and its current subscription.
+- `GET /api/billing/plans` returns the public plan catalog.
+- `GET /api/billing/me` returns the current account plan (anonymous visitors are treated as Free).
+- `POST /api/billing/checkout` intentionally remains unavailable until a payment provider and verified webhook flow are configured.
+
+Plan catalog (USD):
+
+| Plan | Price | Billing period |
+| --- | ---: | --- |
+| Free | $0 | No charge |
+| Pro | $4.99 | Monthly |
+| Business | $19.99 | Every 7 months |
+
+A new account receives Free automatically. A browser cannot grant itself a paid plan: paid subscription activation is reserved for verified server-side payment events. Payment collection, renewal, cancellation, refunds, and webhook verification are not enabled yet.
+
+### Advertising rollout
+
+AdSense is disabled by default. The website only requests an ad placement for Free accounts/visitors, and only when all of these environment variables are configured:
+
+- `ADS_ENABLED=true`
+- `ADSENSE_APPROVED=true` (set only after Google approves the publisher/site)
+- `ADSENSE_CLIENT_ID=ca-pub-...`
+- `ADSENSE_SLOT_ID=...`
+
+The ad configuration endpoint is `GET /api/ads/config`. No ad script is loaded when the publisher is not approved, configuration is incomplete, the visitor is on a paid plan, or the browser is offline. Complete applicable privacy disclosures and consent requirements before enabling ads.
