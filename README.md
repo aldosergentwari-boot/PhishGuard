@@ -205,11 +205,14 @@ Initial configurable plan limits are centralized in `backend/services/plan_servi
 
 | Plan | Scans per UTC calendar month | Visible history records |
 | --- | ---: | ---: |
+| Guest (no account) | 10 | 10 |
 | Free | 50 | 50 |
 | Pro | 2,000 | 2,000 |
 | Business | 10,000 | 10,000 |
 
 The backend enforces scan quotas on both `/api/analyze` and `/api/predict`, and applies the plan's history cap to history listing and individual scan detail retrieval. These are initial launch defaults and should be reviewed against infrastructure and threat-intelligence costs before public launch. Limits are not enforced only in the browser.
+
+Anonymous web visitors receive a separate Guest allowance of 10 scans per UTC calendar month. Both `/api/analyze` and `/api/predict` enforce this quota on the server. When the allowance is exhausted, the API returns `GUEST_SCAN_LIMIT_REACHED` and the dashboard directs the visitor to create a Free account or sign in. Registration and login transfer the browser's existing scan history to the account; the signed-in Free plan then provides 50 scans per month. Guest identity is maintained by the signed, HttpOnly browser session, so clearing cookies or switching browsers can create a new guest identity; IP-level request throttling remains a separate abuse-control layer.
 
 The web scanning endpoints also enforce server-side fixed-window rate limits: 30 valid scans per minute per signed-in account or anonymous browser identity, and 300 per minute per client IP. The limits are stored in SQLite and updated atomically so they are shared across application workers using the same persistent database. On Render, the app trusts the single edge proxy for the forwarded client IP and HTTPS scheme; do not expose the Gunicorn service directly to untrusted proxy headers. A blocked request receives HTTP 429 with a `Retry-After: 60` header. These request-rate limits are separate from the monthly plan quota.The web scanning endpoints also enforce server-side fixed-window rate limits: 30 valid scans per minute per signed-in account or anonymous browser identity, and 300 per minute per client IP. The limits are stored in SQLite and updated atomically so they are shared across application workers using the same persistent database. On Render, the app trusts the single edge proxy for the forwarded client IP and HTTPS scheme; do not expose the Gunicorn service directly to untrusted proxy headers. A blocked request receives HTTP 429 with a `Retry-After: 60` header. These request-rate limits are separate from the monthly plan quota.
 
