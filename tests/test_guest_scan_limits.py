@@ -16,7 +16,7 @@ def test_guest_scan_limit_requires_registration(client, monkeypatch, endpoint):
     from backend.services import plan_service
 
     def deny_guest(owner_id, plan_id):
-        assert owner_id.startswith("guest") or owner_id
+        assert isinstance(owner_id, str) and not owner_id.startswith("account:")
         assert plan_id == "guest"
         return False, {
             "scans_used": 10,
