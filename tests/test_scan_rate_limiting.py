@@ -76,3 +76,23 @@ def test_scan_rate_limiter_checks_ip_and_identity_buckets(monkeypatch):
     assert calls[0][1:] == (300, 60)
     assert calls[1][0].startswith("scan-identity:")
     assert calls[1][1:] == (30, 60)
+
+
+
+def test_analyze_api_returns_429_when_scan_rate_limit_is_exceeded(
+    client, monkeypatch
+):
+    monkeypatch.setattr(
+        prediction_module,
+        "_scan_rate_limit_exceeded",
+        lambda owner_id, remote_addr=None: True,
+    )
+
+    response = client.post(
+        "/api/analyze",
+        json={"url": "https://example.com"},
+    )
+
+    assert response.status_code == 429
+    assert response.get_json()["code"] == "RATE_LIMIT_EXCEEDED"
+    assert response.headers["Retry-After"] == "60"
