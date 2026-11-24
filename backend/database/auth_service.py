@@ -60,6 +60,20 @@ class AuthService:
                 updated_at TEXT NOT NULL
             )""")
             db.execute("CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id, status)")
+            db.execute("""CREATE TABLE IF NOT EXISTS payment_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                plan_id TEXT NOT NULL,
+                tx_ref TEXT NOT NULL UNIQUE,
+                amount REAL NOT NULL,
+                currency TEXT NOT NULL,
+                payment_method TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                provider_transaction_id TEXT UNIQUE,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )""")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_payment_transactions_user ON payment_transactions(user_id, created_at)")
 
     def allow_auth_attempt(self, bucket, limit=8, window_seconds=900):
         now = time.time()
