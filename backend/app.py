@@ -20,6 +20,7 @@ from backend.routes.billing import billing_bp
 from backend.routes.ads import ads_bp
 from backend.database.auth_service import auth_service
 from datetime import timedelta
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 LOCAL_SECRET_KEY_PATH = Path(__file__).resolve().parents[1] / ".phishguard_secret_key"
@@ -178,6 +179,11 @@ def create_app():
         static_folder="../web/static",
         static_url_path="/static"
     )
+
+    # Render sits behind one trusted edge proxy. Normalize forwarded client IP
+    # and HTTPS scheme before applying IP-based request limits.
+    if os.getenv("RENDER"):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     app.secret_key = _load_secret_key()
 
