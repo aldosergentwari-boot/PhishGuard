@@ -2067,7 +2067,7 @@ async function loadPricing() {
                 '<div class="pricing-price">$' + price + '<span>' + interval + '</span></div>' +
                 '<ul>' + features + '</ul>' +
                 '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '"' +
-                (key !== 'free' && !checkoutReady ? ' disabled aria-disabled="true"' : '') + '>' +
+                (['pro', 'business'].includes(key) && !checkoutReady ? ' disabled aria-disabled="true"' : '') + '>' +
                 (key === 'guest' ? 'Start scanning' : key === 'free' ? (state.authenticated ? 'Current plan' : 'Create a free account') :
                     checkoutReady ? 'Choose payment method' : 'Payments not available yet') + '</button>' +
                 '</article>';
