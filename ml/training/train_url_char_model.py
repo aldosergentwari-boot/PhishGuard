@@ -99,8 +99,8 @@ def main() -> None:
     X_test = np.asarray([model_input(url) for url in test_df["url"]], dtype=object)
 
     # Keep the existing domain-separated test split untouched. Use a separate
-    # stratified validation subset from the training partition to select threshold.
-    # Group-aware split: the same domain never appears in both fit and validation.
+    # group-aware validation subset from the training partition to select threshold.
+    # The same hostname never appears in both fit and validation.
     splitter = GroupShuffleSplit(n_splits=1, test_size=0.15, random_state=RANDOM_STATE)
     fit_idx, valid_idx = next(splitter.split(X_train, y_train, groups=X_train))
     X_fit, y_fit = X_train[fit_idx], y_train[fit_idx]
@@ -154,7 +154,7 @@ def main() -> None:
 
     metadata = {
         "model_name": "Character n-gram TF-IDF + numeric URL features (SGD logistic)",
-        "model_version": "3.0-url-lexical-hybrid",
+        "model_version": "3.1-hostname-only",
         "threshold": float(threshold),
         "features": "HOSTNAME-only character n-grams (2-5) plus deterministic numeric features computed on the hostname",
         "training_partition_records": int(len(train_df)),
@@ -162,7 +162,7 @@ def main() -> None:
         "validation_records": int(len(X_valid)),
         "testing_records": int(len(test_df)),
         "validation": {
-            "method": "Stratified 85/15 validation split from the training partition (random_state=42)",
+            "method": "GroupShuffleSplit 85/15 validation split grouped by hostname from the training partition (random_state=42)",
             "threshold": float(threshold),
             "false_positive_rate": float(best[0]),
             "f2_score": float(best[1]),

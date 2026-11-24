@@ -14,12 +14,13 @@ An offline-first phishing URL detection project with a Flask web dashboard, a Tk
 
 ## Model improvements
 
-The primary model is now `url_char_model.joblib` (version `3.1-hostname-only`). It combines character n-gram TF-IDF features from the normalized URL with the existing numeric URL features. This lets it learn suspicious spelling patterns and domain/URL character sequences that a small set of length/count features cannot represent.
+The primary model is `url_char_model.joblib` (version `3.1-hostname-only`). It uses character n-gram TF-IDF and deterministic numeric features computed from the normalized hostname only. It deliberately does not use the URL path, query string, or scheme, avoiding shortcuts that can make the model mistake ordinary URL structure for phishing evidence.
 
 - `www.example.com` and `example.com` are normalized consistently.
-- A missing scheme is treated as HTTPS for feature extraction; explicit HTTP/HTTPS is preserved.
-- The same canonical normalization is used in training and live prediction.
-- The threshold is selected on a stratified validation split while constraining validation false-positive rate to at most 1%.
+- A missing scheme is treated as HTTPS during canonical normalization; explicit HTTP/HTTPS is preserved for local rule features.
+- The model input is the canonical hostname, so `www.example.com` and `example.com` produce the same lexical input.
+- The same canonical normalization and hostname extraction are used in training and live prediction.
+- The threshold is selected on a hostname-grouped validation split (`GroupShuffleSplit`) while constraining validation false-positive rate to at most 1%.
 - The separate domain-held-out test split is not used for threshold selection.
 - The UI risk score is normalized relative to the selected decision threshold; `phishing_probability` in the API response is the raw model probability.
 
@@ -32,7 +33,7 @@ The scanner works without API keys. To add live lookups, copy `.env.example` to 
 - `GOOGLE_SAFE_BROWSING_API_KEY` — Google Safe Browsing Lookup API.
 - `URLHAUS_AUTH_KEY` — URLhaus community API Auth-Key.
 
-A positive match from either provider marks the URL as phishing. A no-match response does **not** override an ML or local-rule warning. If the APIs are not configured or cannot be reached, the app falls back to the local model and rules. Online checks are cached in memory for 15 minutes. **Privacy note:** when you enable a provider, the URL text you submit is sent to that provider for reputation lookup; with both keys blank, scans stay local.
+A positive match from either provider marks the URL as phishing. A no-match response does **not** override an ML or local-rule warning. If the APIs are not configured or cannot be reached, the app falls back to the local model and rules. Online checks are cached in memory for 15 minutes. The dashboard starts in Offline mode; online lookups run only after the user explicitly switches to Online mode. **Privacy note:** Google Safe Browsing and URLhaus receive the full submitted URL only when their API keys are configured and Online mode is enabled. In Online mode, the app can also download the OpenPhish feed and send only the registered domain name to RDAP for its age check. Offline mode performs none of these network lookups.
 
 ## Requirements
 
@@ -135,10 +136,10 @@ tests/                   Automated tests
 ## Local intelligence behavior
 
 - A blocklist match always marks the domain as phishing.
-- An allowlist match skips local heuristic scoring, but does not override the machine-learning result or a blocklist match.
+- An allowlist match suppresses model-only false positives and local heuristic/brand warnings for that trusted host. Blocklist and positive external threat-intelligence matches always take precedence.
 - Brand-impersonation rules check common brands used with login/account/security wording on unrelated domains.
 - The final decision flags a URL when the model, local rules, local blocklist, or an online threat-intelligence provider identifies a threat.
-- Allowlisting never overrides a model, brand-impersonation, or blocklist warning.
+- Allowlisting is intended for known trusted hosts; do not add a domain unless you are confident it is legitimate. A blocklist or positive external threat-intelligence match still overrides the allowlist.
 
 ## Model limitations
 

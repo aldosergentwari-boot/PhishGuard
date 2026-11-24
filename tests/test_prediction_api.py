@@ -1,5 +1,6 @@
 import pytest
 
+import backend.app as app_module
 from backend.app import create_app
 
 
@@ -22,6 +23,8 @@ def test_home_endpoint(client):
     assert response.status_code == 200
     assert response.mimetype == "text/html"
     assert b"PhishGuard" in response.data
+    assert response.data.count(b'name="theme-color"') == 1
+    assert b"adsbygoogle" not in response.data
 
 
 def test_health_endpoint(client):
@@ -188,3 +191,41 @@ def test_known_brand_impersonation_is_flagged_by_prediction_api(client):
     assert result["prediction"] == "PHISHING"
     assert result["final_prediction"] == "PHISHING"
     assert result["risk_score"] >= 50
+
+def test_local_session_key_is_stable_and_cookie_is_http_compatible(
+    monkeypatch, tmp_path
+):
+    monkeypatch.delenv("RENDER", raising=False)
+    monkeypatch.delenv("SESSION_COOKIE_SECURE", raising=False)
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    secret_path = tmp_path / ".phishguard_secret_key"
+    monkeypatch.setattr(app_module, "LOCAL_SECRET_KEY_PATH", secret_path)
+
+    first_app = create_app()
+    second_app = create_app()
+
+    assert first_app.config["SESSION_COOKIE_SECURE"] is False
+    assert first_app.secret_key == second_app.secret_key
+    assert secret_path.exists()
+    assert first_app.config["PERMANENT_SESSION_LIFETIME"].days == 30
+
+
+def test_production_session_cookie_is_secure_by_default(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.delenv("SESSION_COOKIE_SECURE", raising=False)
+    monkeypatch.setenv("SECRET_KEY", "test-production-secret")
+
+    app = create_app()
+
+    assert app.config["SESSION_COOKIE_SECURE"] is True
+
+
+def test_session_cookie_secure_can_be_explicitly_overridden(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
+    monkeypatch.setenv("SECRET_KEY", "test-production-secret")
+
+    app = create_app()
+
+    assert app.config["SESSION_COOKIE_SECURE"] is False
+

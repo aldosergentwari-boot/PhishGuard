@@ -1,6 +1,7 @@
 
 import os
 import secrets
+from pathlib import Path
 
 from flask import (
     Flask,
@@ -15,6 +16,35 @@ from flask import (
 from backend.routes.prediction import prediction_bp
 from backend.routes.history import history_bp
 from datetime import timedelta
+
+
+LOCAL_SECRET_KEY_PATH = Path(__file__).resolve().parents[1] / ".phishguard_secret_key"
+
+
+def _load_secret_key():
+    """Use a stable local key so browser identities survive app restarts.
+
+    Production deployments must supply SECRET_KEY through the environment.
+    The local key file is ignored by Git and must never be committed.
+    """
+    configured_key = os.getenv("SECRET_KEY", "").strip()
+    if configured_key:
+        return configured_key
+
+    if os.getenv("RENDER"):
+        raise RuntimeError("SECRET_KEY must be configured on Render.")
+
+    try:
+        return LOCAL_SECRET_KEY_PATH.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        LOCAL_SECRET_KEY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        generated_key = secrets.token_hex(32)
+        try:
+            with LOCAL_SECRET_KEY_PATH.open("x", encoding="utf-8") as file:
+                file.write(generated_key)
+            return generated_key
+        except FileExistsError:
+            return LOCAL_SECRET_KEY_PATH.read_text(encoding="utf-8").strip()
 
 
 MAINTENANCE_PAGE = """
@@ -131,22 +161,22 @@ def create_app():
         static_url_path="/static"
     )
 
-    secret_key = os.getenv("SECRET_KEY")
+    app.secret_key = _load_secret_key()
 
-    if not secret_key:
-        if os.getenv("RENDER"):
-            raise RuntimeError("SECRET_KEY must be configured on Render.")
-        secret_key = secrets.token_hex(32)
-
-    app.secret_key = secret_key
+    secure_cookie_default = bool(os.getenv("RENDER"))
+    secure_cookie_setting = os.getenv("SESSION_COOKIE_SECURE")
+    secure_cookie = (
+        secure_cookie_default
+        if secure_cookie_setting is None
+        else secure_cookie_setting.strip().lower() in ("1", "true", "yes", "on")
+    )
 
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.getenv(
-            "SESSION_COOKIE_SECURE", "true"
-        ).lower() == "true",
-        PERMANENT_SESSION_LIFETIME=timedelta(days=365)
+        SESSION_COOKIE_SECURE=secure_cookie,
+        # Browser identities are persistent, but should not live for a year.
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30)
     )
 
     app.register_blueprint(prediction_bp)

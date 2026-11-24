@@ -8,7 +8,7 @@
   "validation_records": 27183,
   "testing_records": 47074,
   "validation": {
-    "method": "Stratified 85/15 validation split from the training partition (random_state=42)",
+    "method": "GroupShuffleSplit 85/15 validation split grouped by hostname from the training partition (random_state=42)",
     "threshold": 0.2924454943794037,
     "false_positive_rate": 0.009964903484582602,
     "f2_score": 0.6271952805107606,
