@@ -222,3 +222,14 @@ PhishGuard supports transactional email for account verification and password re
 - `PUBLIC_APP_URL`: trusted app origin used in email links. For local development use `http://127.0.0.1:5000`; production must use your real HTTPS domain.
 
 Never commit `.env`, SMTP keys, or production credentials. `.env.example` contains blank placeholders only. Verification links expire after 24 hours; password-reset links expire after 30 minutes. Tokens are random, single-use, and only SHA-256 digests are stored in the database. Password reset increments the account session version to revoke existing sessions. If SMTP is not configured or delivery fails, the account flow remains available and the user can request another email after mail settings are fixed.
+
+
+### Public legal and trust pages
+
+The web app provides these public pages and links them from the dashboard footer:
+
+- `/privacy` — account, scan-history, cookie/session, online lookup, email, payment, and advertising data practices.
+- `/terms` — acceptable use, service limitations, accounts, plans, and payment terms.
+- `/security-disclaimer` — detection limitations and safe-use guidance.
+
+Set `PUBLIC_SUPPORT_EMAIL` to a monitored support address in the deployment environment. The pages display a setup notice until this is configured. These starter policies describe the current product behavior but are not a substitute for legal review. Before public launch, the owner must add the correct legal entity, operating jurisdiction, governing-law details, retention periods, and refund/cancellation process, and review applicable privacy, consumer, cookie/consent, and advertising requirements.
