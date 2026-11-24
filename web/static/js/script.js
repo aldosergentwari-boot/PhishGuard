@@ -1749,6 +1749,13 @@ async function loadAccount() {
     const signedIn = $('accountSignedIn');
     if (!signedOut || !signedIn) return;
     try {
+        const resetToken = new URLSearchParams(window.location.hash.slice(1)).get('reset_token');
+        if (resetToken) {
+            signedOut.hidden = false;
+            signedIn.hidden = true;
+            setAuthMode('reset');
+            return;
+        }
         const [auth, billing] = await Promise.all([
             apiRequest(API.authMe),
             apiRequest(API.subscription)
