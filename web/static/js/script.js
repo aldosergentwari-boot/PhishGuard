@@ -39,7 +39,8 @@ const state = {
     onlineMode: false,      // Offline-first: online checks require an explicit choice
     internet: null,         // true / false once /api/status has answered
     authenticated: false,
-    account: null
+    account: null,
+    planId: 'free'
 };
 
 const $ = (id) => document.getElementById(id);
@@ -1747,6 +1748,9 @@ async function loadAccount() {
         ]);
         state.authenticated = Boolean(auth.authenticated);
         state.account = auth.user || null;
+        state.planId = state.authenticated ? (billing.plan?.plan_id || 'free') : 'free';
+        const exportButton = $('exportHistory');
+        if (exportButton) exportButton.hidden = !['pro', 'business'].includes(state.planId);
         signedOut.hidden = state.authenticated;
         signedIn.hidden = !state.authenticated;
         if (!state.authenticated) {
