@@ -155,12 +155,13 @@ def _service(local_service):
     return service
 
 
-def test_allowlist_overrides_ml_false_positive(local_service):
-    """A trusted domain must not be flagged only because the ML model said so."""
+def test_allowlist_does_not_override_ml_phishing_result(local_service):
+    """An allowlist must not silence a strong ML phishing result."""
     result = _service(local_service).analyze("https://trusted-example.com/login")
 
-    assert result["final_prediction"] == "LEGITIMATE"
-    assert result["final_risk_score"] == 0
+    assert result["final_prediction"] == "PHISHING"
+    assert result["final_risk_score"] >= 80
+    assert "Character n-gram ML model" in result["decision_sources"]
     assert "Trusted domain (local allowlist)" in result["decision_sources"]
 
 
