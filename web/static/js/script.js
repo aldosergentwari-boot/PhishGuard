@@ -1692,6 +1692,53 @@ function toggleMode() {
     }
 }
 
+/* =========================================
+   SUBSCRIPTION PLANS
+========================================= */
+async function loadPricing() {
+    const grid = $('pricingGrid');
+    if (!grid) return;
+    try {
+        const payload = await apiRequest(API.plans);
+        const plans = payload.plans || {};
+        const order = ['free', 'pro', 'business'];
+        grid.innerHTML = order.filter(key => plans[key]).map(key => {
+            const plan = plans[key];
+            const interval = key === 'business' ? ' / 7 months' :
+                key === 'pro' ? ' / month' : ' / forever';
+            const price = Number(plan.price_usd).toFixed(2);
+            const features = (plan.features || []).map(item =>
+                '<li>' + escapeHtml(item) + '</li>'
+            ).join('');
+            return '<article class="panel pricing-card pricing-' + key + '">' +
+                '<div class="eyebrow">' + escapeHtml(key.toUpperCase()) + ' PLAN</div>' +
+                '<h2>' + escapeHtml(plan.name) + '</h2>' +
+                '<div class="pricing-price">
+    bindEvents();
+    void loadPricing();
+
+    loadModePreference();
+    renderModeUI();
+    $('modeToggle')?.addEventListener('click', toggleMode);
+    if (state.onlineMode) {
+        void refreshInternetStatus();
+    }
+    window.setInterval(() => {
+        if (state.onlineMode) void refreshInternetStatus();
+    }, 30000);
+
+    loadOverview();
+}); + price + '<span>' + interval + '</span></div>' +
+                '<ul>' + features + '</ul>' +
+                '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '">' +
+                (key === 'free' ? 'Included by default' : 'Upgrade soon') + '</button>' +
+                '</article>';
+        }).join('');
+    } catch {
+        grid.textContent = 'Plans are temporarily unavailable. Please try again.';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     bindEvents();
 
