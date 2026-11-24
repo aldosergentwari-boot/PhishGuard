@@ -137,9 +137,15 @@ def verify_and_activate(tx_ref, transaction_id):
 
     # Subscription upsert is keyed by the verified provider transaction ID.
     # It is safe to retry if the callback/webhook is delivered more than once.
+    try:
+        period_start = datetime.fromisoformat(
+            str(data.get("created_at") or payment["created_at"]).replace("Z", "+00:00")
+        )
+    except ValueError:
+        period_start = datetime.now(timezone.utc)
     activate_subscription(
         payment["user_id"], payment["plan_id"], "flutterwave",
-        f"flutterwave-tx-{transaction_id}",
+        f"flutterwave-tx-{transaction_id}", period_start=period_start,
     )
     now = datetime.now(timezone.utc).isoformat()
     with auth_service.connection() as db:
