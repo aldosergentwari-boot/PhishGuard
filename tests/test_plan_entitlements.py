@@ -30,6 +30,29 @@ def test_plan_limits_are_returned_by_billing_api(client):
     assert plans["business"]["limits"] == {"scans_per_month": 10000, "history_records": 10000}
 
 
+def test_plan_catalog_does_not_advertise_unimplemented_features(client):
+    response = client.get("/api/billing/plans")
+    plans = response.get_json()["plans"]
+    all_features = " ".join(
+        feature.lower()
+        for plan in plans.values()
+        for feature in plan["features"]
+    )
+    for unsupported in ("api access", "team reporting", "advanced analytics", "priority support", "detailed threat reports"):
+        assert unsupported not in all_features
+    assert "csv scan-history export" in " ".join(plans["pro"]["features"]).lower()
+    assert "csv scan-history export" in " ".join(plans["business"]["features"]).lower()
+
+
+def test_plan_catalog_reports_checkout_unavailable_without_provider_configuration(client, monkeypatch):
+    for key in ("FLW_SECRET_KEY", "FLW_SECRET_HASH", "FLW_REDIRECT_URL",
+                "FLW_PRO_PRICE_RWF", "FLW_BUSINESS_PRICE_RWF"):
+        monkeypatch.delenv(key, raising=False)
+    response = client.get("/api/billing/plans")
+    assert response.status_code == 200
+    assert response.get_json()["checkout"] == {"card": False, "mobile_money": False}
+
+
 def test_account_page_is_available(client):
     response = client.get("/")
     assert response.status_code == 200
