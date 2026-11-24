@@ -88,3 +88,45 @@ def test_history_service_respects_maximum_visible_records(tmp_path, monkeypatch)
         "account:1", limit=10
     )["scans"])
     assert service.get_scan(oldest_id, "account:1", max_records=2) is None
+
+
+def test_predict_api_also_obeys_monthly_scan_quota(client, monkeypatch):
+    import backend.services.plan_service as plans
+    monkeypatch.setattr(plans, "can_scan", lambda owner_id, plan_id: (
+        False,
+        {"scans_used": 50, "scans_limit": 50, "scans_remaining": 0}
+    ))
+    response = client.post(
+        "/api/predict",
+        json={"url": "https://example.com", "mode": "offline"},
+    )
+    assert response.status_code == 429
+    assert response.get_json()["code"] == "SCAN_LIMIT_REACHED"
+
+
+def test_history_endpoint_limits_free_history_records(client, tmp_path, monkeypatch):
+    import backend.database.history_service as history_module
+    import backend.services.plan_service as plans
+    monkeypatch.setattr(history_module, "DATABASE_PATH", tmp_path / "history_cap.db")
+    monkeypatch.setattr(history_module, "DATABASE_DIR", tmp_path)
+    monkeypatch.setattr(history_module, "_history_service", None)
+    monkeypatch.setitem(plans.PLAN_LIMITS, "free", {
+        "scans_per_month": 50, "history_records": 2
+    })
+    service = history_module.get_history_service()
+    for index in range(3):
+        service.save_scan({
+            "url": f"https://visible{index}.example",
+            "final_prediction": "LEGITIMATE",
+            "final_risk_score": 1,
+            "ml_result": {},
+            "local_intelligence": {"domain": f"visible{index}.example"},
+        }, owner_id="test-browser")
+    with client.session_transaction() as sess:
+        sess["phishguard_user_id"] = "test-browser"
+    response = client.get("/api/history?limit=20&offset=0")
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert len(data["scans"]) == 2
+    assert data["total"] == 2
+    assert data["summary"]["total"] == 2
