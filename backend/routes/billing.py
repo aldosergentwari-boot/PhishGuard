@@ -1,9 +1,13 @@
-from flask import Blueprint, jsonify, session
+from flask import Blueprint, jsonify, request, session
 
 from backend.services.plan_service import (
     PLANS, PLAN_LIMITS, get_account_plan, get_usage
 )
 from backend.services.user_identity import get_current_user_id
+from backend.services.flutterwave_service import (
+    FlutterwaveError, create_checkout, is_configured,
+    validate_webhook_signature, verify_and_activate,
+)
 
 billing_bp = Blueprint("billing", __name__)
 
@@ -36,10 +40,56 @@ def current_subscription():
 
 
 @billing_bp.post("/api/billing/checkout")
-def checkout_not_configured():
-    # No payment provider has been selected/configured yet. Never accept a
-    # client-supplied plan as proof of payment or activate entitlements here.
-    if not session.get("account_id"):
+def create_paid_checkout():
+    user_id = session.get("account_id")
+    if not user_id:
         return jsonify({"success": False, "error": "Sign in before choosing a paid plan."}), 401
-    return jsonify({"success": False,
-                    "error": "Paid checkout is not available yet. Payment provider integration is pending."}), 503
+    if not is_configured():
+        return jsonify({"success": False, "error": "Flutterwave checkout is not configured yet."}), 503
+    payload = request.get_json(silent=True)
+    payload = payload if isinstance(payload, dict) else {}
+    try:
+        result = create_checkout(
+            user_id=user_id,
+            email=session.get("account_email", ""),
+            plan_id=payload.get("plan_id"),
+            method=payload.get("payment_method"),
+            phone_number=payload.get("phone_number"),
+        )
+    except FlutterwaveError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    return jsonify({"success": True, **result}), 200
+
+
+@billing_bp.get("/api/billing/callback")
+def payment_callback():
+    # Browser redirects are not proof of payment. Always verify with Flutterwave.
+    tx_ref = request.args.get("tx_ref", "")
+    transaction_id = request.args.get("transaction_id", "")
+    if request.args.get("status", "").lower() != "successful":
+        return jsonify({"success": False, "error": "Payment was not completed."}), 400
+    try:
+        result = verify_and_activate(tx_ref, transaction_id)
+    except (FlutterwaveError, TypeError, ValueError) as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    return jsonify({"success": True, "message": "Payment verified.", **result}), 200
+
+
+@billing_bp.post("/api/billing/webhook")
+def flutterwave_webhook():
+    signature = request.headers.get("verif-hash", "")
+    if not validate_webhook_signature(signature):
+        return jsonify({"success": False, "error": "Invalid webhook signature."}), 401
+    payload = request.get_json(silent=True)
+    data = payload.get("data", {}) if isinstance(payload, dict) else {}
+    tx_ref = data.get("tx_ref")
+    transaction_id = data.get("id")
+    if not tx_ref or not transaction_id:
+        return jsonify({"success": False, "error": "Invalid webhook payload."}), 400
+    try:
+        verify_and_activate(str(tx_ref), str(transaction_id))
+    except (FlutterwaveError, TypeError, ValueError):
+        # Acknowledge only verified/recognized events; provider retries may be
+        # useful for temporary verification API failures.
+        return jsonify({"success": False, "error": "Webhook transaction could not be verified."}), 400
+    return jsonify({"success": True}), 200
