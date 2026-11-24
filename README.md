@@ -211,7 +211,7 @@ Initial configurable plan limits are centralized in `backend/services/plan_servi
 
 The backend enforces scan quotas on both `/api/analyze` and `/api/predict`, and applies the plan's history cap to history listing and individual scan detail retrieval. These are initial launch defaults and should be reviewed against infrastructure and threat-intelligence costs before public launch. Limits are not enforced only in the browser.
 
-The web scanning endpoints also enforce a server-side fixed-window rate limit of 30 valid scan requests per signed-in account or anonymous browser identity per minute. The limit is stored in SQLite and updated atomically so it is shared across application workers using the same persistent database. A blocked request receives HTTP 429 with a `Retry-After: 60` header. This request-rate limit is separate from the monthly plan quota.
+The web scanning endpoints also enforce server-side fixed-window rate limits: 30 valid scans per minute per signed-in account or anonymous browser identity, and 300 per minute per client IP. The limits are stored in SQLite and updated atomically so they are shared across application workers using the same persistent database. On Render, the app trusts the single edge proxy for the forwarded client IP and HTTPS scheme; do not expose the Gunicorn service directly to untrusted proxy headers. A blocked request receives HTTP 429 with a `Retry-After: 60` header. These request-rate limits are separate from the monthly plan quota.
 
 
 ### Brevo account email security
