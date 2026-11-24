@@ -203,15 +203,21 @@ def predict_url():
 
         account_id = session.get("account_id")
         from backend.services.plan_service import can_scan, get_account_plan
-        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "guest"
         allowed, usage = can_scan(owner_id, plan_id)
         if not allowed:
+            is_guest = account_id is None
             return jsonify({
                 "success": False,
-                "error": "You have reached this plan's monthly scan limit. Upgrade your plan to continue.",
-                "code": "SCAN_LIMIT_REACHED",
+                "error": (
+                    "You have used all 10 guest scans this month. Create a free account or sign in to continue scanning."
+                    if is_guest else
+                    "You have reached this plan's monthly scan limit. Upgrade your plan to continue."
+                ),
+                "code": "GUEST_SCAN_LIMIT_REACHED" if is_guest else "SCAN_LIMIT_REACHED",
                 "usage": usage,
-                "plan": plan_id
+                "plan": plan_id,
+                "registration_required": is_guest
             }), 429
 
         service = get_hybrid_service()
@@ -338,15 +344,21 @@ def analyze_url():
 
         account_id = session.get("account_id")
         from backend.services.plan_service import can_scan, get_account_plan
-        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "guest"
         allowed, usage = can_scan(owner_id, plan_id)
         if not allowed:
+            is_guest = account_id is None
             return jsonify({
                 "success": False,
-                "error": "You have reached this plan's monthly scan limit. Upgrade your plan to continue.",
-                "code": "SCAN_LIMIT_REACHED",
+                "error": (
+                    "You have used all 10 guest scans this month. Create a free account or sign in to continue scanning."
+                    if is_guest else
+                    "You have reached this plan's monthly scan limit. Upgrade your plan to continue."
+                ),
+                "code": "GUEST_SCAN_LIMIT_REACHED" if is_guest else "SCAN_LIMIT_REACHED",
                 "usage": usage,
-                "plan": plan_id
+                "plan": plan_id,
+                "registration_required": is_guest
             }), 429
     
     
