@@ -105,6 +105,33 @@ class AuthService:
             db.execute("UPDATE auth_rate_limits SET attempts=attempts+1 WHERE bucket=?", (bucket,))
             return True
 
+    def allow_scan_attempt(self, bucket, limit=30, window_seconds=60):
+        """Atomically enforce a fixed-window scan limit across app workers."""
+        now = time.time()
+        with self.connection() as db:
+            # Serialize updates so concurrent requests cannot all pass the limit.
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT window_started, attempts FROM auth_rate_limits WHERE bucket=?",
+                (bucket,),
+            ).fetchone()
+            if row is None or now - row["window_started"] >= window_seconds:
+                db.execute(
+                    """INSERT INTO auth_rate_limits(bucket, window_started, attempts)
+                       VALUES (?, ?, 1)
+                       ON CONFLICT(bucket) DO UPDATE SET
+                       window_started=excluded.window_started, attempts=1""",
+                    (bucket, now),
+                )
+                return True
+            if row["attempts"] >= limit:
+                return False
+            db.execute(
+                "UPDATE auth_rate_limits SET attempts=attempts+1 WHERE bucket=?",
+                (bucket,),
+            )
+            return True
+
     def create_user(self, email, password):
         if not isinstance(email, str):
             raise ValueError("Enter a valid email address.")
