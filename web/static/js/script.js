@@ -1904,7 +1904,10 @@ async function loadPricing() {
             const interval = key === 'business' ? ' / 7 months' :
                 key === 'pro' ? ' / month' : ' / forever';
             const price = Number(plan.price_usd).toFixed(2);
-            const features = (plan.features || []).map(item =>
+            const usageFeature = plan.limits?.scans_per_month
+                ? [Number(plan.limits.scans_per_month).toLocaleString() + ' scans per month']
+                : [];
+            const features = [...usageFeature, ...(plan.features || [])].map(item =>
                 '<li>' + escapeHtml(item) + '</li>'
             ).join('');
             return '<article class="panel pricing-card pricing-' + key + '">' +
