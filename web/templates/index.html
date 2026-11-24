@@ -45,6 +45,7 @@
         <div class="workspace-label second-label">SYSTEM</div>
 
         <nav class="navigation">
+            <button class="nav-link" data-page="account"><span class="nav-icon">◎</span><span>My Account</span></button>
             <button class="nav-link" data-page="pricing"><span class="nav-icon">$</span><span>Plans & Pricing</span></button>
             <button class="nav-link" data-page="about">
                 <span class="nav-icon">ⓘ</span><span>About Project</span>
@@ -90,7 +91,7 @@
                         title="Click to switch between Online and Offline mode">
                     <span>●</span> <b id="modeToggleText">ONLINE MODE</b>
                 </button>
-                <div class="profile-avatar">PG</div>
+                <button type="button" class="profile-avatar" id="profileAccount" data-goto="account" aria-label="Open account">PG</button>
             </div>
         </header>
 
@@ -438,6 +439,65 @@
                 </div>
 
                 <div class="bottom-note"><span>ⓘ</span><p>A no-match from any provider does not guarantee a URL is safe. Keep local lists updated and configure live providers for additional reputation coverage.</p></div>
+            </section>
+
+            <!-- MY ACCOUNT -->
+            <section class="page" id="page-account">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">ACCOUNT & SUBSCRIPTION</div>
+                        <h1>My Account</h1>
+                        <p>Manage your PhishGuard account, subscription and scan usage.</p>
+                    </div>
+                </div>
+
+                <div class="panel account-panel" id="accountSignedOut">
+                    <div class="account-tabs" role="tablist" aria-label="Account access">
+                        <button type="button" class="account-tab active" data-auth-mode="login">Sign in</button>
+                        <button type="button" class="account-tab" data-auth-mode="register">Create account</button>
+                    </div>
+                    <form id="loginForm" class="account-form">
+                        <h2>Welcome back</h2>
+                        <p>Sign in to view your plan and keep your scan history with your account.</p>
+                        <label for="loginEmail">Email address</label>
+                        <input id="loginEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+                        <label for="loginPassword">Password</label>
+                        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+                        <button class="primary-button" type="submit">Sign in</button>
+                    </form>
+                    <form id="registerForm" class="account-form" hidden>
+                        <h2>Create your free account</h2>
+                        <p>Registration starts on the Free plan. Use at least 12 characters for your password.</p>
+                        <label for="registerEmail">Email address</label>
+                        <input id="registerEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+                        <label for="registerPassword">Password</label>
+                        <input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                        <button class="primary-button" type="submit">Create Free account</button>
+                    </form>
+                    <p class="account-feedback" id="accountFeedback" role="status" aria-live="polite"></p>
+                </div>
+
+                <div class="panel account-panel" id="accountSignedIn" hidden>
+                    <div class="account-profile">
+                        <div class="account-avatar">PG</div>
+                        <div><div class="eyebrow">SIGNED IN AS</div><h2 id="accountEmail">—</h2></div>
+                    </div>
+                    <div class="account-plan-row">
+                        <div><span class="account-label">CURRENT PLAN</span><strong id="accountPlanName">Free</strong></div>
+                        <span class="account-plan-status" id="accountPlanStatus">ACTIVE</span>
+                    </div>
+                    <div class="usage-block">
+                        <div class="usage-heading"><strong>Monthly scan usage</strong><span id="accountUsageText">0 / 50</span></div>
+                        <div class="usage-track"><div class="usage-fill" id="accountUsageBar"></div></div>
+                        <p id="accountUsageNote">Your scan allowance resets at the start of each UTC calendar month.</p>
+                    </div>
+                    <div class="account-plan-details" id="accountPlanDetails"></div>
+                    <div class="account-actions">
+                        <button class="secondary-button" type="button" id="accountViewPlans">View plans</button>
+                        <button class="text-button" type="button" id="accountLogout">Sign out</button>
+                    </div>
+                    <p class="account-feedback" id="accountFeedbackSigned" role="status" aria-live="polite"></p>
+                </div>
             </section>
 
             <!-- PLANS & PRICING -->
