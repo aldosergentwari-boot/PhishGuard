@@ -91,6 +91,15 @@ class AuthService:
                 updated_at TEXT NOT NULL
             )""")
             db.execute("CREATE INDEX IF NOT EXISTS idx_payment_transactions_user ON payment_transactions(user_id, created_at)")
+            db.execute("""CREATE TABLE IF NOT EXISTS admin_scan_grants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                granted_scans INTEGER NOT NULL CHECK(granted_scans > 0),
+                reason TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )""")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_admin_scan_grants_user_expiry ON admin_scan_grants(user_id, expires_at)")
 
     def allow_auth_attempt(self, bucket, limit=8, window_seconds=900):
         now = time.time()
@@ -137,6 +146,17 @@ class AuthService:
                 (bucket,),
             )
             return True
+
+    def grant_admin_scans(self, user_id, scans, reason, expires_at):
+        """Record owner-granted bonus scans, expiring at the current UTC month end."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connection() as db:
+            db.execute(
+                """INSERT INTO admin_scan_grants
+                   (user_id, granted_scans, reason, expires_at, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (user_id, scans, reason, expires_at, now),
+            )
 
     def create_user(self, email, password):
         if not isinstance(email, str):
