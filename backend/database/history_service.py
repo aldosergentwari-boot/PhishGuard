@@ -217,7 +217,7 @@ class HistoryService:
                 WHERE {where_clause}
             """, parameters).fetchone()[0]
 
-            summary_row = connection.execute("""
+            summary_query = """
                 SELECT
                     COUNT(*) AS total,
                     COALESCE(SUM(CASE WHEN UPPER(prediction) = 'PHISHING'
@@ -228,7 +228,17 @@ class HistoryService:
                         THEN 1 ELSE 0 END), 0) AS legitimate
                 FROM scan_history
                 WHERE owner_id = ?
-            """, (owner_id,)).fetchone()
+            """
+            summary_parameters = (owner_id,)
+            if max_records is not None:
+                summary_query = summary_query.replace(
+                    "WHERE owner_id = ?",
+                    "WHERE owner_id = ? AND id IN (SELECT id FROM scan_history WHERE owner_id = ? ORDER BY id DESC LIMIT ?)"
+                )
+                summary_parameters = (owner_id, owner_id, max_records)
+            summary_row = connection.execute(
+                summary_query, summary_parameters
+            ).fetchone()
 
             return {
                 "total": total,
