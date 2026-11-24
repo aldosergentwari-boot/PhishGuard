@@ -20,8 +20,27 @@ def csrf_token():
 
 @auth_bp.before_app_request
 def protect_auth_mutations():
-    protected = ("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/billing/checkout")
-    if request.path in protected and request.method == "POST":
+    # Reject stale/revoked account sessions before any route can use account_id.
+    account_id = session.get("account_id")
+    if account_id is not None:
+        user = auth_service.get_user(account_id) if isinstance(account_id, int) and account_id > 0 else None
+        if (
+            not user
+            or session.get("session_version") != user.get("session_version", 0)
+            or session.get("account_email") != user.get("email")
+        ):
+            session.clear()
+
+    protected = {
+        ("POST", "/api/auth/register"),
+        ("POST", "/api/auth/login"),
+        ("POST", "/api/auth/logout"),
+        ("POST", "/api/billing/checkout"),
+        ("DELETE", "/api/history"),
+    }
+    if (request.method, request.path) in protected or (
+        request.method == "DELETE" and request.path.startswith("/api/history/")
+    ):
         expected = session.get("csrf_token", "")
         supplied = request.headers.get("X-CSRF-Token", "")
         if not expected or not supplied or not secrets.compare_digest(expected, supplied):
@@ -56,8 +75,10 @@ def _claim_anonymous_history(user_id, anonymous_id):
     from backend.database.history_service import get_history_service
     service = get_history_service()
     with service.get_connection() as db:
-        db.execute("UPDATE scan_history SET owner_id=? WHERE owner_id=?",
-                   (f"account:{user_id}", anonymous_id))
+        db.execute(
+            "UPDATE scan_history SET owner_id=? WHERE owner_id=?",
+            (f"account:{user_id}", anonymous_id),
+        )
 
 
 @auth_bp.post("/api/auth/register")
@@ -81,7 +102,10 @@ def login():
     data = _payload()
     if _rate_limited("login", data.get("email")):
         return jsonify({"success": False, "error": "Too many login attempts. Try again in 15 minutes."}), 429
-    user = auth_service.authenticate(data.get("email"), data.get("password"))
+    password = data.get("password")
+    if not isinstance(password, str):
+        return jsonify({"success": False, "error": "Invalid email or password."}), 401
+    user = auth_service.authenticate(data.get("email"), password)
     if not user:
         return jsonify({"success": False, "error": "Invalid email or password."}), 401
     anonymous_id = get_browser_identity()
