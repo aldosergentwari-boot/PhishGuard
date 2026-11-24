@@ -140,9 +140,9 @@ class HybridDetectionService:
         )
 
         if allowlist_match and not (blocklist_match or external_match):
-            # An allowlist may suppress generic local heuristics, but it must
-            # never silence the ML model or brand-impersonation evidence.
+            ml_is_phishing = False
             rule_is_phishing = False
+            brand_match = False
 
         # A very new domain is a strong sign of a fresh phishing site.
         # Trusted (allowlisted) domains are never treated as "new".
@@ -165,6 +165,12 @@ class HybridDetectionService:
         # Round first: the label must be decided from the same number that
         # the user sees (34.996 is shown as 35.0, so it must count as 35).
         final_risk_score = round(final_risk_score, 2)
+
+        # A trusted (allowlisted) domain is neutralised BEFORE the label is
+        # chosen, so a high ML score can no longer turn it into SUSPICIOUS.
+        # Its risk is shown as 0; the raw ML score stays in ml_result.
+        if allowlist_match and not (blocklist_match or external_match):
+            final_risk_score = 0
 
         # Evidence that does not come from the ML model alone.
         indicator_names = {
