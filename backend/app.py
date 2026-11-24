@@ -47,7 +47,7 @@ def _load_secret_key():
             return LOCAL_SECRET_KEY_PATH.read_text(encoding="utf-8").strip()
 
 
-MAINTENANCE_PAGE = \"\"\"
+MAINTENANCE_PAGE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
