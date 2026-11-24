@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ page_description }}">
+    <title>{{ page_title }} | PhishGuard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .legal-shell { width:min(900px, calc(100% - 36px)); margin:48px auto; }
+        .legal-top { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:28px; }
+        .legal-top a,.legal-links a { color:#8fb8ff; text-decoration:none; }
+        .legal-top a:hover,.legal-links a:hover { text-decoration:underline; }
+        .legal-card { padding:clamp(22px,4vw,42px); border:1px solid var(--border); border-radius:16px; background:var(--surface); }
+        .legal-eyebrow { color:var(--cyan); font-size:11px; font-weight:800; letter-spacing:1.5px; }
+        .legal-card h1 { margin:10px 0 8px; font-size:clamp(28px,5vw,40px); }
+        .legal-updated { color:var(--muted); font-size:12px; margin-bottom:28px; }
+        .legal-section { margin:26px 0; }
+        .legal-section h2 { margin:0 0 10px; font-size:18px; }
+        .legal-section p,.legal-section li { color:var(--muted); font-size:14px; line-height:1.8; }
+        .legal-section ul { padding-left:22px; }
+        .legal-notice { padding:14px 16px; border:1px solid #735c36; border-radius:10px; color:#e9c78a; background:#3a2c171f; font-size:13px; line-height:1.7; }
+        .legal-links { display:flex; flex-wrap:wrap; gap:18px; margin-top:26px; font-size:13px; }
+        .legal-footer { color:var(--muted); font-size:11px; margin:20px 4px; }
+    </style>
+</head>
+<body>
+<div class="legal-shell">
+    <div class="legal-top">
+        <a href="/"><strong>← PhishGuard</strong></a>
+        <span class="legal-eyebrow">TRUST & TRANSPARENCY</span>
+    </div>
+    <main class="legal-card">
+        <div class="legal-eyebrow">PHISHGUARD POLICY CENTER</div>
+        <h1>{{ page_title }}</h1>
+        <p class="legal-updated">Last updated: {{ updated_date }}</p>
+        {% if show_setup_notice %}
+        <div class="legal-notice">Before public launch, the site owner must configure an official support email using the PUBLIC_SUPPORT_EMAIL environment variable and review this policy for the business's operating country and applicable laws.</div>
+        {% endif %}
+        {% for section in sections %}
+        <section class="legal-section">
+            <h2>{{ section.heading }}</h2>
+            {% for paragraph in section.paragraphs %}
+            <p>{{ paragraph }}</p>
+            {% endfor %}
+            {% if section.bullets %}
+            <ul>{% for item in section.bullets %}<li>{{ item }}</li>{% endfor %}</ul>
+            {% endif %}
+        </section>
+        {% endfor %}
+        <div class="legal-notice">
+            Contact: {{ support_email }}
+        </div>
+        <nav class="legal-links" aria-label="Other legal pages">
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/security-disclaimer">Security Disclaimer</a>
+            <a href="/">Back to dashboard</a>
+        </nav>
+    </main>
+    <footer class="legal-footer">© 2026 PhishGuard Security Platform. Use this service responsibly.</footer>
+</div>
+</body>
+</html>
