@@ -115,7 +115,7 @@ def test_valid_verified_payment_activates_subscription_once(client, monkeypatch)
     })
     activations = []
     monkeypatch.setattr(service, "activate_subscription",
-                        lambda *args: activations.append(args))
+                        lambda *args, **kwargs: activations.append((args, kwargs)))
     result = service.verify_and_activate("verified-ref", "789")
     assert result["plan_id"] == "pro"
     assert result["already_processed"] is False
