@@ -243,6 +243,8 @@ For a production Render deployment, configure at minimum:
 - `PUBLIC_SUPPORT_EMAIL`: a monitored support address.
 - `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`: verified Brevo SMTP credentials and sender.
 - `FLW_SECRET_KEY`, `FLW_SECRET_HASH`, and `FLW_REDIRECT_URL`: only after Flutterwave merchant onboarding and webhook configuration are approved.
-- `SESSION_COOKIE_SECURE=true` (Render defaults this to true unless explicitly overridden).
+- `SESSION_COOKIE_SECURE=true` (the app enforces Secure cookies whenever the `RENDER` environment is present; local HTTP testing may set it to `false` only outside Render).
 
 Use the Render start command `gunicorn --bind 0.0.0.0:$PORT backend.app:app`. Do not enable AdSense until publisher approval and the required privacy/consent setup are complete.
+
+The Flask app also adds baseline browser security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy`) to responses. On Render it adds HTTP Strict Transport Security (HSTS). Do not put the public production service behind plain HTTP.
