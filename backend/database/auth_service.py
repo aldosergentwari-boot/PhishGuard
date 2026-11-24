@@ -130,7 +130,7 @@ class AuthService:
             return None
         email = email.strip().lower()
         with self.connection() as db:
-            row = db.execute("SELECT id,email,password_hash,is_active,session_version FROM users WHERE email=?", (email,)).fetchone()
+            row = db.execute("SELECT id,email,password_hash,is_active,session_version,email_verified FROM users WHERE email=?", (email,)).fetchone()
         if not row or not row["is_active"] or not check_password_hash(row["password_hash"], password or ""):
             return None
         return {"id": row["id"], "email": row["email"], "session_version": row["session_version"], "email_verified": bool(row["email_verified"])}
