@@ -86,7 +86,8 @@ def send_verification_email(recipient, raw_token):
 
 def send_password_reset_email(recipient, raw_token):
     cfg = _settings()
-    url = cfg["base_url"] + "/?reset_token=" + urlencode({"token": raw_token})[6:]
+    # Keep the bearer token in the URL fragment so it is not sent in HTTP requests or Referer headers.
+    url = cfg["base_url"] + "/#reset_token=" + raw_token
     return _security_email(
         recipient, "Reset your PhishGuard password", "Reset your password",
         "A password reset was requested for your PhishGuard account.",
