@@ -59,6 +59,14 @@ def get_usage(owner_id, plan_id="free"):
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
     limits = PLAN_LIMITS.get(plan_id, PLAN_LIMITS["free"])
+    bonus_scans = 0
+    user_id = None
+    if isinstance(owner_id, str) and owner_id.startswith("account:"):
+        try:
+            user_id = int(owner_id.split(":", 1)[1])
+        except ValueError:
+            user_id = None
+
     with auth_service.connection() as db:
         exists = db.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_history'"
@@ -70,10 +78,23 @@ def get_usage(owner_id, plan_id="free"):
                 "SELECT COUNT(*) FROM scan_history WHERE owner_id=? AND scanned_at>=?",
                 (owner_id, month_start)
             ).fetchone()[0]
+
+        grants_table = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='admin_scan_grants'"
+        ).fetchone()
+        if user_id and grants_table:
+            bonus_scans = db.execute(
+                "SELECT COALESCE(SUM(granted_scans), 0) FROM admin_scan_grants WHERE user_id=? AND expires_at>?",
+                (user_id, now.isoformat()),
+            ).fetchone()[0]
+
+    effective_limit = limits["scans_per_month"] + bonus_scans
     return {
         "scans_used": used,
-        "scans_limit": limits["scans_per_month"],
-        "scans_remaining": max(0, limits["scans_per_month"] - used),
+        "scans_limit": effective_limit,
+        "plan_scans_limit": limits["scans_per_month"],
+        "admin_bonus_scans": bonus_scans,
+        "scans_remaining": max(0, effective_limit - used),
         "history_limit": limits["history_records"],
         "period": "calendar_month_utc",
         "period_starts_at": month_start,
