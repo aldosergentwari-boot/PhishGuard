@@ -80,6 +80,10 @@ def test_history_clear_with_valid_csrf_deletes_only_current_users_records(client
     assert response.get_json()["deleted_count"] == 1
     assert service.get_scan(own_id, f"account:{account_id}") is None
     assert service.get_scan(other_id, "account:another-user") is not None
+    from backend.services.plan_service import get_usage
+    usage = get_usage(f"account:{account_id}", "free")
+    assert usage["scans_used"] == 1
+    assert usage["scans_remaining"] == 49
 
 
 def test_history_delete_accepts_valid_csrf(client):
