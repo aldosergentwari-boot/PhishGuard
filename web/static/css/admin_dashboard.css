@@ -162,3 +162,6 @@ table{width:100%;border-collapse:separate;border-spacing:0;white-space:normal}th
 .scan-limit-controls .btn.subtle{background:transparent;color:#9aabc2}
 .scan-usage-note{display:block;margin-top:4px;color:var(--muted);font-size:9px}
 @media(max-width:760px){.scan-limit-controls{grid-template-columns:minmax(0,1fr) auto auto;width:100%}.scan-limit-controls input{min-width:0}}
+
+.metric strong.status-ready{color:#55d6a5}
+.metric strong.status-pending{color:#f1bf68}
