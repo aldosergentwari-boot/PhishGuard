@@ -5,4 +5,20 @@ function bars(id,rows,total){let el=$(id);if(!el)return;if(!total){el.innerHTML=
 async function charts(){try{let a=(await get("/api/admin/management/analytics")).analytics;bars("customerHealthChart",[["Active customers",a.active_users,"violet"],["Inactive customers",Math.max(0,a.total_users-a.active_users),"muted"]],a.total_users);let p=a.payment_counts||{},r=[["Successful",+(p.successful||0),"green"],["Pending",+(p.pending||0),"violet"],["Failed",+(p.failed||0),"red"],["Cancelled",+(p.cancelled||0),"muted"]];bars("paymentStatusChart",r.filter(x=>x[1]),r.reduce((s,x)=>s+x[1],0))}catch(e){["customerHealthChart","paymentStatusChart"].forEach(id=>{if($(id))$(id).innerHTML='<div class="empty">'+esc(e.message)+'</div>'})}}
 const titles={overview:"Website overview",users:"Customer accounts",payments:"Payments",credits:"Scan credit management","advanced-users":"Manage customers","advanced-payments":"Payment details",analytics:"Business analytics",subscriptions:"Subscriptions",audit:"Security audit log",notifications:"Customer notifications"};
 document.addEventListener("click",e=>{let n=e.target.closest(".nav[data-section]");if(n){let s=n.dataset.section;if($("pageTitle"))$("pageTitle").textContent=titles[s]||"Management";if(s==="analytics")charts();if(s==="overview")activity()}if(e.target.closest('[data-go="audit"]')&&$("pageTitle"))$("pageTitle").textContent=titles.audit});
-activity();})();
+activity();
+/* Add accessible labels before responsive table rows become compact cards. */
+function labelAdminTables(){
+ document.querySelectorAll(".table-wrap table").forEach(table=>{
+  const labels=Array.from(table.querySelectorAll("thead th")).map(th=>th.textContent.trim());
+  table.querySelectorAll("tbody tr").forEach(row=>{
+   Array.from(row.cells).forEach((cell,index)=>{
+    if(cell.hasAttribute("colspan"))return;
+    if(!cell.dataset.label)cell.dataset.label=labels[index]||"DETAIL";
+   });
+  });
+ });
+}
+labelAdminTables();
+const adminTableObserver=new MutationObserver(labelAdminTables);
+document.querySelectorAll(".table-wrap").forEach(wrap=>adminTableObserver.observe(wrap,{childList:true,subtree:true}));
+})();
