@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#080d18">
     <title>PhishGuard | Security Operations Center</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M32%204%208%2013v18c0%2015%2010%2026%2024%2031%2014-5%2024-16%2024-31V13z'%20fill='%23c0392b'/%3E%3Cpath%20d='M22%2032l7%207%2013-15'%20fill='none'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=6">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=7">
 </head>
 <body>
 
@@ -508,9 +508,23 @@
 
                 <div class="panel account-panel" id="accountSignedIn" hidden>
                     <div class="account-profile">
-                        <div class="account-avatar">PG</div>
-                        <div><div class="eyebrow">SIGNED IN AS</div><h2 id="accountEmail">—</h2></div>
+                        <div class="account-avatar" id="accountAvatar"><span>PG</span></div>
+                        <div><div class="eyebrow">SIGNED IN AS</div><h2 id="accountEmail">—</h2><p class="profile-handle" id="accountUsernameLabel">Set your username</p></div>
                     </div>
+                    <section class="profile-editor" aria-labelledby="userProfileTitle">
+                        <div class="profile-editor-heading"><div><span class="account-label">PERSONAL DETAILS</span><h3 id="userProfileTitle">Your profile</h3><p>Choose a username and add a photo to personalize your account.</p></div></div>
+                        <form id="userProfileForm" class="profile-form">
+                            <div class="profile-photo-control">
+                                <div class="profile-photo-preview" id="userProfilePreview"><span>PG</span></div>
+                                <div class="profile-photo-actions"><strong>Profile picture</strong><label class="profile-upload-button" for="userProfileImage">Choose photo</label><input id="userProfileImage" type="file" accept="image/png,image/jpeg,image/webp" hidden><small>JPG, PNG or WEBP · Maximum 2 MB</small><button class="profile-remove-photo" type="button" id="userRemovePhoto">Remove photo</button></div>
+                            </div>
+                            <label for="userProfileUsername">Username</label>
+                            <input id="userProfileUsername" name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" autocomplete="username" placeholder="e.g. serge_tech" required>
+                            <p class="profile-input-hint">3–24 characters. Letters, numbers, dots, underscores and hyphens.</p>
+                            <button class="primary-button" id="saveUserProfile" type="submit">Save profile</button>
+                            <p class="account-feedback" id="userProfileFeedback" role="status" aria-live="polite"></p>
+                        </form>
+                    </section>
                     <div class="account-feedback" id="emailVerificationNotice" role="status" aria-live="polite" hidden>
                         Your email address is not verified yet. Check your inbox or request a new verification email.
                         <button class="text-button" type="button" id="resendVerification">Resend verification email</button>
