@@ -79,6 +79,25 @@ class HistoryService:
                 ON scan_history(prediction)
             """)
 
+            # Keep quota accounting after users delete their visible history.
+            connection.execute("""
+                CREATE TABLE IF NOT EXISTS scan_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    owner_id TEXT NOT NULL,
+                    scanned_at TEXT NOT NULL,
+                    history_scan_id INTEGER UNIQUE
+                )
+            """)
+            connection.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scan_usage_owner_time
+                ON scan_usage(owner_id, scanned_at)
+            """)
+            connection.execute("""
+                INSERT OR IGNORE INTO scan_usage(owner_id, scanned_at, history_scan_id)
+                SELECT owner_id, scanned_at, id FROM scan_history
+                WHERE owner_id IS NOT NULL
+            """)
+
     def save_scan(self, result, owner_id):
         if not owner_id:
             raise ValueError("A valid scan owner is required.")
@@ -121,7 +140,12 @@ class HistoryService:
                 scanned_at
             ))
 
-            return cursor.lastrowid
+            scan_id = cursor.lastrowid
+            connection.execute("""
+                INSERT INTO scan_usage(owner_id, scanned_at, history_scan_id)
+                VALUES (?, ?, ?)
+            """, (owner_id, scanned_at, scan_id))
+            return scan_id
 
     @staticmethod
     def serialize_scan(row):
