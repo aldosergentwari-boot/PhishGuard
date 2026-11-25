@@ -108,6 +108,7 @@ def confirm_admin_password_reset():
     if not changed:
         return jsonify({"success": False, "error": "This admin reset link is invalid or has expired."}), 400
     session.clear()
+    session["csrf_token"] = secrets.token_urlsafe(32)
     return jsonify({"success": True, "message": "Admin password updated. Sign in from the owner login page.", "redirect": "/admin/login"}), 200
 
 
@@ -134,6 +135,7 @@ def admin_login():
     ):
         return jsonify({"success": False, "error": "Invalid owner credentials or owner email is not verified."}), 401
     session.clear()
+    session["csrf_token"] = secrets.token_urlsafe(32)
     session["phishguard_admin_user_id"] = user["id"]
     session["phishguard_admin_email"] = user["email"]
     session["phishguard_admin_session_version"] = user.get("session_version", 0)
@@ -146,6 +148,7 @@ def admin_logout():
     if not _authorized_admin():
         return jsonify({"success": False, "error": "Owner authorization required."}), 401
     session.clear()
+    session["csrf_token"] = secrets.token_urlsafe(32)
     return jsonify({"success": True}), 200
 
 
