@@ -64,6 +64,53 @@ def test_management_plan_change_and_notification(monkeypatch, tmp_path):
     assert items.get_json()["notifications"][0]["title"] == "Plan update"
 
 
+def test_admin_can_set_and_reset_monthly_scan_limit(monkeypatch, tmp_path):
+    from backend.services.plan_service import get_usage
+
+    _, client, owner, csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user("limited-user@example.com", "A-Strong-Customer-Password-123!")
+    headers = {"X-CSRF-Token": csrf}
+
+    listing = client.get("/api/admin/management/users?q=limited-user").get_json()
+    row = listing["users"][0]
+    assert row["scan_usage"]["scans_limit"] == 50
+    assert row["scan_usage"]["admin_limit_override"] is None
+
+    changed = client.post(
+        f"/api/admin/management/users/{customer['id']}/scan-limit",
+        json={"monthly_limit": 12, "reason": "Temporary support restriction"},
+        headers=headers,
+    )
+    assert changed.status_code == 200
+    usage = get_usage(f"account:{customer['id']}", "free")
+    assert usage["scans_limit"] == 12
+    assert usage["scans_remaining"] == 12
+    assert usage["admin_limit_override"] == 12
+
+    auth_service.grant_admin_scans(
+        customer["id"], 5, "Additional approved credits",
+        "2099-12-31T23:59:59+00:00",
+    )
+    assert get_usage(f"account:{customer['id']}", "free")["scans_limit"] == 17
+
+    reset = client.post(
+        f"/api/admin/management/users/{customer['id']}/scan-limit",
+        json={"monthly_limit": None, "reason": "Restore standard plan allowance"},
+        headers=headers,
+    )
+    assert reset.status_code == 200
+    restored = get_usage(f"account:{customer['id']}", "free")
+    assert restored["admin_limit_override"] is None
+    assert restored["scans_limit"] == 55
+
+    owner_block = client.post(
+        f"/api/admin/management/users/{owner['id']}/scan-limit",
+        json={"monthly_limit": 0, "reason": "Should not affect owner"},
+        headers=headers,
+    )
+    assert owner_block.status_code == 400
+
+
 def test_management_mutations_require_csrf_and_owner(monkeypatch, tmp_path):
     _, client, _, _ = owner_client(monkeypatch, tmp_path)
     customer = auth_service.create_user("csrf-user@example.com", "A-Strong-Customer-Password-123!")
