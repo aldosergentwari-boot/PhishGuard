@@ -830,3 +830,16 @@ tr[data-id] { cursor: pointer; }
     .admin-form-row { grid-template-columns: 1fr; }
     .admin-security-note { padding: 14px; }
 }
+
+.admin-overview-button { width: fit-content; min-height: 38px; margin: 0 0 5px; }
+.admin-overview-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.admin-metric { display: grid; gap: 8px; min-width: 0; padding: 15px; }
+.admin-metric span { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .7px; }
+.admin-metric strong { color: var(--text); font-size: 24px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.admin-metric small { color: var(--muted); font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
+@media (max-width: 1000px) {
+    .admin-overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+    .admin-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
