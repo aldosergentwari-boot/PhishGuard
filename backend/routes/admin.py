@@ -83,3 +83,47 @@ def grant_scan_credits():
         "expires_at": expires_at,
         "note": "Bonus scans increase this account's monthly quota. The shared IP safety limit is unchanged.",
     }), 200
+
+
+@admin_bp.get("/api/admin/overview")
+def admin_overview():
+    """Return a small operational summary for the authenticated owner console."""
+    if not _authorized_admin():
+        return jsonify({"success": False, "error": "Admin authorization required."}), 401
+
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    with auth_service.connection() as db:
+        active_accounts = db.execute(
+            "SELECT COUNT(*) FROM users WHERE is_active=1"
+        ).fetchone()[0]
+        active_subscriptions = db.execute(
+            "SELECT COUNT(*) FROM subscriptions WHERE status='active'"
+        ).fetchone()[0]
+        scans_this_month = db.execute(
+            "SELECT COUNT(*) FROM scan_usage WHERE scanned_at>=?",
+            (month_start,),
+        ).fetchone()[0]
+        bonus_scans_this_month = db.execute(
+            "SELECT COALESCE(SUM(granted_scans), 0) FROM admin_scan_grants WHERE created_at>=?",
+            (month_start,),
+        ).fetchone()[0]
+        payment_rows = db.execute(
+            "SELECT status, COUNT(*) AS count FROM payment_transactions GROUP BY status"
+        ).fetchall()
+
+    return jsonify({
+        "success": True,
+        "overview": {
+            "active_accounts": active_accounts,
+            "active_subscriptions": active_subscriptions,
+            "scans_this_month": scans_this_month,
+            "bonus_scans_granted_this_month": bonus_scans_this_month,
+            "payment_transactions": {
+                row["status"]: row["count"] for row in payment_rows
+            },
+            "period_start": month_start,
+            "period_timezone": "UTC",
+        },
+    }), 200
