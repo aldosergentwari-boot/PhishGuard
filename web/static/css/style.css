@@ -940,3 +940,26 @@ html,body{max-width:100%;overflow-x:clip}
  .responsive-table td[data-label="ACTION"] .table-actions{flex-wrap:wrap}
  .responsive-table td[data-label="ACTION"] .table-actions>*{min-width:0}
 }
+
+/* Account profile editor */
+.account-profile{align-items:center}
+.account-avatar,.profile-photo-preview{display:grid;place-items:center;overflow:hidden;border-radius:50%;background:linear-gradient(145deg,#8b7cff,#39c5c5);color:#fff;font-weight:850}
+.account-avatar{width:58px;height:58px;flex:0 0 58px}
+.account-avatar img,.profile-photo-preview img{width:100%;height:100%;object-fit:cover}
+.profile-handle{margin:5px 0 0;color:var(--cyan);font-size:12px;font-weight:700}
+.profile-editor{margin:22px 0;padding:20px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(145deg,rgba(20,31,49,.9),rgba(12,20,34,.9))}
+.profile-editor-heading h3{margin:5px 0;font-size:18px}
+.profile-editor-heading p{margin:5px 0 17px;color:var(--muted);font-size:12px}
+.profile-form{display:grid;gap:9px;max-width:560px}
+.profile-form>label{color:var(--muted);font-size:11px;font-weight:750}
+.profile-form>input{width:100%;min-height:44px;padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:#0b1422;color:var(--text);outline:0}
+.profile-form>input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #4d91ff20}
+.profile-photo-control{display:flex;align-items:center;gap:16px;margin:0 0 10px}
+.profile-photo-preview{width:76px;height:76px;flex:0 0 76px;font-size:20px}
+.profile-photo-actions{display:grid;justify-items:start;gap:6px}
+.profile-photo-actions strong{font-size:12px}
+.profile-photo-actions small,.profile-input-hint{color:var(--muted);font-size:10px}
+.profile-upload-button,.profile-remove-photo{display:inline-flex;align-items:center;min-height:32px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:#19283d;color:var(--text);font-size:11px;font-weight:700;cursor:pointer}
+.profile-remove-photo{border-color:transparent;background:transparent;color:#ff9cab;padding-left:0}
+#saveUserProfile{width:max-content;min-width:145px;margin-top:5px}
+@media(max-width:600px){.profile-editor{padding:14px}.profile-photo-preview{width:64px;height:64px;flex-basis:64px}}
