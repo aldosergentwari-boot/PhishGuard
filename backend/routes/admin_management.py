@@ -5,6 +5,7 @@ All mutations require an authenticated owner session and the session CSRF token.
 import calendar
 import secrets
 import os
+import re
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request, session
@@ -438,3 +439,32 @@ def list_user_notifications():
         _ensure_tables(db)
         rows=db.execute("SELECT id,user_id,title,message,category,read_at,created_at FROM user_notifications WHERE user_id=? ORDER BY id DESC LIMIT 100",(user_id,)).fetchall()
     return jsonify({"success":True,"notifications":[dict(r) for r in rows]})
+
+
+@admin_management_bp.get("/api/admin/management/monetization")
+def management_monetization():
+    """Expose safe provider readiness details to the authenticated owner only."""
+    denied = _guard()
+    if denied:
+        return denied
+    from backend.services.flutterwave_service import checkout_availability
+
+    publisher_id = os.getenv("ADSENSE_CLIENT_ID", "").strip()
+    slot_id = os.getenv("ADSENSE_SLOT_ID", "").strip()
+    approved = os.getenv("ADSENSE_APPROVED", "").strip().lower() in ("1", "true", "yes", "on")
+    requested = os.getenv("ADS_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
+    publisher_valid = bool(re.fullmatch(r"ca-pub-[0-9]{10,30}", publisher_id))
+    slot_valid = bool(re.fullmatch(r"[0-9]{5,30}", slot_id))
+    ads_ready = approved and requested and publisher_valid and slot_valid
+    return jsonify({
+        "success": True,
+        "ads": {
+            "approved": approved,
+            "enabled_requested": requested,
+            "publisher_id_configured": publisher_valid,
+            "slot_configured": slot_valid,
+            "ready": ads_ready,
+        },
+        "checkout": checkout_availability(),
+        "billing_model": "one_time_manual_renewal",
+    }), 200
