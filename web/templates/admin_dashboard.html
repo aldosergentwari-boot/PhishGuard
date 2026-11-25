@@ -35,7 +35,7 @@
   <main class="main-area">
     <header class="topbar">
       <div class="heading-wrap"><div class="eyebrow">PHISHGUARD <span>/</span> ADMINISTRATION</div><h1 id="pageTitle">Website overview</h1><p>Monitor your platform, customers and operations.</p></div>
-      <div class="top-actions"><div class="owner-chip"><span class="owner-avatar" id="ownerAvatar">A</span><span id="ownerEmail">Owner</span></div><button class="btn refresh-btn" id="refresh"><span>↻</span> Refresh</button><button class="btn signout-btn" id="logout">Sign out <span>↗</span></button></div>
+      <div class="top-actions"><div class="owner-chip"><span class="owner-avatar" id="ownerAvatar">A</span><span class="owner-chip-copy"><strong id="ownerName">Admin</strong><small id="ownerEmail">Owner</small></span></div><button class="btn refresh-btn" id="refresh"><span>↻</span> Refresh</button><button class="btn signout-btn" id="logout">Sign out <span>↗</span></button></div>
     </header>
     <div class="content-area">
 <section class="section" id="section-profile">
@@ -82,6 +82,83 @@ function show(name){const target=$("section-"+name);if(!target)return;document.q
 async function loadOverview(){const d=await api("/api/admin/overview");const o=d.overview;$("activeAccounts").textContent=o.active_accounts.toLocaleString();$("activeSubs").textContent=o.active_subscriptions.toLocaleString();$("scansMonth").textContent=o.scans_this_month.toLocaleString();const statuses=o.payment_transactions||{};$("paymentCount").textContent=Object.values(statuses).reduce((a,b)=>a+b,0).toLocaleString();$("paymentBreakdown").textContent=Object.entries(statuses).map(([k,v])=>k+": "+v).join(" · ")||"No payments yet";$("ownerEmail").textContent=document.body.dataset.owner||"Owner";const u=await api("/api/admin/users?limit=6");$("recentUsers").innerHTML=u.users.length?u.users.map(x=>'<tr><td>'+safe(x.email)+'</td><td>'+safe(x.plan_id||"—")+'</td><td>'+status(x.is_active?"Active":"Disabled")+'</td><td>'+date(x.created_at)+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">No accounts registered yet.</td></tr>';}
 async function loadUsers(){const d=await api("/api/admin/users?limit=100");$("usersTable").innerHTML=d.users.length?d.users.map(x=>'<tr><td>'+safe(x.email)+'</td><td>'+safe(x.plan_id||"—")+'</td><td>'+status(x.is_active?"Active":"Disabled")+'</td><td>'+status(x.email_verified?"Verified":"Unverified")+'</td><td>'+date(x.created_at)+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">No users found.</td></tr>';}
 async function loadPayments(){const d=await api("/api/admin/payments?limit=100");$("paymentsTable").innerHTML=d.payments.length?d.payments.map(x=>'<tr><td>'+safe(x.email)+'</td><td>'+safe(x.plan_id)+'</td><td>'+safe(x.amount)+" "+safe(x.currency)+'</td><td>'+safe(x.payment_method)+'</td><td>'+status(x.status)+'</td><td>'+date(x.created_at)+'</td></tr>').join(""):'<tr><td colspan="6" class="empty">No payment transactions recorded.</td></tr>';}
+
+let adminProfileImageDraft = null;
+let adminProfileImageChanged = false;
+function renderAdminProfile(profile) {
+  $("adminFullName").value = profile.full_name || "";
+  $("adminProfileEmail").textContent = profile.email || document.body.dataset.owner || "—";
+  const image = profile.profile_image || "";
+  const preview = $("adminProfilePreview");
+  const avatar = $("ownerAvatar");
+  for (const holder of [preview, avatar]) {
+    if (!holder) continue;
+    holder.replaceChildren();
+    if (image) {
+      const img = document.createElement("img");
+      img.src = image;
+      img.alt = "Admin profile picture";
+      holder.appendChild(img);
+    } else {
+      const fallback = document.createElement(holder === avatar ? "span" : "span");
+      fallback.textContent = (profile.full_name || profile.email || "A").trim().slice(0, 1).toUpperCase();
+      holder.appendChild(fallback);
+    }
+  }
+  $("ownerName").textContent = profile.full_name || "Admin";
+  if (!adminProfileImageChanged) adminProfileImageDraft = image || null;
+}
+async function loadAdminProfile() {
+  const data = await api("/api/admin/profile");
+  renderAdminProfile(data.profile);
+}
+$("adminProfileImage").addEventListener("change", event => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!["image/jpeg","image/png","image/webp"].includes(file.type) || file.size > 2*1024*1024) {
+    $("adminProfileFeedback").textContent = "Choose a JPG, PNG or WEBP image up to 2 MB.";
+    event.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    adminProfileImageDraft = String(reader.result || "");
+    adminProfileImageChanged = true;
+    $("adminProfilePreview").innerHTML = '<img src="' + adminProfileImageDraft + '" alt="Profile picture preview">';
+  };
+  reader.readAsDataURL(file);
+});
+$("adminRemovePhoto").addEventListener("click", () => {
+  adminProfileImageDraft = null;
+  adminProfileImageChanged = true;
+  $("adminProfileImage").value = "";
+  $("adminProfilePreview").innerHTML = "<span>A</span>";
+});
+$("adminProfileForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const button = $("saveAdminProfile");
+  const feedback = $("adminProfileFeedback");
+  button.disabled = true;
+  feedback.textContent = "Saving profile…";
+  try {
+    const data = await api("/api/admin/profile", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        full_name: $("adminFullName").value.trim(),
+        profile_image: adminProfileImageChanged ? adminProfileImageDraft : undefined
+      })
+    });
+    adminProfileImageChanged = false;
+    renderAdminProfile(data.profile);
+    feedback.textContent = data.message || "Profile saved.";
+  } catch (error) {
+    feedback.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+
 const mobileMenuToggle=$("mobileMenuToggle"),adminSidebar=document.querySelector(".sidebar");
 function setMobileMenu(open){adminSidebar.classList.toggle("menu-open",open);mobileMenuToggle.setAttribute("aria-expanded",String(open));mobileMenuToggle.setAttribute("aria-label",open?"Close main menu":"Open main menu");}
 mobileMenuToggle.addEventListener("click",()=>setMobileMenu(!adminSidebar.classList.contains("menu-open")));
@@ -89,6 +166,6 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")setMobileMenu(false)
 document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>{show(b.dataset.section);if(window.matchMedia("(max-width: 760px)").matches)setMobileMenu(false);}));document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.go)));$("refresh").addEventListener("click",()=>loadOverview().catch(e=>alert(e.message)));$("reloadUsers").addEventListener("click",()=>loadUsers().catch(e=>alert(e.message)));$("reloadPayments").addEventListener("click",()=>loadPayments().catch(e=>alert(e.message)));
 $("creditForm").addEventListener("submit",async e=>{e.preventDefault();const b=$("grantButton"),f=$("creditFeedback");b.disabled=true;f.textContent="";try{const d=await api("/api/admin/scan-credits",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("creditEmail").value,scans:Number($("creditScans").value),reason:$("creditReason").value})});f.textContent="Granted "+d.granted_scans+" scans to "+d.user.email+". Expires "+date(d.expires_at)+"."; $("creditForm").reset();$("creditScans").value=25;await loadOverview();}catch(err){f.textContent=err.message;}finally{b.disabled=false;}});
 $("logout").addEventListener("click",async()=>{try{await api("/api/admin/logout",{method:"POST"});}finally{location.assign("/admin/login");}});
-(async()=>{try{await csrf();await Promise.allSettled([loadOverview(),loadUsers(),loadPayments()]);}catch(e){if(!e.message.includes("Owner session expired"))$("recentUsers").innerHTML='<tr><td colspan="4" class="empty">'+safe(e.message)+'</td></tr>';}})();
+(async()=>{try{await csrf();await Promise.allSettled([loadOverview(),loadUsers(),loadPayments(),loadAdminProfile()]);}catch(e){if(!e.message.includes("Owner session expired"))$("recentUsers").innerHTML='<tr><td colspan="4" class="empty">'+safe(e.message)+'</td></tr>';}})();
 </script><script src="/static/js/admin_dashboard_extras.js?v=3"></script>
 </body></html>
