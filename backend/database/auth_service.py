@@ -210,7 +210,7 @@ class AuthService:
         return dict(row) if row else None
 
     def create_email_token(self, user_id, purpose, token_hash, expires_at):
-        if purpose not in ("verify_email", "password_reset"):
+        if purpose not in ("verify_email", "password_reset", "admin_password_reset"):
             raise ValueError("Unsupported token purpose.")
         now = datetime.now(timezone.utc).isoformat()
         with self.connection() as db:
@@ -246,13 +246,14 @@ class AuthService:
             )
             return True
 
-    def reset_password_with_token(self, token_hash, new_password_hash):
+    def reset_password_with_token(self, token_hash, new_password_hash, purpose="password_reset", expected_user_id=None):
         now = datetime.now(timezone.utc).isoformat()
         with self.connection() as db:
             row = db.execute(
                 """SELECT id,user_id FROM account_email_tokens
-                   WHERE purpose='password_reset' AND token_hash=? AND used_at IS NULL AND expires_at>?""",
-                (token_hash, now),
+                   WHERE purpose=? AND token_hash=? AND used_at IS NULL AND expires_at>?
+                     AND (? IS NULL OR user_id=?)""",
+                (purpose, token_hash, now, expected_user_id, expected_user_id),
             ).fetchone()
             if row is None:
                 return False
