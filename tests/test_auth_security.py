@@ -85,6 +85,15 @@ def test_history_clear_with_valid_csrf_deletes_only_current_users_records(client
     assert usage["scans_used"] == 1
     assert usage["scans_remaining"] == 49
 
+    # The billing endpoint feeding the dashboard meter must report the same
+    # persistent usage even after the visible history has been cleared.
+    meter_response = client.get("/api/billing/me")
+    assert meter_response.status_code == 200
+    meter_usage = meter_response.get_json()["usage"]
+    assert meter_usage["scans_used"] == 1
+    assert meter_usage["scans_limit"] == 50
+    assert meter_usage["scans_remaining"] == 49
+
 
 def test_history_delete_accepts_valid_csrf(client):
     register(client)
