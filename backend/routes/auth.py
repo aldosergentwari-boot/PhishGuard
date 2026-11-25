@@ -93,9 +93,16 @@ def _claim_anonymous_history(user_id, anonymous_id):
     from backend.database.history_service import get_history_service
     service = get_history_service()
     with service.get_connection() as db:
+        account_owner = f"account:{user_id}"
         db.execute(
             "UPDATE scan_history SET owner_id=? WHERE owner_id=?",
-            (f"account:{user_id}", anonymous_id),
+            (account_owner, anonymous_id),
+        )
+        # Move quota records with claimed guest history; never drop usage
+        # when a guest converts their browser history into an account.
+        db.execute(
+            "UPDATE scan_usage SET owner_id=? WHERE owner_id=?",
+            (account_owner, anonymous_id),
         )
 
 
