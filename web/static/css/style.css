@@ -925,3 +925,18 @@ table { min-width: 560px; }
   .profile-avatar, .text-button, .account-tab { touch-action: manipulation; }
   input, select, textarea { font-size: 16px; }
 }
+
+/* Keep every customer workspace control inside the screen: no sideways rails */
+html,body{max-width:100%;overflow-x:clip}
+@media(max-width:800px){
+ .account-tabs{display:flex;flex-wrap:wrap;overflow:visible;gap:6px}
+ .account-tab{flex:1 1 auto;min-width:0;white-space:normal;text-align:center}
+ .history-toolbar{display:flex;flex-wrap:wrap;gap:8px}
+ .history-toolbar>*{min-width:0;max-width:100%}
+ .table-wrap{max-width:100%;overflow:visible}
+ .responsive-table,.responsive-table tbody{width:100%;min-width:0}
+ .responsive-table tr,.responsive-table td{min-width:0;max-width:100%}
+ .responsive-table td{overflow-wrap:anywhere;word-break:break-word}
+ .responsive-table td[data-label="ACTION"] .table-actions{flex-wrap:wrap}
+ .responsive-table td[data-label="ACTION"] .table-actions>*{min-width:0}
+}
