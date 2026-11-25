@@ -4,6 +4,7 @@ All mutations require an authenticated owner session and the session CSRF token.
 """
 import calendar
 import secrets
+import os
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request, session
@@ -57,6 +58,10 @@ def _audit(db, action, target_type, target_id="", details=""):
     )
 
 
+def _owner_email():
+    return os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower()
+
+
 def _json():
     value = request.get_json(silent=True)
     return value if isinstance(value, dict) else {}
@@ -85,7 +90,7 @@ def management_users():
         return jsonify({"success": False, "error": "Invalid account filter."}), 400
     if plan not in ("", "guest", "free", "pro", "business"):
         return jsonify({"success": False, "error": "Invalid plan filter."}), 400
-    clauses, args = [], []
+    clauses, args = ["LOWER(u.email) <> ?"], [_owner_email()]
     if search:
         clauses.append("u.email LIKE ?")
         args.append(f"%{search}%")
@@ -128,6 +133,8 @@ def set_user_status(user_id):
         _ensure_tables(db)
         user = db.execute("SELECT id,email,is_active FROM users WHERE id=?", (user_id,)).fetchone()
         if not user: return jsonify({"success": False, "error": "User not found."}), 404
+        if user["email"].strip().lower() == _owner_email():
+            return jsonify({"success": False, "error": "Owner account is not a customer account."}), 400
         db.execute("UPDATE users SET is_active=?,session_version=session_version+1 WHERE id=?", (int(active), user_id))
         _audit(db, "user.activated" if active else "user.suspended", "user", user_id, reason.strip())
         db.execute(
@@ -159,8 +166,10 @@ def set_user_plan(user_id):
     stamp = now.isoformat()
     with auth_service.connection() as db:
         _ensure_tables(db)
-        user = db.execute("SELECT id FROM users WHERE id=? AND is_active=1", (user_id,)).fetchone()
+        user = db.execute("SELECT id,email FROM users WHERE id=? AND is_active=1", (user_id,)).fetchone()
         if not user: return jsonify({"success": False, "error": "Active user not found."}), 404
+        if user["email"].strip().lower() == _owner_email():
+            return jsonify({"success": False, "error": "Owner account is not a customer account."}), 400
         db.execute(
             """INSERT INTO subscriptions(user_id,plan_id,status,billing_interval_months,started_at,
                current_period_end,provider,provider_subscription_id,created_at,updated_at)
@@ -185,7 +194,7 @@ def management_payments():
     q = request.args.get("q", "").strip()[:254]
     if status and status not in ("pending", "successful", "failed", "cancelled"):
         return jsonify({"success": False, "error": "Invalid payment status."}), 400
-    clauses, args = [], []
+    clauses, args = ["LOWER(u.email) <> ?"], [_owner_email()]
     if status: clauses.append("p.status=?"); args.append(status)
     if q: clauses.append("u.email LIKE ?"); args.append(f"%{q}%")
     where = " WHERE " + " AND ".join(clauses) if clauses else ""
@@ -222,8 +231,9 @@ def management_analytics():
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1,hour=0,minute=0,second=0,microsecond=0).isoformat()
     with auth_service.connection() as db:
-        users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        active = db.execute("SELECT COUNT(*) FROM users WHERE is_active=1").fetchone()[0]
+        owner = _owner_email()
+        users = db.execute("SELECT COUNT(*) FROM users WHERE LOWER(email)<>?", (owner,)).fetchone()[0]
+        active = db.execute("SELECT COUNT(*) FROM users WHERE is_active=1 AND LOWER(email)<>?", (owner,)).fetchone()[0]
         paid = db.execute("""SELECT COUNT(*) FROM subscriptions s WHERE s.status='active' AND s.plan_id IN ('pro','business')
             AND s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=s.user_id)""").fetchone()[0]
         revenue = db.execute("SELECT COALESCE(SUM(amount),0) FROM payment_transactions WHERE status='successful'").fetchone()[0]
