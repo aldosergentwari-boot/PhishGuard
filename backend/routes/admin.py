@@ -44,7 +44,7 @@ def admin_login_page():
 def admin_dashboard_page():
     if not _authorized_admin():
         return redirect("/admin/login")
-    return render_template("admin_dashboard.html")
+    return render_template("admin_dashboard.html", owner_email=session.get("phishguard_admin_email", ""))
 
 
 @admin_bp.post("/api/admin/login")
