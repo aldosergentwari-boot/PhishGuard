@@ -567,6 +567,14 @@
                     </div>
                 </div>
 
+                <div class="admin-overview-grid" id="adminOverview" hidden aria-live="polite">
+                    <article class="panel admin-metric"><span>ACTIVE ACCOUNTS</span><strong id="adminActiveAccounts">—</strong></article>
+                    <article class="panel admin-metric"><span>ACTIVE SUBSCRIPTIONS</span><strong id="adminActiveSubscriptions">—</strong></article>
+                    <article class="panel admin-metric"><span>SCANS THIS MONTH</span><strong id="adminScansThisMonth">—</strong></article>
+                    <article class="panel admin-metric"><span>BONUS SCANS GRANTED</span><strong id="adminBonusScans">—</strong></article>
+                    <article class="panel admin-metric"><span>PAYMENT TRANSACTIONS</span><strong id="adminPaymentsTotal">—</strong><small id="adminPaymentBreakdown">No payment data loaded</small></article>
+                </div>
+
                 <div class="admin-layout">
                     <form class="panel admin-form" id="adminCreditForm" autocomplete="off">
                         <div class="panel-heading">
@@ -574,6 +582,7 @@
                         </div>
                         <label for="adminToken">ADMIN TOKEN</label>
                         <input id="adminToken" name="admin_token" type="password" autocomplete="off" spellcheck="false" required placeholder="Enter the owner token">
+                        <button class="secondary-button admin-overview-button" id="adminLoadOverview" type="button">Load owner overview ↻</button>
                         <label for="adminUserEmail">REGISTERED USER EMAIL</label>
                         <input id="adminUserEmail" name="email" type="email" maxlength="254" autocomplete="off" required placeholder="user@example.com">
                         <div class="admin-form-row">
