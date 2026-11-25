@@ -156,6 +156,12 @@ def activate_subscription(user_id, plan_id, provider, provider_subscription_id, 
     end = start.replace(year=year, month=month, day=day)
     now = datetime.now(timezone.utc).isoformat()
     with auth_service.connection() as db:
+        # Keep a single active subscription per account when a new verified
+        # purchase replaces an older paid period.
+        db.execute(
+            "UPDATE subscriptions SET status='superseded',updated_at=? WHERE user_id=? AND status='active'",
+            (now, user_id),
+        )
         db.execute("""INSERT INTO subscriptions(user_id,plan_id,status,billing_interval_months,
             started_at,current_period_end,provider,provider_subscription_id,created_at,updated_at)
             VALUES (?,?, 'active', ?,?,?,?,?,?,?)
