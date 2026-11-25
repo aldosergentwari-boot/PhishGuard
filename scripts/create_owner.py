@@ -7,9 +7,9 @@ This command does not expose an HTTP owner-registration endpoint.
 """
 import getpass
 import os
-import re
 
 from backend.database.auth_service import auth_service
+from werkzeug.security import generate_password_hash
 
 
 def main():
@@ -30,24 +30,27 @@ def main():
 
     auth_service.initialize()
     with auth_service.connection() as db:
-        existing = db.execute("SELECT id,email FROM users WHERE email=? COLLATE NOCASE", (email,)).fetchone()
-        if existing:
+        existing = db.execute("SELECT id FROM users WHERE email=? COLLATE NOCASE", (email,)).fetchone()
+
+    if existing:
+        with auth_service.connection() as db:
             db.execute(
-                "UPDATE users SET email_verified=1,email_verified_at=COALESCE(email_verified_at,CURRENT_TIMESTAMP),is_active=1,session_version=session_version+1 WHERE id=?",
-                (existing["id"],),
+                """UPDATE users SET password_hash=?,email_verified=1,
+                   email_verified_at=COALESCE(email_verified_at,CURRENT_TIMESTAMP),
+                   is_active=1,session_version=session_version+1 WHERE id=?""",
+                (generate_password_hash(password, method="scrypt"), existing["id"]),
             )
-            from werkzeug.security import generate_password_hash
-            db.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(password, method="scrypt"), existing["id"]))
-            user_id = existing["id"]
-            action = "Existing account verified and owner password reset."
-        else:
-            user = auth_service.create_user(email, password)
-            user_id = user["id"]
+        user_id = existing["id"]
+        action = "Existing account verified and owner password reset."
+    else:
+        user = auth_service.create_user(email, password)
+        with auth_service.connection() as db:
             db.execute(
                 "UPDATE users SET email_verified=1,email_verified_at=CURRENT_TIMESTAMP WHERE id=?",
-                (user_id,),
+                (user["id"],),
             )
-            action = "Owner account created and email marked verified."
+        user_id = user["id"]
+        action = "Owner account created and email marked verified."
 
     print(action)
     print(f"Owner account ID: {user_id}")
