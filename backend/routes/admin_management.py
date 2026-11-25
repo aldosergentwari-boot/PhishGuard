@@ -242,8 +242,8 @@ def management_analytics():
             WHERE LOWER(u.email)<>? AND p.status='successful'""", (owner,)).fetchone()[0]
         monthly = db.execute("""SELECT COALESCE(SUM(p.amount),0) FROM payment_transactions p JOIN users u ON u.id=p.user_id
             WHERE LOWER(u.email)<>? AND p.status='successful' AND p.created_at>=?""", (owner, month_start)).fetchone()[0]
-        scans = db.execute("""SELECT COUNT(*) FROM scan_usage su JOIN users u ON u.id=su.user_id
-            WHERE LOWER(u.email)<>? AND su.scanned_at>=?""", (owner, month_start)).fetchone()[0]
+        # Scan usage is an operational metric; scan_usage stores an identity key, not users.user_id.
+        scans = db.execute("SELECT COUNT(*) FROM scan_usage WHERE scanned_at>=?", (month_start,)).fetchone()[0]
         payment_counts = db.execute("""SELECT p.status,COUNT(*) AS n FROM payment_transactions p JOIN users u ON u.id=p.user_id
             WHERE LOWER(u.email)<>? GROUP BY p.status""", (owner,)).fetchall()
     return jsonify({"success": True, "analytics": {
