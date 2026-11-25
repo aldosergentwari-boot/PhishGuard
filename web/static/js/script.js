@@ -1973,9 +1973,36 @@ async function loadAccountNotifications() {
     }
 }
 
+const authFormsInProgress = new WeakSet();
+
+function beginAuthForm(event, busyLabel) {
+    const form = event.currentTarget;
+    if (authFormsInProgress.has(form)) return null;
+    authFormsInProgress.add(form);
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(button => {
+        button.dataset.idleLabel = button.textContent;
+        button.disabled = true;
+        if (button.tagName === 'BUTTON') button.textContent = busyLabel;
+    });
+    return form;
+}
+
+function endAuthForm(form) {
+    if (!form) return;
+    authFormsInProgress.delete(form);
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(button => {
+        button.disabled = false;
+        if (button.dataset.idleLabel !== undefined) {
+            button.textContent = button.dataset.idleLabel;
+            delete button.dataset.idleLabel;
+        }
+    });
+}
+
 async function submitAccountForm(event, mode) {
     event.preventDefault();
-    const form = event.currentTarget;
+    const form = beginAuthForm(event, mode === 'register' ? 'Creating account…' : 'Signing in…');
+    if (!form) return;
     const email = form.elements.email.value.trim();
     const password = form.elements.password.value;
     const feedback = $('accountFeedback');
@@ -1997,11 +2024,15 @@ async function submitAccountForm(event, mode) {
     } catch (error) {
         feedback.textContent = error.message;
         showToast(error.message, 'error');
+    } finally {
+        endAuthForm(form);
     }
 }
 
 async function requestPasswordReset(event) {
     event.preventDefault();
+    const form = beginAuthForm(event, 'Sending…');
+    if (!form) return;
     const email = $('resetRequestEmail').value.trim();
     const feedback = $('accountFeedback');
     feedback.textContent = 'If the account exists, reset instructions will be sent.';
@@ -2014,18 +2045,23 @@ async function requestPasswordReset(event) {
         $('passwordResetRequestForm').reset();
     } catch (error) {
         feedback.textContent = error.message;
+    } finally {
+        endAuthForm(form);
     }
 }
 
 async function confirmPasswordReset(event) {
     event.preventDefault();
+    const form = beginAuthForm(event, 'Updating password…');
+    if (!form) return;
     const token = $('resetToken').value;
     const password = $('newPassword').value;
     const feedback = $('accountFeedback');
     feedback.textContent = 'Updating your password…';
     try {
+        const headers = await csrfHeader();
         const result = await apiRequest('/api/auth/password-reset/confirm', {
-            method: 'POST', body: JSON.stringify({ token, password })
+            method: 'POST', headers, body: JSON.stringify({ token, password })
         });
         $('passwordResetConfirmForm').reset();
         setAuthMode('login');
@@ -2033,6 +2069,8 @@ async function confirmPasswordReset(event) {
         window.history.replaceState({}, '', window.location.pathname + window.location.search);
     } catch (error) {
         feedback.textContent = error.message;
+    } finally {
+        endAuthForm(form);
     }
 }
 
