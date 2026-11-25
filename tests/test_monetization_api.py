@@ -109,3 +109,33 @@ def test_ads_never_enable_without_publisher_approval(client, monkeypatch):
     response = client.get("/api/ads/config")
     assert response.status_code == 200
     assert response.get_json()["enabled"] is False
+
+
+
+def test_payment_history_requires_sign_in(client):
+    response = client.get("/api/billing/payments")
+    assert response.status_code == 401
+
+
+def test_payment_history_returns_only_the_signed_in_users_records(client):
+    token = _csrf(client)
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "payments@example.com", "password": "correct horse battery"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert registered.status_code == 201
+    from backend.database.auth_service import auth_service
+    with auth_service.connection() as db:
+        db.execute(
+            """INSERT INTO payment_transactions
+            (user_id,plan_id,tx_ref,amount,currency,payment_method,status,created_at,updated_at)
+            VALUES (1,'pro','private-payment-ref',4.99,'USD','card','successful','2026-11-25T12:00:00+00:00','2026-11-25T12:00:00+00:00')"""
+        )
+    response = client.get("/api/billing/payments")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert len(payload["payments"]) == 1
+    assert payload["payments"][0]["plan_id"] == "pro"
+    assert payload["payments"][0]["status"] == "successful"
+    assert "tx_ref" not in payload["payments"][0]
