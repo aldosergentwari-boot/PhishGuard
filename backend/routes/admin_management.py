@@ -217,8 +217,9 @@ def payment_detail(payment_id):
     if denied: return denied
     with auth_service.connection() as db:
         row = db.execute(
-            """SELECT p.*,u.email FROM payment_transactions p JOIN users u ON u.id=p.user_id WHERE p.id=?""",
-            (payment_id,),
+            """SELECT p.*,u.email FROM payment_transactions p JOIN users u ON u.id=p.user_id
+               WHERE p.id=? AND LOWER(u.email)<>?""",
+            (payment_id, _owner_email()),
         ).fetchone()
     if not row: return jsonify({"success": False, "error": "Payment not found."}), 404
     return jsonify({"success": True, "payment": dict(row)})
@@ -234,12 +235,17 @@ def management_analytics():
         owner = _owner_email()
         users = db.execute("SELECT COUNT(*) FROM users WHERE LOWER(email)<>?", (owner,)).fetchone()[0]
         active = db.execute("SELECT COUNT(*) FROM users WHERE is_active=1 AND LOWER(email)<>?", (owner,)).fetchone()[0]
-        paid = db.execute("""SELECT COUNT(*) FROM subscriptions s WHERE s.status='active' AND s.plan_id IN ('pro','business')
-            AND s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=s.user_id)""").fetchone()[0]
-        revenue = db.execute("SELECT COALESCE(SUM(amount),0) FROM payment_transactions WHERE status='successful'").fetchone()[0]
-        monthly = db.execute("SELECT COALESCE(SUM(amount),0) FROM payment_transactions WHERE status='successful' AND created_at>=?", (month_start,)).fetchone()[0]
-        scans = db.execute("SELECT COUNT(*) FROM scan_usage WHERE scanned_at>=?", (month_start,)).fetchone()[0]
-        payment_counts = db.execute("SELECT status,COUNT(*) AS n FROM payment_transactions GROUP BY status").fetchall()
+        paid = db.execute("""SELECT COUNT(*) FROM subscriptions s JOIN users u ON u.id=s.user_id
+            WHERE LOWER(u.email)<>? AND s.status='active' AND s.plan_id IN ('pro','business')
+            AND s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=s.user_id)""", (owner,)).fetchone()[0]
+        revenue = db.execute("""SELECT COALESCE(SUM(p.amount),0) FROM payment_transactions p JOIN users u ON u.id=p.user_id
+            WHERE LOWER(u.email)<>? AND p.status='successful'""", (owner,)).fetchone()[0]
+        monthly = db.execute("""SELECT COALESCE(SUM(p.amount),0) FROM payment_transactions p JOIN users u ON u.id=p.user_id
+            WHERE LOWER(u.email)<>? AND p.status='successful' AND p.created_at>=?""", (owner, month_start)).fetchone()[0]
+        scans = db.execute("""SELECT COUNT(*) FROM scan_usage su JOIN users u ON u.id=su.user_id
+            WHERE LOWER(u.email)<>? AND su.scanned_at>=?""", (owner, month_start)).fetchone()[0]
+        payment_counts = db.execute("""SELECT p.status,COUNT(*) AS n FROM payment_transactions p JOIN users u ON u.id=p.user_id
+            WHERE LOWER(u.email)<>? GROUP BY p.status""", (owner,)).fetchall()
     return jsonify({"success": True, "analytics": {
         "total_users": users, "active_users": active, "paid_subscribers": paid,
         "conversion_rate": round((paid / users * 100), 2) if users else 0,
@@ -277,9 +283,9 @@ def management_subscriptions():
         rows = db.execute(
             """SELECT s.id,s.user_id,u.email,s.plan_id,s.status,s.started_at,s.current_period_end,
                       s.provider,s.created_at FROM subscriptions s JOIN users u ON u.id=s.user_id
-               ORDER BY s.created_at DESC LIMIT ? OFFSET ?""", (limit,offset)
+               WHERE LOWER(u.email)<>? ORDER BY s.created_at DESC LIMIT ? OFFSET ?""", (_owner_email(),limit,offset)
         ).fetchall()
-        total = db.execute("SELECT COUNT(*) FROM subscriptions").fetchone()[0]
+        total = db.execute("SELECT COUNT(*) FROM subscriptions s JOIN users u ON u.id=s.user_id WHERE LOWER(u.email)<>?", (_owner_email(),)).fetchone()[0]
     return jsonify({"success": True, "subscriptions": [dict(r) for r in rows], "total": total, "limit": limit, "offset": offset})
 
 
@@ -294,8 +300,11 @@ def cancel_subscription(subscription_id):
     now=datetime.now(timezone.utc).isoformat()
     with auth_service.connection() as db:
         _ensure_tables(db)
-        row=db.execute("SELECT id,user_id,plan_id FROM subscriptions WHERE id=?",(subscription_id,)).fetchone()
+        row=db.execute("""SELECT s.id,s.user_id,s.plan_id,u.email FROM subscriptions s
+            JOIN users u ON u.id=s.user_id WHERE s.id=?""",(subscription_id,)).fetchone()
         if not row: return jsonify({"success":False,"error":"Subscription not found."}),404
+        if row["email"].strip().lower() == _owner_email():
+            return jsonify({"success":False,"error":"Owner is not a customer subscription."}),400
         db.execute("UPDATE subscriptions SET status='cancelled',updated_at=? WHERE id=?",(now,subscription_id))
         _audit(db,"subscription.cancelled","subscription",subscription_id,reason.strip())
         db.execute("INSERT INTO user_notifications(user_id,title,message,category,created_at) VALUES (?,?,?,?,?)",
@@ -319,8 +328,10 @@ def send_user_notification():
     now=datetime.now(timezone.utc).isoformat()
     with auth_service.connection() as db:
         _ensure_tables(db)
-        if not db.execute("SELECT 1 FROM users WHERE id=?",(user_id,)).fetchone():
-            return jsonify({"success":False,"error":"User not found."}),404
+        recipient=db.execute("SELECT email FROM users WHERE id=?",(user_id,)).fetchone()
+        if not recipient: return jsonify({"success":False,"error":"User not found."}),404
+        if recipient["email"].strip().lower() == _owner_email():
+            return jsonify({"success":False,"error":"Customer notifications cannot target the owner."}),400
         db.execute("INSERT INTO user_notifications(user_id,title,message,category,created_at) VALUES (?,?,?,?,?)",
                    (user_id,title.strip(),message.strip(),category,now))
         _audit(db,"notification.created","user",user_id,title.strip())
