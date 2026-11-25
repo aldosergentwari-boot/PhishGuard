@@ -216,24 +216,20 @@ Anonymous web visitors receive a separate Guest allowance of 10 scans per UTC ca
 
 The web scanning endpoints also enforce server-side fixed-window rate limits: 30 valid scans per minute per signed-in account or anonymous browser identity, and 300 per minute per client IP. The limits are stored in SQLite and updated atomically so they are shared across application workers using the same persistent database. On Render, the app trusts the single edge proxy for the forwarded client IP and HTTPS scheme; do not expose the Gunicorn service directly to untrusted proxy headers. A blocked request receives HTTP 429 with a `Retry-After: 60` header. These request-rate limits are separate from the monthly plan quota.
 
-### Owner-granted bonus scans
+### Owner management dashboard
 
-The site owner can grant extra scans to a registered account through the protected `POST /api/admin/scan-credits` endpoint. Configure `PHISHGUARD_ADMIN_TOKEN` as a private environment secret with at least 32 random characters; never put it in frontend code, source control, or a browser. Send it only in the `X-Admin-Token` header. The endpoint requires the account email, a grant from 1 to 10,000 scans, and an audit reason. Grants add to that account's monthly scan quota and expire at the end of the current UTC month. The account's short-window identity rate-limit counter is reset when a grant is issued; the shared IP safety limit remains active.
+The private owner workspace is available at `/admin`. Configure `PHISHGUARD_OWNER_EMAIL` in the server environment with the email address of an existing PhishGuard account. The owner account must have a verified email address and must sign in with its normal account password at `/admin/login`. The public website does not expose the owner dashboard.
 
-PowerShell example (replace the placeholders and keep the token private):
+The management workspace provides account and subscription metrics, user and payment lists, and owner-granted bonus scan credits. Owner APIs require the authenticated owner session and CSRF protection; the session is tied to the configured owner email and account session version. Do not create a public owner-registration flow or expose owner credentials in frontend code.
 
-```powershell
-$adminToken = $env:PHISHGUARD_ADMIN_TOKEN
-$body = @{
-    email = "customer@example.com"
-    scans = 100
-    reason = "Support-approved extra scans"
-} | ConvertTo-Json
+To set up the owner:
+1. Register the intended owner account through the normal account registration flow.
+2. Verify its email address.
+3. Set `PHISHGUARD_OWNER_EMAIL` to that exact email in local `.env` or the production host's environment variables.
+4. Restart the application and sign in at `/admin/login`.
 
-Invoke-RestMethod -Method Post -Uri "https://YOUR-DOMAIN/api/admin/scan-credits" -Headers @{ "X-Admin-Token" = $adminToken } -ContentType "application/json" -Body $body
-```
+Bonus scan grants require an active registered customer, 1–10,000 scans, and an audit reason. Grants expire at the end of the current UTC month. The shared IP safety limit remains active.
 
-The admin token must be set in the server environment before this endpoint can authorize requests. If it is absent or shorter than 32 characters, admin access remains disabled.
 
 
 ### Brevo account email security
