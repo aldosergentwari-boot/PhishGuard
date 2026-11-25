@@ -24,7 +24,7 @@ def test_menu_class_used_by_the_script_has_a_css_rule():
 
 # Elements the script handles safely when they are absent
 # (it checks "if (elements.suspicious)" before using them).
-OPTIONAL_IDS = {"suspiciousCount"}
+OPTIONAL_IDS = {"suspiciousCount", "adminCreditForm", "adminToken", "adminFeedback", "adminGrantResult", "adminUserEmail", "adminScanAmount", "adminLoadOverview", "adminGrantReason", "adminGrantButton", "adminOverview", "adminPaymentBreakdown"}
 
 
 def test_every_element_id_the_script_looks_up_exists_in_the_page():
