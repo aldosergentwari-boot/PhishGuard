@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash
 from backend.database.auth_service import auth_service
 from backend.services.user_identity import get_browser_identity
 from backend.services import email_service
+from backend.services.profile_utils import USERNAME_RE, validate_profile_image
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -51,6 +52,7 @@ def protect_auth_mutations():
         ("POST", "/api/auth/register"),
         ("POST", "/api/auth/login"),
         ("POST", "/api/auth/logout"),
+        ("POST", "/api/auth/profile"),
         ("POST", "/api/auth/verification/resend"),
         ("POST", "/api/auth/password-reset/request"),
         ("POST", "/api/auth/password-reset/confirm"),
@@ -183,9 +185,39 @@ def current_user():
             "id": user["id"], "email": user["email"],
             "created_at": user["created_at"],
             "email_verified": bool(user["email_verified"]),
+            "username": user.get("username"),
+            "profile_image": user.get("profile_image"),
         },
         "subscription": get_account_plan(user["id"]),
     }), 200
+
+
+@auth_bp.post("/api/auth/profile")
+def update_user_profile():
+    user_id = session.get("account_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "Sign in to update your profile."}), 401
+    data = _payload()
+    username = data.get("username")
+    if not isinstance(username, str) or not USERNAME_RE.fullmatch(username.strip()):
+        return jsonify({"success": False, "error": "Username must be 3–24 characters using letters, numbers, dots, underscores or hyphens."}), 400
+    username = username.strip()
+    try:
+        profile_image = validate_profile_image(data.get("profile_image"))
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    try:
+        with auth_service.connection() as db:
+            db.execute("UPDATE users SET username=?, profile_image=? WHERE id=? AND is_active=1",
+                       (username, profile_image, user_id))
+    except Exception as exc:
+        import sqlite3
+        if isinstance(exc, sqlite3.IntegrityError):
+            return jsonify({"success": False, "error": "That username is already taken. Choose another one."}), 409
+        raise
+    user = auth_service.get_user(user_id)
+    return jsonify({"success": True, "message": "Profile updated successfully.",
+                    "user": {"username": user.get("username"), "profile_image": user.get("profile_image")}}), 200
 
 
 @auth_bp.post("/api/auth/verification/resend")
