@@ -98,3 +98,12 @@ def send_password_reset_email(recipient, raw_token):
         "A password reset was requested for your PhishGuard account.",
         "Choose a new password", url, "30 minutes"
     )
+
+
+def send_admin_password_reset_email(recipient, raw_token):
+    cfg = _settings()
+    url = cfg["base_url"] + "/admin/reset-password#token=" + raw_token
+    return _security_email(recipient, "Reset your PhishGuard admin password",
+        "Reset your admin password",
+        "A password reset was requested for the PhishGuard owner account.",
+        "Reset admin password", url, "30 minutes")
