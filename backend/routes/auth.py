@@ -53,6 +53,7 @@ def protect_auth_mutations():
         ("POST", "/api/auth/logout"),
         ("POST", "/api/auth/verification/resend"),
         ("POST", "/api/auth/password-reset/request"),
+        ("POST", "/api/auth/password-reset/confirm"),
         ("POST", "/api/admin/password-reset/request"),
         ("POST", "/api/admin/password-reset/confirm"),
         ("POST", "/api/admin/login"),
@@ -87,7 +88,10 @@ def _rate_limited(operation, email):
 
 
 def _establish_session(user):
+    # Rotate the CSRF token whenever authentication state changes. Keeping a
+    # fresh token in the new session avoids a tokenless interval after login.
     session.clear()
+    session["csrf_token"] = secrets.token_urlsafe(32)
     session["account_id"] = user["id"]
     session["account_email"] = user["email"]
     session["session_version"] = user.get("session_version", 0)
@@ -253,6 +257,7 @@ def confirm_password_reset():
     if not changed:
         return jsonify({"success": False, "error": "This password reset link is invalid or has expired."}), 400
     session.clear()
+    session["csrf_token"] = secrets.token_urlsafe(32)
     return jsonify({
         "success": True,
         "message": "Password updated. Sign in using your new password.",
@@ -262,4 +267,7 @@ def confirm_password_reset():
 @auth_bp.post("/api/auth/logout")
 def logout():
     session.clear()
+    # Leave the anonymous browser session with a fresh token so the next
+    # sign-in or password-reset request starts from a valid CSRF state.
+    session["csrf_token"] = secrets.token_urlsafe(32)
     return jsonify({"success": True, "message": "Logged out."}), 200
