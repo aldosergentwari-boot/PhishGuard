@@ -45,14 +45,34 @@
     const d=await api("/api/admin/management/subscriptions?limit=100");
     $("advSubscriptions").innerHTML=d.subscriptions.length?d.subscriptions.map(s=>'<tr><td>'+esc(s.id)+'</td><td>'+esc(s.email)+'</td><td>'+esc(s.plan_id)+'</td><td>'+esc(s.status)+'</td><td>'+dt(s.started_at)+'</td><td>'+dt(s.current_period_end)+'</td><td>'+(s.status==="active"&&s.plan_id!=="free"?'<button class="btn" data-cancel-sub="'+s.id+'">Cancel</button>':"—")+'</td></tr>').join(""):'<tr><td colspan="7" class="empty">No subscriptions.</td></tr>';
   }
+  async function monetization(){
+    const d=await api("/api/admin/management/monetization");
+    const a=d.ads||{},c=d.checkout||{};
+    const items=[
+      ["AdSense publisher approval",a.approved],
+      ["Ad display enabled",a.enabled_requested],
+      ["Publisher ID valid",a.publisher_id_configured],
+      ["Ad slot valid",a.slot_configured],
+      ["Google AdSense ready",a.ready],
+      ["Flutterwave card checkout",c.card],
+      ["Rwanda Mobile Money checkout",c.mobile_money]
+    ];
+    $("monetizationMetrics").innerHTML=items.map(([label,ready])=>
+      '<article class="metric"><span>'+esc(label.toUpperCase())+'</span><strong class="'+(ready?'status-ready':'status-pending')+'">'+(ready?'Ready':'Not configured')+'</strong></article>'
+    ).join("");
+    feedback("monetizationNote",a.ready
+      ?"AdSense is configured. Ads still require visitor consent and are hidden from paid plans."
+      :"Ads remain safely disabled until publisher approval and every AdSense setting is complete.");
+  }
   async function audit(){
     const d=await api("/api/admin/management/audit?limit=100");
     $("advAudit").innerHTML=d.events.length?d.events.map(a=>'<tr><td>'+dt(a.created_at)+'</td><td>'+esc(a.actor_email)+'</td><td>'+esc(a.action)+'</td><td>'+esc(a.target_type)+' #'+esc(a.target_id)+'</td><td>'+esc(a.details)+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">No administrative actions recorded yet.</td></tr>';
   }
   async function show(name){
-    const actions={ "advanced-users":users,"advanced-payments":payments,"analytics":analytics,"subscriptions":subscriptions,"audit":audit };
+    const actions={ "advanced-users":users,"advanced-payments":payments,"analytics":analytics,"subscriptions":subscriptions,"monetization":monetization,"audit":audit };
     if(actions[name])try{await actions[name]();}catch(e){alert(e.message);}
   }
+  $("monetizationRefresh")?.addEventListener("click", () => show("monetization"));
   document.addEventListener("click", async e => {
     const t=e.target;
     if(t.matches(".nav[data-section]")) show(t.dataset.section);
