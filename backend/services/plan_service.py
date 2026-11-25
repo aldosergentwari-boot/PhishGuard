@@ -73,16 +73,23 @@ def get_usage(owner_id, plan_id="free"):
             user_id = None
 
     with auth_service.connection() as db:
-        exists = db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_history'"
+        usage_table = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_usage'"
         ).fetchone()
-        if not exists:
-            used = 0
+        if usage_table:
+            used = db.execute(
+                "SELECT COUNT(*) FROM scan_usage WHERE owner_id=? AND scanned_at>=?",
+                (owner_id, month_start)
+            ).fetchone()[0]
         else:
+            # Compatibility for a database before the usage-ledger migration.
+            history_table = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_history'"
+            ).fetchone()
             used = db.execute(
                 "SELECT COUNT(*) FROM scan_history WHERE owner_id=? AND scanned_at>=?",
                 (owner_id, month_start)
-            ).fetchone()[0]
+            ).fetchone()[0] if history_table else 0
 
         grants_table = db.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='admin_scan_grants'"
