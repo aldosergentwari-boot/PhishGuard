@@ -103,9 +103,11 @@ def test_password_reset_is_generic_and_invalidates_old_sessions(client, monkeypa
     assert known.get_json()["message"] == unknown.get_json()["message"]
     assert sent["email"] == "member@example.com"
 
+    reset_csrf = csrf(client)
     changed = client.post(
         "/api/auth/password-reset/confirm",
         json={"token": sent["token"], "password": "a much safer new password"},
+        headers={"X-CSRF-Token": reset_csrf},
     )
     assert changed.status_code == 200
     assert client.get("/api/auth/me").get_json()["authenticated"] is False
@@ -134,8 +136,20 @@ def test_password_reset_token_cannot_be_reused(client, monkeypatch):
         headers={"X-CSRF-Token": token},
     )
     payload = {"token": sent["token"], "password": "a much safer new password"}
-    assert client.post("/api/auth/password-reset/confirm", json=payload).status_code == 200
-    assert client.post("/api/auth/password-reset/confirm", json=payload).status_code == 400
+    reset_csrf = csrf(client)
+    assert client.post(
+        "/api/auth/password-reset/confirm",
+        json=payload,
+        headers={"X-CSRF-Token": reset_csrf},
+    ).status_code == 200
+
+    # A successful reset rotates the anonymous session token as well.
+    reset_csrf = csrf(client)
+    assert client.post(
+        "/api/auth/password-reset/confirm",
+        json=payload,
+        headers={"X-CSRF-Token": reset_csrf},
+    ).status_code == 400
 
 
 def test_password_reset_rejects_short_password(client, monkeypatch):
@@ -152,9 +166,11 @@ def test_password_reset_rejects_short_password(client, monkeypatch):
         json={"email": "member@example.com"},
         headers={"X-CSRF-Token": token},
     )
+    reset_csrf = csrf(client)
     response = client.post(
         "/api/auth/password-reset/confirm",
         json={"token": sent["token"], "password": "short"},
+        headers={"X-CSRF-Token": reset_csrf},
     )
     assert response.status_code == 400
 
