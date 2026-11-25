@@ -24,7 +24,8 @@ const PAGE_NAMES = {
     intelligence: 'Intelligence',
     about: 'About Project',
     pricing: 'Plans & Pricing',
-    account: 'My Account'
+    account: 'My Account',
+    admin: 'Owner Console'
 };
 
 const state = {
@@ -1393,6 +1394,60 @@ async function exportHistoryCsv() {
    12. EVENT LISTENERS
 ========================================= */
 
+async function submitAdminCreditGrant(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const token = $('adminToken')?.value || '';
+    const email = $('adminUserEmail')?.value.trim() || '';
+    const scans = Number($('adminScanAmount')?.value);
+    const reason = $('adminGrantReason')?.value.trim() || '';
+    const feedback = $('adminFeedback');
+    const button = $('adminGrantButton');
+    const resultPanel = $('adminGrantResult');
+
+    if (token.length < 32) {
+        if (feedback) feedback.textContent = 'The admin token must be at least 32 characters.';
+        return;
+    }
+    if (!email || !Number.isInteger(scans) || scans < 1 || scans > 10000 || !reason || reason.length > 200) {
+        if (feedback) feedback.textContent = 'Check the email, scan amount (1–10,000), and reason.';
+        return;
+    }
+
+    if (button) button.disabled = true;
+    if (feedback) feedback.textContent = 'Verifying authorization and granting credits…';
+    if (resultPanel) resultPanel.hidden = true;
+
+    try {
+        const response = await apiRequest('/api/admin/scan-credits', {
+            method: 'POST',
+            headers: { 'X-Admin-Token': token },
+            body: JSON.stringify({ email, scans, reason })
+        });
+        if (feedback) feedback.textContent = response.message || 'Scan credits granted.';
+        if (resultPanel) {
+            resultPanel.hidden = false;
+            resultPanel.textContent = '';
+            const heading = document.createElement('strong');
+            heading.textContent = 'Bonus credits successfully recorded';
+            const details = document.createElement('p');
+            details.textContent = String(response.granted_scans) + ' scans granted to ' + (response.user?.email || email) + '.';
+            const expiry = document.createElement('p');
+            expiry.textContent = 'Expires: ' + formatDate(response.expires_at) + ' (UTC)';
+            resultPanel.append(heading, details, expiry);
+        }
+        $('adminToken').value = '';
+        form.reset();
+        $('adminScanAmount').value = '25';
+        showToast('Bonus scan credits granted successfully.', 'success');
+    } catch (error) {
+        if (feedback) feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
 function bindEvents() {
     // Accessible show/hide controls for account passwords
     document.querySelectorAll('[data-password-toggle]').forEach(button => {
@@ -1427,6 +1482,8 @@ function bindEvents() {
         const button = event.target.closest('[data-plan]');
         if (button) void requestPlanUpgrade(button.dataset.plan);
     });
+
+    $('adminCreditForm')?.addEventListener('submit', submitAdminCreditGrant);
 
     // Sidebar navigation
     document.querySelectorAll('.nav-link[data-page]').forEach(button => {
