@@ -272,3 +272,16 @@ For a production Render deployment, configure at minimum:
 Use the Render start command `gunicorn --bind 0.0.0.0:$PORT backend.app:app`. Do not enable AdSense until publisher approval and the required privacy/consent setup are complete.
 
 The Flask app also adds baseline browser security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, and `Permissions-Policy`) to responses. On Render it adds HTTP Strict Transport Security (HSTS). Do not put the public production service behind plain HTTP.
+
+
+### First owner setup and expanded owner management
+
+If no owner account exists yet, do not try to sign in with a made-up/default password. Set `PHISHGUARD_OWNER_EMAIL` in your local `.env` (or the production service environment) to the email you want to use, then run this one-time command from the repository root in a trusted terminal:
+
+```powershell
+python -m scripts.create_owner
+```
+
+The command asks you to create and confirm a password without echoing it, requires 12–128 characters, creates the account (or resets that exact account's password), marks its email verified, and never exposes an owner-registration HTTP endpoint. It uses the configured application database, so run it against the same database used by the web service. Keep the email variable configured, restart the service, and open `/admin/login`. The password is the one entered in this command. If the application is hosted, run the command in a trusted deployment shell with the production database mounted; never run it against an empty temporary database.
+
+Expanded owner APIs are available under `/api/admin/management`: searchable/filterable/paginated users, account suspend/reactivate, plan changes, payment search/details, subscription listing/cancellation, revenue and conversion analytics, in-app user notifications, and an append-only owner audit log. Mutations require the owner session and CSRF token. Admin-granted plan changes are operational overrides and are recorded in the audit log; they do not represent a verified customer payment. Notifications are stored in-app and do not claim that an email was delivered.
