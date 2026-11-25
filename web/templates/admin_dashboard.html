@@ -1,23 +1,40 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>PhishGuard | Management</title>
-<style>
-:root{color-scheme:dark;--bg:#080d18;--panel:#111a2b;--panel2:#0d1626;--line:#26344c;--muted:#91a0b8;--text:#f5f7fb;--accent:#8b7cff;--green:#43d3a0}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Inter,system-ui,sans-serif}.shell{min-height:100vh;display:grid;grid-template-columns:245px 1fr}.side{padding:25px 18px;border-right:1px solid var(--line);background:#0b1322}.brand{display:flex;align-items:center;gap:11px;padding:5px 8px 32px}.mark{width:39px;height:39px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#7465ff,#31b6c9);font-weight:900}.brand small,.muted{color:var(--muted)}.nav-title{margin:20px 10px 10px;color:#687995;font-size:10px;letter-spacing:1.6px;font-weight:800}.nav{width:100%;text-align:left;padding:12px;border:1px solid transparent;border-radius:9px;background:transparent;color:#aab7cc;cursor:pointer;margin:3px 0}.nav.active,.nav:hover{background:#1b2540;border-color:#35436a;color:#fff}.side-note{margin:30px 8px;padding:13px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px;line-height:1.5}
-main{min-width:0;padding:28px clamp(18px,4vw,54px) 55px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:35px}.crumb{font-size:11px;letter-spacing:1.8px;color:#a99fff;font-weight:800}.top h1{font-size:29px;margin:7px 0}.top p{color:var(--muted);margin:0}.actions{display:flex;align-items:center;gap:12px}.owner{color:var(--muted);font-size:12px}.btn{border:1px solid var(--line);background:#17233a;color:var(--text);padding:10px 14px;border-radius:9px;cursor:pointer;font-weight:700}.btn.primary{background:#6557dc;border-color:#7869ff}.btn:disabled{opacity:.6}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:27px}.metric,.panel{border:1px solid var(--line);border-radius:14px;background:var(--panel)}.metric{padding:19px}.metric span{display:block;color:var(--muted);font-size:10px;letter-spacing:1.1px;font-weight:800}.metric strong{display:block;font-size:29px;margin-top:13px}.metric small{display:block;color:var(--muted);margin-top:5px}
-.section{display:block}.section.active{display:block}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:27px 0 14px}.section-head h2{font-size:18px;margin:0}.section-head p{color:var(--muted);margin:5px 0 0;font-size:12px}
-.panel{padding:19px;margin-bottom:17px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;color:#8190aa;font-size:10px;letter-spacing:1px;padding:12px;border-bottom:1px solid var(--line)}td{padding:13px 12px;border-bottom:1px solid #202c40;color:#dce4f1;font-size:12px}tr:last-child td{border-bottom:0}.pill{display:inline-block;padding:5px 8px;border-radius:20px;background:#1c3041;color:#83e2c1;font-size:10px}.pill.off{background:#38232c;color:#ff9d9d}
-.form-grid{display:grid;grid-template-columns:2fr 1fr 2fr auto;gap:10px;align-items:end}.field label{display:block;color:var(--muted);font-size:10px;letter-spacing:1px;margin:0 0 7px}.field input{width:100%;padding:11px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text)}.feedback{min-height:18px;color:var(--green);font-size:12px;margin:12px 0 0}.empty{padding:25px;color:var(--muted);text-align:center}.hidden{display:none!important}
-@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.form-grid{grid-template-columns:1fr 1fr}.form-grid .field:first-child{grid-column:span 2}}@media(max-width:700px){.shell{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid var(--line);padding:12px}.brand{padding:4px 8px 12px}.nav-title,.side-note{display:none}.navs{display:flex;overflow:auto;gap:5px}.nav{white-space:nowrap;width:auto}.top{align-items:flex-start;flex-direction:column}.actions{width:100%;justify-content:space-between}.metrics{gap:9px}.metric{padding:14px}.metric strong{font-size:24px}.form-grid{grid-template-columns:1fr}.form-grid .field:first-child{grid-column:auto}}
-</style><link rel="stylesheet" href="/static/css/admin_dashboard.css?v=7"></head>
-<body data-owner="{{ owner_email|e }}"><div class="shell">
-<aside class="side"><div class="brand"><div class="mark">PG</div><div><strong>PhishGuard</strong><br><small>Management</small></div></div>
-<div class="nav-title">MAIN MENU</div><div class="navs">
-<button class="nav active" data-section="overview">▦ &nbsp; Overview</button><button class="nav" data-section="users">♙ &nbsp; Users</button><button class="nav" data-section="payments">◇ &nbsp; Payments</button><button class="nav" data-section="credits">＋ &nbsp; Scan credits</button><button class="nav" data-section="advanced-users">Manage users</button><button class="nav" data-section="advanced-payments">Payment details</button><button class="nav" data-section="analytics">Analytics</button><button class="nav" data-section="subscriptions">Subscriptions</button><button class="nav" data-section="audit">Audit log</button><button class="nav" data-section="notifications">Notifications</button>
-</div><div class="side-note">Secure owner workspace. Administrative actions are protected and recorded.</div></aside>
-<main><header class="top"><div><div class="crumb">OWNER WORKSPACE / PHISHGUARD</div><h1 id="pageTitle">Website overview</h1><p>Monitor your security platform, customers, and operations from one workspace.</p></div><div class="actions"><span class="owner" id="ownerEmail">Owner</span><button class="btn" id="refresh">↻ Refresh</button><button class="btn" id="logout">Sign out</button></div></header>
-<section class="section active" id="section-overview"><div class="metrics">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#080d18">
+<title>PhishGuard | Admin Control Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/admin_dashboard.css?v=8">
+</head>
+<body data-owner="{{ owner_email|e }}">
+<div class="admin-app">
+  <aside class="sidebar">
+    <a class="brand" href="#section-overview" aria-label="PhishGuard admin home"><span class="brand-symbol">P<span>G</span></span><span class="brand-copy"><strong>PhishGuard</strong><small>CONTROL CENTER</small></span></a>
+    <div class="workspace-label">WORKSPACE</div>
+    <nav class="navs" aria-label="Admin navigation">
+      <button class="nav active" data-section="overview"><span class="nav-icon">⌂</span><span>Overview</span><i></i></button>
+      <button class="nav" data-section="users"><span class="nav-icon">♙</span><span>Users</span><i></i></button>
+      <button class="nav" data-section="payments"><span class="nav-icon">◇</span><span>Payments</span><i></i></button>
+      <button class="nav" data-section="credits"><span class="nav-icon">＋</span><span>Scan credits</span><i></i></button>
+      <div class="nav-divider"></div>
+      <div class="workspace-label nav-group-label">MANAGEMENT</div>
+      <button class="nav" data-section="advanced-users"><span class="nav-icon">◎</span><span>Manage users</span><i></i></button>
+      <button class="nav" data-section="advanced-payments"><span class="nav-icon">▤</span><span>Payment details</span><i></i></button>
+      <button class="nav" data-section="analytics"><span class="nav-icon">▥</span><span>Analytics</span><i></i></button>
+      <button class="nav" data-section="subscriptions"><span class="nav-icon">↻</span><span>Subscriptions</span><i></i></button>
+      <button class="nav" data-section="audit"><span class="nav-icon">⌁</span><span>Audit log</span><i></i></button>
+      <button class="nav" data-section="notifications"><span class="nav-icon">✉</span><span>Notifications</span><i></i></button>
+    </nav>
+    <div class="sidebar-footer"><span class="secure-dot"></span><div><strong>Secure workspace</strong><small>Owner access protected</small></div></div>
+  </aside>
+  <main class="main-area">
+    <header class="topbar">
+      <div class="heading-wrap"><div class="eyebrow">PHISHGUARD <span>/</span> ADMINISTRATION</div><h1 id="pageTitle">Website overview</h1><p>Monitor your platform, customers and operations.</p></div>
+      <div class="top-actions"><div class="owner-chip"><span class="owner-avatar">A</span><span id="ownerEmail">Owner</span></div><button class="btn refresh-btn" id="refresh"><span>↻</span> Refresh</button><button class="btn signout-btn" id="logout">Sign out <span>↗</span></button></div>
+    </header>
+    <div class="content-area"><section class="section active" id="section-overview"><div class="metrics">
 <article class="metric"><span>ACTIVE ACCOUNTS</span><strong id="activeAccounts">—</strong><small>Registered users</small></article>
 <article class="metric"><span>ACTIVE SUBSCRIPTIONS</span><strong id="activeSubs">—</strong><small>Current active subscriptions</small></article>
 <article class="metric"><span>SCANS THIS MONTH</span><strong id="scansMonth">—</strong><small>UTC calendar month</small></article>
@@ -31,7 +48,10 @@ main{min-width:0;padding:28px clamp(18px,4vw,54px) 55px}.top{display:flex;align-
 <section class="section" id="section-analytics"><div class="section-head"><h2>Business analytics</h2><button class="btn" id="advAnalyticsRefresh">Refresh</button></div><div class="metrics" id="advAnalytics"></div><div class="analytics-grid"><article class="panel chart-panel"><div class="chart-heading"><div><h3>Customer health</h3><p>Active customers compared with all registered customers</p></div><span class="chart-tag">CUSTOMERS</span></div><div id="customerHealthChart" class="bar-chart"><div class="empty">Loading chart…</div></div></article><article class="panel chart-panel"><div class="chart-heading"><div><h3>Payment status</h3><p>Recorded transactions by status</p></div><span class="chart-tag">PAYMENTS</span></div><div id="paymentStatusChart" class="bar-chart"><div class="empty">Loading chart…</div></div></article></div><p class="feedback" id="advAnalyticsNote"></p></section>
 <section class="section" id="section-subscriptions"><div class="section-head"><h2>Subscription lifecycle</h2><button class="btn" id="advSubscriptionsRefresh">Reload</button></div><div class="panel table-wrap"><table><thead><tr><th>ID</th><th>USER</th><th>PLAN</th><th>STATUS</th><th>STARTED</th><th>PERIOD END</th><th>ACTION</th></tr></thead><tbody id="advSubscriptions"></tbody></table></div></section>
 <section class="section" id="section-audit"><div class="section-head"><h2>Owner audit log</h2><button class="btn" id="advAuditRefresh">Reload</button></div><div class="panel table-wrap"><table><thead><tr><th>TIME</th><th>OWNER</th><th>ACTION</th><th>TARGET</th><th>DETAILS</th></tr></thead><tbody id="advAudit"></tbody></table></div></section>
-<section class="section" id="section-notifications"><div class="section-head"><h2>Customer in-app notifications</h2></div><div class="panel"><form id="advNotificationForm" class="form-grid"><div class="field"><label>USER ID</label><input id="advNotifyUser" type="number" min="1" required></div><div class="field"><label>CATEGORY</label><select id="advNotifyCategory"><option value="account">Account</option><option value="subscription">Subscription</option><option value="payment">Payment</option><option value="security">Security</option></select></div><div class="field"><label>TITLE</label><input id="advNotifyTitle" maxlength="100" required></div><div class="field"><label>MESSAGE</label><input id="advNotifyMessage" maxlength="1000" required></div><button class="btn primary" type="submit">Save notification</button></form><p class="feedback" id="advNotifyFeedback"></p><small class="muted">Notifications are stored in-app; this action does not send email.</small></div></section></main></div>
+<section class="section" id="section-notifications"><div class="section-head"><h2>Customer in-app notifications</h2></div><div class="panel"><form id="advNotificationForm" class="form-grid"><div class="field"><label>USER ID</label><input id="advNotifyUser" type="number" min="1" required></div><div class="field"><label>CATEGORY</label><select id="advNotifyCategory"><option value="account">Account</option><option value="subscription">Subscription</option><option value="payment">Payment</option><option value="security">Security</option></select></div><div class="field"><label>TITLE</label><input id="advNotifyTitle" maxlength="100" required></div><div class="field"><label>MESSAGE</label><input id="advNotifyMessage" maxlength="1000" required></div><button class="btn primary" type="submit">Save notification</button></form><p class="feedback" id="advNotifyFeedback"></p><small class="muted">Notifications are stored in-app; this action does not send email.</small></div></section></div>
+    <footer class="admin-footer"><span>PhishGuard Admin</span><span>Security operations · Owner workspace</span></footer>
+  </main>
+</div>
 <script src="/static/js/admin_management.js?v=4"></script>
 <script>
 let csrfToken="";
@@ -49,4 +69,5 @@ document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>show
 $("creditForm").addEventListener("submit",async e=>{e.preventDefault();const b=$("grantButton"),f=$("creditFeedback");b.disabled=true;f.textContent="";try{const d=await api("/api/admin/scan-credits",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("creditEmail").value,scans:Number($("creditScans").value),reason:$("creditReason").value})});f.textContent="Granted "+d.granted_scans+" scans to "+d.user.email+". Expires "+date(d.expires_at)+"."; $("creditForm").reset();$("creditScans").value=25;await loadOverview();}catch(err){f.textContent=err.message;}finally{b.disabled=false;}});
 $("logout").addEventListener("click",async()=>{try{await api("/api/admin/logout",{method:"POST"});}finally{location.assign("/admin/login");}});
 (async()=>{try{await csrf();await Promise.allSettled([loadOverview(),loadUsers(),loadPayments()]);}catch(e){if(!e.message.includes("Owner session expired"))$("recentUsers").innerHTML='<tr><td colspan="4" class="empty">'+safe(e.message)+'</td></tr>';}})();
-</script><script src="/static/js/admin_dashboard_extras.js?v=3"></script></body></html>
+</script><script src="/static/js/admin_dashboard_extras.js?v=3"></script>
+</body></html>
