@@ -1538,6 +1538,12 @@ function bindEvents() {
         if (banner) banner.hidden = true;
         if (slot) { slot.hidden = true; slot.replaceChildren(); }
     });
+    $('manageAdConsent')?.addEventListener('click', () => {
+        try { localStorage.removeItem('phishguard.adConsent'); } catch { /* consent remains unchanged */ }
+        const slot = $('overviewAd');
+        if (slot) { slot.hidden = true; slot.replaceChildren(); }
+        void loadAdPlacement();
+    });
 
     $('adminCreditForm')?.addEventListener('submit', submitAdminCreditGrant);
     $('adminLoadOverview')?.addEventListener('click', loadAdminOverview);
@@ -2383,6 +2389,7 @@ async function loadAdPlacement() {
 
         let consent = null;
         try { consent = localStorage.getItem('phishguard.adConsent'); } catch { return; }
+        if (consent === 'rejected') return;
         if (consent !== 'accepted') {
             if (banner) banner.hidden = false;
             return;
