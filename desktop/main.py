@@ -2,6 +2,7 @@ from pathlib import Path
 import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
+from tkinter import simpledialog
 
 
 # Ensure the project root is importable when launched as:
@@ -11,6 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.services.hybrid_service import get_hybrid_service
+from backend.database.history_service import get_history_service
+from desktop.local_storage import get_desktop_owner_id
 
 
 class PhishingDesktopApp:
@@ -31,6 +34,9 @@ class PhishingDesktopApp:
         self.root.configure(bg=self.BG)
 
         self.service = None
+        self.owner_id = get_desktop_owner_id()
+        self.history_window = None
+        self.history_tree = None
         self._build_ui()
 
     def _build_ui(self):
@@ -75,6 +81,21 @@ class PhishingDesktopApp:
             fg=self.MUTED,
             font=("Segoe UI", 10)
         ).pack(anchor="w")
+
+        tk.Button(
+            header,
+            text="Scan History",
+            command=self.open_history,
+            bg=self.PANEL,
+            fg=self.TEXT,
+            activebackground="#26364d",
+            activeforeground=self.TEXT,
+            relief="flat",
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold"),
+            padx=14,
+            pady=8
+        ).pack(anchor="e", pady=(8, 0))
 
         scanner = tk.Frame(
             self.root,
@@ -215,6 +236,127 @@ class PhishingDesktopApp:
         widget.insert("1.0", value)
         widget.configure(state="disabled")
 
+    def open_history(self):
+        if self.history_window and self.history_window.winfo_exists():
+            self.history_window.lift()
+            self.refresh_history()
+            return
+
+        window = tk.Toplevel(self.root)
+        window.title("PhishGuard — Scan History")
+        window.geometry("900x430")
+        window.minsize(680, 300)
+        window.configure(bg=self.BG)
+        self.history_window = window
+
+        heading = tk.Frame(window, bg=self.BG)
+        heading.pack(fill="x", padx=18, pady=(16, 10))
+        tk.Label(
+            heading, text="Local Scan History", bg=self.BG, fg=self.TEXT,
+            font=("Segoe UI", 16, "bold")
+        ).pack(side="left")
+
+        actions = tk.Frame(window, bg=self.BG)
+        actions.pack(fill="x", padx=18, pady=(0, 10))
+        tk.Button(
+            actions, text="Refresh", command=self.refresh_history,
+            bg=self.BLUE, fg="white", relief="flat", padx=12, pady=6
+        ).pack(side="left")
+        tk.Button(
+            actions, text="Clear History", command=self.clear_history,
+            bg="#7f1d1d", fg="white", relief="flat", padx=12, pady=6
+        ).pack(side="right")
+
+        table_frame = tk.Frame(window, bg=self.BG)
+        table_frame.pack(fill="both", expand=True, padx=18, pady=(0, 18))
+        columns = ("date", "url", "prediction", "risk")
+        self.history_tree = ttk.Treeview(
+            table_frame, columns=columns, show="headings", height=12
+        )
+        self.history_tree.heading("date", text="Scanned at")
+        self.history_tree.heading("url", text="URL")
+        self.history_tree.heading("prediction", text="Result")
+        self.history_tree.heading("risk", text="Risk")
+        self.history_tree.column("date", width=155, stretch=False)
+        self.history_tree.column("url", width=440)
+        self.history_tree.column("prediction", width=110, stretch=False)
+        self.history_tree.column("risk", width=80, stretch=False)
+        scrollbar = ttk.Scrollbar(
+            table_frame, orient="vertical", command=self.history_tree.yview
+        )
+        self.history_tree.configure(yscrollcommand=scrollbar.set)
+        self.history_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        self.history_tree.bind("<Double-1>", self.show_history_details)
+        window.protocol("WM_DELETE_WINDOW", self.close_history)
+        self.refresh_history()
+
+    def close_history(self):
+        if self.history_window and self.history_window.winfo_exists():
+            self.history_window.destroy()
+        self.history_window = None
+        self.history_tree = None
+
+    def refresh_history(self):
+        if not self.history_tree:
+            return
+        try:
+            rows = get_history_service().get_history(
+                owner_id=self.owner_id, limit=100, offset=0
+            )["scans"]
+            for item in self.history_tree.get_children():
+                self.history_tree.delete(item)
+            for scan in rows:
+                scanned_at = (scan.get("scanned_at") or "").replace("T", " ")[:19]
+                self.history_tree.insert(
+                    "", "end", iid=str(scan["id"]),
+                    values=(
+                        scanned_at, scan.get("url", ""),
+                        scan.get("prediction", ""),
+                        f"{float(scan.get('risk_score') or 0):.2f}%"
+                    )
+                )
+        except Exception as error:
+            messagebox.showerror(
+                "History error", f"Could not load local scan history.\\n\\n{error}"
+            )
+
+    def show_history_details(self, _event=None):
+        if not self.history_tree:
+            return
+        selected = self.history_tree.selection()
+        if not selected:
+            return
+        try:
+            scan = get_history_service().get_scan(
+                int(selected[0]), owner_id=self.owner_id
+            )
+            if scan is None:
+                return
+            sources = "\\n".join(scan.get("decision_sources", [])) or "No source reported."
+            messagebox.showinfo(
+                f"Scan #{scan['id']} — {scan['prediction']}",
+                f"URL: {scan['url']}\\nRisk: {scan['risk_score']:.2f}%\\n"
+                f"Domain: {scan.get('domain') or 'Unknown'}\\n\\n"
+                f"Detection sources:\\n{sources}"
+            )
+        except Exception as error:
+            messagebox.showerror("History error", str(error))
+
+    def clear_history(self):
+        if not messagebox.askyesno(
+            "Clear scan history",
+            "Delete all locally stored desktop scan-history records?\\n"
+            "This does not delete scan-usage records."
+        ):
+            return
+        try:
+            deleted = get_history_service().clear_history(self.owner_id)
+            self.refresh_history()
+            messagebox.showinfo("History cleared", f"Deleted {deleted} scan(s).")
+        except Exception as error:
+            messagebox.showerror("History error", str(error))
+
     def analyze(self):
         url = self.url_var.get().strip()
 
@@ -235,6 +377,7 @@ class PhishingDesktopApp:
                 self.service = get_hybrid_service()
 
             result = self.service.analyze(url)
+            scan_id = get_history_service().save_scan(result, owner_id=self.owner_id)
             prediction = result["final_prediction"]
             risk = result["final_risk_score"]
             local = result["local_intelligence"]
@@ -246,10 +389,13 @@ class PhishingDesktopApp:
             self.risk_var.set(f"Risk score: {risk:.2f}%")
             self.domain_var.set(f"Domain: {local.get('domain') or 'Unknown'}")
             self.status_var.set(
-                "Analysis completed — online and offline checks"
+                f"Analysis saved to local history (scan #{scan_id}) — " + (
+                    "online and offline checks"
                 if result.get("detection_mode") == "HYBRID_ONLINE_AND_OFFLINE"
-                else "Analysis completed — offline checks"
+                else "offline checks"
+                )
             )
+            self.refresh_history()
 
             sources = "\n".join(
                 f"• {item}" for item in result.get("decision_sources", [])
