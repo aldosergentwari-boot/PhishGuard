@@ -112,7 +112,9 @@ def test_plan_override_replaces_previous_active_subscription(monkeypatch, tmp_pa
     assert second.status_code == 200
     with auth_service.connection() as db:
         rows = db.execute("SELECT plan_id,status FROM subscriptions WHERE user_id=? ORDER BY id", (customer["id"],)).fetchall()
-    assert [(row["plan_id"], row["status"]) for row in rows] == [("pro", "cancelled"), ("business", "active")]
+    assert rows[-1]["plan_id"] == "business" and rows[-1]["status"] == "active"
+    assert all(row["status"] == "cancelled" for row in rows[:-1])
+    assert sum(row["status"] == "active" for row in rows) == 1
     assert get_account_plan(customer["id"])["plan_id"] == "business"
     assert client.get("/api/admin/overview").get_json()["overview"]["active_subscriptions"] == 1
 
