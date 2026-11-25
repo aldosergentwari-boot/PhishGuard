@@ -2354,7 +2354,10 @@ async function loadAdsenseScript(clientId) {
             script.dataset.loaded = 'true';
             resolve();
         }, { once: true });
-        script.addEventListener('error', () => reject(new Error('Ad service could not be loaded.')), { once: true });
+        script.addEventListener('error', () => {
+            script.remove();
+            reject(new Error('Ad service could not be loaded.'));
+        }, { once: true });
         if (!script.isConnected) document.head.appendChild(script);
     }).finally(() => {
         adsenseScriptPromise = null;
