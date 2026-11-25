@@ -76,7 +76,7 @@ document.getElementById("sendReset").addEventListener("click",async()=>{
  button.disabled=true;message.textContent="Sending reset instructions…";
  try{
   if(!csrfToken)await getCsrf();
-  const r=await fetch("/api/auth/password-reset/request",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({email})});
+  const r=await fetch("/api/admin/password-reset/request",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({email})});
   const d=await r.json();if(!r.ok)throw new Error(d.error||"Could not request a password reset.");
   message.textContent=d.message||"If an account matches that address, password reset instructions will be sent.";
  }catch(err){message.textContent=err.message;}finally{button.disabled=false;}
