@@ -44,6 +44,9 @@ const state = {
     planId: 'guest'
 };
 
+let userProfileImageDraft;
+let userProfileImageChanged = false;
+
 const $ = (id) => document.getElementById(id);
 
 /* =========================================
@@ -1516,6 +1519,9 @@ function bindEvents() {
     $('accountLogout')?.addEventListener('click', signOutAccount);
     $('accountViewPlans')?.addEventListener('click', () => goToPage('pricing'));
     $('refreshAccountNotifications')?.addEventListener('click', loadAccountNotifications);
+    $('userProfileImage')?.addEventListener('change', previewUserProfileImage);
+    $('userRemovePhoto')?.addEventListener('click', removeUserProfileImage);
+    $('userProfileForm')?.addEventListener('submit', saveUserProfile);
     $('pricingGrid')?.addEventListener('click', event => {
         const button = event.target.closest('[data-plan]');
         if (button) void requestPlanUpgrade(button.dataset.plan);
@@ -1877,6 +1883,87 @@ function setAuthMode(mode) {
     if ($('accountFeedback')) $('accountFeedback').textContent = '';
 }
 
+
+function renderUserProfile(user) {
+    const username = user?.username || '';
+    const label = $('accountUsernameLabel');
+    const field = $('userProfileUsername');
+    if (label) label.textContent = username ? '@' + username : 'Set your username';
+    if (field && document.activeElement !== field) field.value = username;
+    const image = user?.profile_image || '';
+    for (const id of ['accountAvatar', 'userProfilePreview']) {
+        const holder = $(id);
+        if (!holder) continue;
+        holder.replaceChildren();
+        if (image) {
+            const img = document.createElement('img');
+            img.src = image;
+            img.alt = 'Profile picture';
+            holder.appendChild(img);
+        } else {
+            const fallback = document.createElement('span');
+            fallback.textContent = (username || user?.email || 'PG').replace(/^@/, '').slice(0, 2).toUpperCase();
+            holder.appendChild(fallback);
+        }
+    }
+    if (!userProfileImageChanged) userProfileImageDraft = image || null;
+}
+
+function previewUserProfileImage(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+        showToast('Choose a JPG, PNG or WEBP image up to 2 MB.', 'error');
+        event.target.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        userProfileImageDraft = String(reader.result || '');
+        userProfileImageChanged = true;
+        const holder = $('userProfilePreview');
+        if (holder) holder.innerHTML = '<img src="' + userProfileImageDraft + '" alt="Profile picture preview">';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeUserProfileImage() {
+    userProfileImageDraft = null;
+    userProfileImageChanged = true;
+    $('userProfileImage').value = '';
+    const holder = $('userProfilePreview');
+    if (holder) holder.innerHTML = '<span>PG</span>';
+}
+
+async function saveUserProfile(event) {
+    event.preventDefault();
+    const button = $('saveUserProfile');
+    const feedback = $('userProfileFeedback');
+    button.disabled = true;
+    feedback.textContent = 'Saving your profile…';
+    try {
+        const headers = await csrfHeader();
+        const result = await apiRequest('/api/auth/profile', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                username: $('userProfileUsername').value.trim(),
+                profile_image: userProfileImageChanged ? userProfileImageDraft : (state.account?.profile_image || null)
+            })
+        });
+        state.account = { ...state.account, ...result.user };
+        userProfileImageChanged = false;
+        renderUserProfile(state.account);
+        feedback.textContent = result.message || 'Profile saved.';
+        showToast('Profile updated successfully.', 'success');
+    } catch (error) {
+        feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
 async function loadAccount() {
     const signedOut = $('accountSignedOut');
     const signedIn = $('accountSignedIn');
@@ -1922,6 +2009,7 @@ async function loadAccount() {
 
         const plan = billing.plan || {};
         $('accountEmail').textContent = auth.user.email;
+        renderUserProfile(auth.user);
         const verificationNotice = $('emailVerificationNotice');
         if (verificationNotice) verificationNotice.hidden = Boolean(auth.user.email_verified);
         $('accountPlanName').textContent = plan.name || 'Free';
