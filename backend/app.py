@@ -323,7 +323,7 @@ def create_app():
                     "heading": "Email, payments, and advertising providers",
                     "paragraphs": [
                         "Brevo is used to deliver account-verification and password-reset emails. Flutterwave processes hosted checkout and payment information when paid plans are available. PhishGuard does not need to receive or store your full card number or Mobile Money PIN.",
-                        "Google AdSense scripts are not loaded unless publisher approval and the required configuration are enabled. When enabled, Google may use cookies or similar technologies according to its own policies and applicable consent requirements.",
+                        "Google AdSense scripts are not loaded unless the publisher is approved, the required configuration is enabled, and a visitor explicitly accepts the advertising-consent prompt. Visitors can reject optional advertising and continue using PhishGuard. If accepted, Google may use cookies or similar technologies according to its own policies and applicable consent requirements.",
                     ],
                 },
                 {
