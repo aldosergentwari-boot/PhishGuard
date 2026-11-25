@@ -6,6 +6,7 @@ async function charts(){try{let a=(await get("/api/admin/management/analytics"))
 const titles={overview:"Website overview",users:"Customer accounts",payments:"Payments",credits:"Scan credit management","advanced-users":"Manage customers","advanced-payments":"Payment details",analytics:"Business analytics",subscriptions:"Subscriptions",audit:"Security audit log",notifications:"Customer notifications"};
 document.addEventListener("click",e=>{let n=e.target.closest(".nav[data-section]");if(n){let s=n.dataset.section;if($("pageTitle"))$("pageTitle").textContent=titles[s]||"Management";if(s==="analytics")charts();if(s==="overview")activity()}if(e.target.closest('[data-go="audit"]')&&$("pageTitle"))$("pageTitle").textContent=titles.audit});
 activity();
+charts();
 /* Add accessible labels before responsive table rows become compact cards. */
 function labelAdminTables(){
  document.querySelectorAll(".table-wrap table").forEach(table=>{
