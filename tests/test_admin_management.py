@@ -140,3 +140,75 @@ def test_customer_can_only_read_their_own_admin_notifications(monkeypatch, tmp_p
     assert len(payload) == 1
     assert payload[0]["title"] == "Security update"
     assert payload[0]["read_at"]
+
+
+
+def test_owner_can_logout_and_sign_in_repeatedly_with_fresh_csrf(monkeypatch, tmp_path):
+    _, client, _, csrf = owner_client(monkeypatch, tmp_path)
+
+    for _ in range(3):
+        logged_out = client.post(
+            "/api/admin/logout",
+            json={},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert logged_out.status_code == 200
+        assert client.get("/admin/login").status_code == 200
+
+        csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+        logged_in = client.post(
+            "/api/admin/login",
+            json={"email": OWNER_EMAIL, "password": OWNER_PASSWORD},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert logged_in.status_code == 200
+        csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+
+
+def test_owner_password_reset_request_creates_supported_single_use_token(
+    monkeypatch, tmp_path
+):
+    import hashlib
+    from datetime import timedelta
+    from backend.routes import admin as admin_routes
+
+    _, client, owner, csrf = owner_client(monkeypatch, tmp_path)
+    sent = {}
+
+    def capture_reset_email(email, raw_token):
+        sent["email"] = email
+        sent["token"] = raw_token
+
+    monkeypatch.setattr(
+        admin_routes.email_service, "send_admin_password_reset_email", capture_reset_email
+    )
+    response = client.post(
+        "/api/admin/password-reset/request",
+        json={"email": OWNER_EMAIL},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert response.status_code == 200
+    assert sent["email"] == OWNER_EMAIL
+
+    digest = hashlib.sha256(sent["token"].encode("utf-8")).hexdigest()
+    with auth_service.connection() as db:
+        row = db.execute(
+            "SELECT purpose,token_hash,used_at FROM account_email_tokens WHERE user_id=?",
+            (owner["id"],),
+        ).fetchone()
+    assert row["purpose"] == "admin_password_reset"
+    assert row["token_hash"] == digest
+    assert row["used_at"] is None
+
+    reset_csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    changed = client.post(
+        "/api/admin/password-reset/confirm",
+        json={"token": sent["token"], "password": "A-New-Strong-Owner-Password-456!"},
+        headers={"X-CSRF-Token": reset_csrf},
+    )
+    assert changed.status_code == 200
+    assert client.post(
+        "/api/admin/password-reset/confirm",
+        json={"token": sent["token"], "password": "Another-Strong-Password-789!"},
+        headers={"X-CSRF-Token": client.get("/api/auth/csrf").get_json()["csrf_token"]},
+    ).status_code == 400
