@@ -53,6 +53,8 @@ class AuthService:
                 db.execute("ALTER TABLE users ADD COLUMN full_name TEXT")
             if "profile_image" not in user_columns:
                 db.execute("ALTER TABLE users ADD COLUMN profile_image TEXT")
+            if "admin_profile_image" not in user_columns:
+                db.execute("ALTER TABLE users ADD COLUMN admin_profile_image TEXT")
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users(username COLLATE NOCASE) WHERE username IS NOT NULL AND username <> ''")
             db.execute("""CREATE TABLE IF NOT EXISTS account_email_tokens (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -236,7 +238,7 @@ class AuthService:
 
     def get_user(self, user_id):
         with self.connection() as db:
-            row = db.execute("SELECT id,email,created_at,session_version,email_verified,email_verified_at,username,full_name,profile_image FROM users WHERE id=? AND is_active=1", (user_id,)).fetchone()
+            row = db.execute("SELECT id,email,created_at,session_version,email_verified,email_verified_at,username,full_name,profile_image,admin_profile_image FROM users WHERE id=? AND is_active=1", (user_id,)).fetchone()
         return dict(row) if row else None
 
     def create_email_token(self, user_id, purpose, token_hash, expires_at):
