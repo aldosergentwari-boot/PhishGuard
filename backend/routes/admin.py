@@ -169,10 +169,10 @@ def admin_overview():
                WHERE s.status='active' AND LOWER(u.email)<>?""",
             (owner_email,),
         ).fetchone()[0]
+        # Scan usage is an operational metric; scan_usage has owner_id, not user_id.
         scans_this_month = db.execute(
-            """SELECT COUNT(*) FROM scan_usage su JOIN users u ON u.id=su.user_id
-               WHERE su.scanned_at>=? AND LOWER(u.email)<>?""",
-            (month_start, owner_email),
+            "SELECT COUNT(*) FROM scan_usage WHERE scanned_at>=?",
+            (month_start,),
         ).fetchone()[0]
         bonus_scans_this_month = db.execute(
             "SELECT COALESCE(SUM(granted_scans), 0) FROM admin_scan_grants WHERE created_at>=?",
