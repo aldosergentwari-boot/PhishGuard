@@ -159,8 +159,10 @@ def admin_overview():
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
 
     with auth_service.connection() as db:
+        owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower()
         active_accounts = db.execute(
-            "SELECT COUNT(*) FROM users WHERE is_active=1"
+            "SELECT COUNT(*) FROM users WHERE is_active=1 AND LOWER(email)<>?",
+            (owner_email,),
         ).fetchone()[0]
         active_subscriptions = db.execute(
             "SELECT COUNT(*) FROM subscriptions WHERE status='active'"
