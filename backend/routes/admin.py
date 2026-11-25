@@ -114,6 +114,8 @@ def grant_scan_credits():
 
     if user is None:
         return jsonify({"success": False, "error": "Active account not found."}), 404
+    if user["email"].strip().lower() == os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower():
+        return jsonify({"success": False, "error": "Owner account is excluded from customer scan-credit management."}), 400
 
     now = datetime.now(timezone.utc)
     last_day = calendar.monthrange(now.year, now.month)[1]
