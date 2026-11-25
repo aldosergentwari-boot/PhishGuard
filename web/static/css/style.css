@@ -769,6 +769,18 @@ tr[data-id] { cursor: pointer; }
 
 .account-form button { margin-top: 8px; min-height: 43px; }
 .account-feedback { min-height: 18px; margin: 13px 0 0; color: var(--muted); font-size: 11px; }
+.account-payment-history { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.account-payment-list { display: grid; gap: 8px; margin-top: 12px; }
+.account-payment-item { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 9px; background: rgba(255,255,255,.02); }
+.account-payment-item > div { display: grid; gap: 5px; min-width: 0; }
+.account-payment-item strong { color: var(--text); font-size: 11px; overflow-wrap: anywhere; }
+.account-payment-item span { color: var(--muted); font-size: 10px; }
+.account-payment-value { text-align: right; justify-items: end; }
+.payment-status { text-transform: capitalize; }
+.payment-status-successful { color: #45d6a2 !important; }
+.payment-status-pending { color: #f4c66a !important; }
+.payment-status-failed, .payment-status-cancelled { color: #ff8b94 !important; }
+@media (max-width: 520px) { .account-payment-item { align-items: flex-start; } }
 .account-profile { display: flex; align-items: center; gap: 15px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
 .account-avatar { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: #1a3550; color: #8bdcff; font-weight: 800; }
 .account-profile h2 { margin: 5px 0 0; font-size: 17px; overflow-wrap: anywhere; }
