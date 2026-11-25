@@ -1394,6 +1394,43 @@ async function exportHistoryCsv() {
    12. EVENT LISTENERS
 ========================================= */
 
+async function loadAdminOverview() {
+    const token = $('adminToken')?.value || '';
+    const button = $('adminLoadOverview');
+    if (token.length < 32) {
+        showToast('Enter the configured admin token first.', 'error');
+        $('adminToken')?.focus();
+        return;
+    }
+    if (button) button.disabled = true;
+    try {
+        const response = await apiRequest('/api/admin/overview', {
+            headers: { 'X-Admin-Token': token },
+            cache: 'no-store'
+        });
+        const data = response.overview || {};
+        const setMetric = (id, value) => {
+            const element = $(id);
+            if (element) element.textContent = Number(value || 0).toLocaleString();
+        };
+        setMetric('adminActiveAccounts', data.active_accounts);
+        setMetric('adminActiveSubscriptions', data.active_subscriptions);
+        setMetric('adminScansThisMonth', data.scans_this_month);
+        setMetric('adminBonusScans', data.bonus_scans_granted_this_month);
+        const paymentStates = data.payment_transactions || {};
+        const paymentTotal = Object.values(paymentStates).reduce((sum, value) => sum + Number(value || 0), 0);
+        setMetric('adminPaymentsTotal', paymentTotal);
+        const breakdown = Object.entries(paymentStates).map(([status, count]) => status + ': ' + count).join(' · ');
+        if ($('adminPaymentBreakdown')) $('adminPaymentBreakdown').textContent = breakdown || 'No payment transactions';
+        if ($('adminOverview')) $('adminOverview').hidden = false;
+        showToast('Owner overview loaded. Reporting period: UTC month.', 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
 async function submitAdminCreditGrant(event) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -1484,6 +1521,7 @@ function bindEvents() {
     });
 
     $('adminCreditForm')?.addEventListener('submit', submitAdminCreditGrant);
+    $('adminLoadOverview')?.addEventListener('click', loadAdminOverview);
 
     // Sidebar navigation
     document.querySelectorAll('.nav-link[data-page]').forEach(button => {
