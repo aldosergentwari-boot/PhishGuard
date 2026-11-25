@@ -511,6 +511,8 @@ tbody tr:hover { background: #ffffff05; }
 .footer-policy-links { display: flex; flex-wrap: wrap; gap: 12px; }
 .footer-policy-links a { color: #8da5c4; text-decoration: none; }
 .footer-policy-links a:hover { color: var(--cyan); text-decoration: underline; }
+.footer-preference-link { padding: 0; border: 0; background: transparent; color: #8da5c4; font: inherit; cursor: pointer; }
+.footer-preference-link:hover { color: var(--cyan); text-decoration: underline; }
 
 .modal-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: #020711c9; backdrop-filter: blur(7px); }
 .modal-card { width: min(600px, 100%); max-height: 85vh; overflow: auto; padding: 23px; border: 1px solid #344b66; border-radius: 14px; background: #101a2a; box-shadow: 0 25px 80px #0008; }
