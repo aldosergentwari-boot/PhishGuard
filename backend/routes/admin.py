@@ -160,7 +160,7 @@ def admin_profile():
     user = auth_service.get_user(session["phishguard_admin_user_id"])
     return jsonify({"success": True, "profile": {
         "email": user["email"], "full_name": user.get("full_name"),
-        "profile_image": user.get("profile_image")
+        "profile_image": user.get("admin_profile_image")
     }}), 200
 
 
@@ -180,12 +180,12 @@ def update_admin_profile():
         return jsonify({"success": False, "error": str(exc)}), 400
     user_id = session["phishguard_admin_user_id"]
     with auth_service.connection() as db:
-        db.execute("UPDATE users SET full_name=?, profile_image=? WHERE id=? AND is_active=1",
+        db.execute("UPDATE users SET full_name=?, admin_profile_image=? WHERE id=? AND is_active=1",
                    (full_name.strip(), profile_image, user_id))
     user = auth_service.get_user(user_id)
     return jsonify({"success": True, "message": "Admin profile updated successfully.",
                     "profile": {"email": user["email"], "full_name": user.get("full_name"),
-                                "profile_image": user.get("profile_image")}}), 200
+                                "profile_image": user.get("admin_profile_image")}}), 200
 
 
 @admin_bp.post("/api/admin/scan-credits")
