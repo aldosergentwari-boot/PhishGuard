@@ -975,9 +975,10 @@ async function deleteHistoryRecord(id) {
     }
 
     try {
+        const headers = await csrfHeader();
         await apiRequest(
             `${API.history}/${encodeURIComponent(id)}`,
-            { method: 'DELETE' }
+            { method: 'DELETE', headers }
         );
 
         showToast('Scan record deleted.', 'success');
@@ -1003,8 +1004,10 @@ async function clearHistory() {
     }
 
     try {
+        const headers = await csrfHeader();
         await apiRequest(API.history, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers
         });
 
         state.historyPage = 0;
