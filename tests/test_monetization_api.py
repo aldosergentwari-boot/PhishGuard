@@ -167,7 +167,7 @@ def test_verified_new_subscription_supersedes_previous_active_period(client):
             "SELECT plan_id,status FROM subscriptions WHERE user_id=1 ORDER BY id"
         ).fetchall()
     assert [(row["plan_id"], row["status"]) for row in rows] == [
-        ("free", "active"),
+        ("free", "superseded"),
         ("pro", "superseded"),
         ("business", "active"),
     ]
