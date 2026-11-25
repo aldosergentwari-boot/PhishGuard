@@ -152,3 +152,13 @@ table{width:100%;border-collapse:separate;border-spacing:0;white-space:normal}th
 .owner-profile-arrow{margin-left:auto;color:#a99cff;font-size:13px;opacity:.8}
 .owner-avatar img{width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit}
 @media(max-width:760px){.owner-profile-trigger{width:100%;min-height:52px}.owner-profile-arrow{margin-left:auto}}
+
+
+/* Per-customer monthly URL scan allowance controls */
+.scan-limit-controls{display:grid;grid-template-columns:minmax(60px,1fr) auto auto;gap:5px;min-width:0;margin-top:8px}
+.scan-limit-controls input{width:100%;min-width:0;min-height:34px;padding:7px 8px;border:1px solid #2b3b55;border-radius:8px;background:#0a1422;color:#edf3fc;font-size:10px}
+.scan-limit-controls input:focus{outline:0;border-color:var(--violet);box-shadow:0 0 0 3px #8b7cff20}
+.scan-limit-controls .btn{min-height:34px;padding:7px 9px;font-size:9px}
+.scan-limit-controls .btn.subtle{background:transparent;color:#9aabc2}
+.scan-usage-note{display:block;margin-top:4px;color:var(--muted);font-size:9px}
+@media(max-width:760px){.scan-limit-controls{grid-template-columns:minmax(0,1fr) auto auto;width:100%}.scan-limit-controls input{min-width:0}}
