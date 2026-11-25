@@ -50,6 +50,38 @@ def test_history_clear_requires_csrf(client):
     assert response.status_code == 403
 
 
+def test_history_clear_with_valid_csrf_deletes_only_current_users_records(client):
+    register(client)
+    with client.session_transaction() as session:
+        account_id = session["account_id"]
+
+    from backend.database.history_service import get_history_service
+
+    sample_result = {
+        "url": "https://owned-example.test/login",
+        "final_prediction": "PHISHING",
+        "final_risk_score": 95.0,
+        "detection_mode": "OFFLINE",
+        "decision_sources": ["test"],
+        "ml_result": {"confidence": 95.0, "indicators": []},
+        "local_intelligence": {"domain": "owned-example.test", "indicators": []},
+    }
+    service = get_history_service()
+    own_id = service.save_scan(sample_result, f"account:{account_id}")
+    other_id = service.save_scan(sample_result, "account:another-user")
+
+    token = csrf(client)
+    response = client.delete(
+        "/api/history",
+        headers={"X-CSRF-Token": token},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["deleted_count"] == 1
+    assert service.get_scan(own_id, f"account:{account_id}") is None
+    assert service.get_scan(other_id, "account:another-user") is not None
+
+
 def test_history_delete_accepts_valid_csrf(client):
     register(client)
     token = csrf(client)
