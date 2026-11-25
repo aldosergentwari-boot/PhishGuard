@@ -1515,6 +1515,7 @@ function bindEvents() {
     $('resendVerification')?.addEventListener('click', resendVerificationEmail);
     $('accountLogout')?.addEventListener('click', signOutAccount);
     $('accountViewPlans')?.addEventListener('click', () => goToPage('pricing'));
+    $('refreshAccountNotifications')?.addEventListener('click', loadAccountNotifications);
     $('pricingGrid')?.addEventListener('click', event => {
         const button = event.target.closest('[data-plan]');
         if (button) void requestPlanUpgrade(button.dataset.plan);
@@ -1941,8 +1942,34 @@ async function loadAccount() {
                 plan.plan_id === 'pro' ? '$4.99 per month' : 'Free plan') +
             '</strong></div><div><span>Plan period ends</span><strong>' +
             escapeHtml(end) + '</strong></div>';
+        await loadAccountNotifications();
     } catch (error) {
         showToast('Could not load account details: ' + error.message, 'error');
+    }
+}
+
+async function loadAccountNotifications() {
+    const list = $('accountNotifications');
+    if (!list) return;
+    list.innerHTML = '<p class="account-notifications-empty">Loading notifications…</p>';
+    try {
+        const data = await apiRequest('/api/account/notifications');
+        const items = Array.isArray(data.notifications) ? data.notifications : [];
+        if (!items.length) {
+            list.innerHTML = '<p class="account-notifications-empty">You are all caught up. No notifications yet.</p>';
+            return;
+        }
+        list.innerHTML = items.map(item => {
+            const when = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+            return '<article class="account-notification-item">' +
+                '<div class="account-notification-meta"><strong>' + escapeHtml(item.title) +
+                '</strong><span>' + escapeHtml(String(item.category || 'account').toUpperCase()) +
+                '</span></div><p>' + escapeHtml(item.message) + '</p><time>' +
+                escapeHtml(when) + '</time></article>';
+        }).join('');
+    } catch (error) {
+        list.innerHTML = '<p class="account-notifications-empty">' +
+            escapeHtml(error.message || 'Could not load notifications.') + '</p>';
     }
 }
 
