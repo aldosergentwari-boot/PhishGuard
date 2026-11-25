@@ -2,13 +2,25 @@ import calendar
 import hashlib
 import hmac
 import os
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
+from werkzeug.security import generate_password_hash
+
+from backend.services import email_service
 
 from backend.database.auth_service import auth_service
 
 admin_bp = Blueprint("admin", __name__)
+
+
+def _owner_reset_token(user_id):
+    raw_token = secrets.token_urlsafe(32)
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    auth_service.create_email_token(user_id, "admin_password_reset",
+        hashlib.sha256(raw_token.encode("utf-8")).hexdigest(), expires_at)
+    return raw_token
 
 
 def _authorized_admin():
@@ -45,6 +57,58 @@ def admin_dashboard_page():
     if not _authorized_admin():
         return redirect("/admin/login")
     return render_template("admin_dashboard.html", owner_email=session.get("phishguard_admin_email", ""))
+
+
+
+
+@admin_bp.get("/admin/reset-password")
+def admin_reset_password_page():
+    return render_template("admin_reset_password.html")
+
+
+@admin_bp.post("/api/admin/password-reset/request")
+def request_admin_password_reset():
+    data = request.get_json(silent=True)
+    email = data.get("email") if isinstance(data, dict) else None
+    owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower()
+    bucket = hashlib.sha256(
+        f"owner-password-reset:{request.remote_addr or 'unknown'}:{str(email).strip().lower() if isinstance(email, str) else ''}".encode()
+    ).hexdigest()
+    if not auth_service.allow_auth_attempt(bucket, limit=5, window_seconds=900):
+        return jsonify({"success": True, "message": "If the owner address matches, reset instructions will be sent."}), 200
+    if isinstance(email, str) and owner_email and email.strip().lower() == owner_email:
+        with auth_service.connection() as db:
+            row = db.execute("SELECT id,email FROM users WHERE LOWER(email)=? AND is_active=1 AND email_verified=1", (owner_email,)).fetchone()
+        if row:
+            email_service.send_admin_password_reset_email(row["email"], _owner_reset_token(row["id"]))
+    return jsonify({"success": True, "message": "If the owner address matches, reset instructions will be sent."}), 200
+
+
+@admin_bp.post("/api/admin/password-reset/confirm")
+def confirm_admin_password_reset():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "A JSON object is required."}), 400
+    raw_token, password = data.get("token"), data.get("password")
+    if not isinstance(raw_token, str) or not 20 <= len(raw_token) <= 200:
+        return jsonify({"success": False, "error": "This admin reset link is invalid or has expired."}), 400
+    if not isinstance(password, str) or not 12 <= len(password) <= 128:
+        return jsonify({"success": False, "error": "Password must contain 12 to 128 characters."}), 400
+    owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower()
+    if not owner_email:
+        return jsonify({"success": False, "error": "Owner login is not configured."}), 503
+    with auth_service.connection() as db:
+        owner = db.execute("SELECT id FROM users WHERE LOWER(email)=? AND is_active=1 AND email_verified=1", (owner_email,)).fetchone()
+    if not owner:
+        return jsonify({"success": False, "error": "Owner account is unavailable."}), 400
+    changed = auth_service.reset_password_with_token(
+        hashlib.sha256(raw_token.encode("utf-8")).hexdigest(),
+        generate_password_hash(password, method="scrypt"),
+        purpose="admin_password_reset", expected_user_id=owner["id"])
+    if not changed:
+        return jsonify({"success": False, "error": "This admin reset link is invalid or has expired."}), 400
+    session.clear()
+    return jsonify({"success": True, "message": "Admin password updated. Sign in from the owner login page.", "redirect": "/admin/login"}), 200
 
 
 @admin_bp.post("/api/admin/login")
