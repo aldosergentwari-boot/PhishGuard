@@ -100,11 +100,32 @@ def get_usage(owner_id, plan_id="free"):
                 (user_id, now.isoformat()),
             ).fetchone()[0]
 
-    effective_limit = limits["scans_per_month"] + bonus_scans
+    admin_limit_override = None
+    if user_id:
+        with auth_service.connection() as db:
+            override_table = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='admin_scan_limit_overrides'"
+            ).fetchone()
+            if override_table:
+                override = db.execute(
+                    "SELECT monthly_limit FROM admin_scan_limit_overrides WHERE user_id=?",
+                    (user_id,),
+                ).fetchone()
+                if override:
+                    admin_limit_override = int(override["monthly_limit"])
+
+    base_limit = (
+        admin_limit_override
+        if admin_limit_override is not None
+        else limits["scans_per_month"]
+    )
+    effective_limit = base_limit + bonus_scans
     return {
         "scans_used": used,
         "scans_limit": effective_limit,
-        "plan_scans_limit": limits["scans_per_month"],
+        "plan_scans_limit": base_limit,
+        "default_plan_limit": limits["scans_per_month"],
+        "admin_limit_override": admin_limit_override,
         "admin_bonus_scans": bonus_scans,
         "scans_remaining": max(0, effective_limit - used),
         "history_limit": limits["history_records"],
