@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, redirect, request, session
 
+from backend.database.auth_service import auth_service
 from backend.services.plan_service import (
     PLANS, PLAN_LIMITS, get_account_plan, get_usage
 )
@@ -42,6 +43,22 @@ def current_subscription():
         "plan": plan,
         "usage": usage
     }), 200
+
+
+@billing_bp.get("/api/billing/payments")
+def account_payment_history():
+    """Return only the signed-in account's recent payment records."""
+    user_id = session.get("account_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "Sign in to view payment history."}), 401
+    with auth_service.connection() as db:
+        rows = db.execute(
+            """SELECT id,plan_id,amount,currency,payment_method,status,created_at,updated_at
+               FROM payment_transactions WHERE user_id=?
+               ORDER BY created_at DESC,id DESC LIMIT 20""",
+            (user_id,),
+        ).fetchall()
+    return jsonify({"success": True, "payments": [dict(row) for row in rows]}), 200
 
 
 @billing_bp.post("/api/billing/checkout")
