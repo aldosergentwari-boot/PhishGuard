@@ -1526,6 +1526,17 @@ function bindEvents() {
         const button = event.target.closest('[data-plan]');
         if (button) void requestPlanUpgrade(button.dataset.plan);
     });
+    $('acceptAdConsent')?.addEventListener('click', () => {
+        try { localStorage.setItem('phishguard.adConsent', 'accepted'); } catch { return; }
+        void loadAdPlacement();
+    });
+    $('rejectAdConsent')?.addEventListener('click', () => {
+        try { localStorage.setItem('phishguard.adConsent', 'rejected'); } catch { /* keep ads disabled */ }
+        const banner = $('adConsentBanner');
+        const slot = $('overviewAd');
+        if (banner) banner.hidden = true;
+        if (slot) { slot.hidden = true; slot.replaceChildren(); }
+    });
 
     $('adminCreditForm')?.addEventListener('submit', submitAdminCreditGrant);
     $('adminLoadOverview')?.addEventListener('click', loadAdminOverview);
@@ -2294,11 +2305,42 @@ async function requestPlanUpgrade(planId) {
 /* =========================================
    SUBSCRIPTION PLANS
 ========================================= */
+let adsenseScriptPromise = null;
+
+async function loadAdsenseScript(clientId) {
+    let script = document.querySelector('script[data-phishguard-adsense]');
+    if (script?.dataset.loaded === 'true') return;
+    if (adsenseScriptPromise) return adsenseScriptPromise;
+
+    adsenseScriptPromise = new Promise((resolve, reject) => {
+        if (!script) {
+            script = document.createElement('script');
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+            script.dataset.phishguardAdsense = 'true';
+            script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' +
+                encodeURIComponent(clientId);
+        }
+        script.addEventListener('load', () => {
+            script.dataset.loaded = 'true';
+            resolve();
+        }, { once: true });
+        script.addEventListener('error', () => reject(new Error('Ad service could not be loaded.')), { once: true });
+        if (!script.isConnected) document.head.appendChild(script);
+    }).finally(() => {
+        adsenseScriptPromise = null;
+    });
+
+    return adsenseScriptPromise;
+}
+
 async function loadAdPlacement() {
     const slot = $('overviewAd');
+    const banner = $('adConsentBanner');
     if (!slot) return;
     slot.hidden = true;
     slot.replaceChildren();
+    if (banner) banner.hidden = true;
     try {
         const [adConfig, account] = await Promise.all([
             apiRequest(API.ads),
@@ -2307,7 +2349,13 @@ async function loadAdPlacement() {
         const planId = account?.plan?.plan_id || 'free';
         if (!adConfig.enabled || !['free', 'guest'].includes(planId) || !navigator.onLine) return;
 
-        slot.hidden = false;
+        let consent = null;
+        try { consent = localStorage.getItem('phishguard.adConsent'); } catch { return; }
+        if (consent !== 'accepted') {
+            if (banner) banner.hidden = false;
+            return;
+        }
+
         const ad = document.createElement('ins');
         ad.className = 'adsbygoogle';
         ad.style.display = 'block';
@@ -2317,24 +2365,13 @@ async function loadAdPlacement() {
         ad.dataset.fullWidthResponsive = 'true';
         slot.appendChild(ad);
 
-        if (!document.querySelector('script[data-phishguard-adsense]')) {
-            const script = document.createElement('script');
-            script.async = true;
-            script.crossOrigin = 'anonymous';
-            script.dataset.phishguardAdsense = 'true';
-            script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' +
-                encodeURIComponent(adConfig.client_id);
-            script.onload = () => {
-                try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
-                catch { slot.hidden = true; }
-            };
-            document.head.appendChild(script);
-        } else {
-            try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
-            catch { slot.hidden = true; }
-        }
+        await loadAdsenseScript(adConfig.client_id);
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        slot.hidden = false;
     } catch {
-        // Ads are optional and must never affect offline scanning.
+        slot.hidden = true;
+        slot.replaceChildren();
+        // Ads are optional and must never affect scanning or account access.
     }
 }
 
