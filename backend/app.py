@@ -273,9 +273,6 @@ def create_app():
     def home():
         return render_template("index.html")
 
-    @app.route("/dashboard")
-    def dashboard():
-        return render_template("index.html")
 
     def render_legal_page(page_title, page_description, sections):
         support_email = os.getenv("PUBLIC_SUPPORT_EMAIL", "").strip()
