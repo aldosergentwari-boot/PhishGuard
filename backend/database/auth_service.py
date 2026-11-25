@@ -132,6 +132,13 @@ class AuthService:
                 created_at TEXT NOT NULL
             )""")
             db.execute("CREATE INDEX IF NOT EXISTS idx_admin_scan_grants_user_expiry ON admin_scan_grants(user_id, expires_at)")
+            db.execute("""CREATE TABLE IF NOT EXISTS admin_scan_limit_overrides (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                monthly_limit INTEGER NOT NULL CHECK(monthly_limit >= 0),
+                reason TEXT NOT NULL,
+                updated_by INTEGER REFERENCES users(id),
+                updated_at TEXT NOT NULL
+            )""")
 
             # Scan accounting is intentionally independent of deletable history.
             db.execute("""CREATE TABLE IF NOT EXISTS scan_usage (
