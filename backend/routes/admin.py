@@ -4,7 +4,7 @@ import hmac
 import os
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
 
 from backend.database.auth_service import auth_service
 
@@ -12,13 +12,77 @@ admin_bp = Blueprint("admin", __name__)
 
 
 def _authorized_admin():
-    configured = os.getenv("PHISHGUARD_ADMIN_TOKEN", "").strip()
-    supplied = request.headers.get("X-Admin-Token", "")
-    return (
-        len(configured) >= 32
-        and bool(supplied)
-        and hmac.compare_digest(configured, supplied)
+    """Require a live owner session tied to the configured owner account."""
+    owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower()
+    user_id = session.get("phishguard_admin_user_id")
+    if not owner_email or not isinstance(user_id, int) or user_id < 1:
+        return False
+    with auth_service.connection() as db:
+        user = db.execute(
+            """SELECT id, email, is_active, email_verified, session_version
+               FROM users WHERE id=?""",
+            (user_id,),
+        ).fetchone()
+    return bool(
+        user
+        and user["is_active"]
+        and user["email_verified"]
+        and user["email"].lower() == owner_email
+        and session.get("phishguard_admin_email") == user["email"]
+        and session.get("phishguard_admin_session_version") == user["session_version"]
     )
+
+
+@admin_bp.get("/admin/login")
+def admin_login_page():
+    if _authorized_admin():
+        return redirect("/admin")
+    return render_template("admin_login.html")
+
+
+@admin_bp.get("/admin")
+def admin_dashboard_page():
+    if not _authorized_admin():
+        return redirect("/admin/login")
+    return render_template("admin_dashboard.html")
+
+
+@admin_bp.post("/api/admin/login")
+def admin_login():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "A JSON object is required."}), 400
+    email = data.get("email")
+    password = data.get("password")
+    owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower()
+    if not owner_email:
+        return jsonify({"success": False, "error": "Owner login is not configured on this server."}), 503
+    bucket = hashlib.sha256(
+        f"owner-login:{request.remote_addr or 'unknown'}:{str(email).strip().lower() if isinstance(email, str) else ''}".encode()
+    ).hexdigest()
+    if not auth_service.allow_auth_attempt(bucket, limit=6, window_seconds=900):
+        return jsonify({"success": False, "error": "Too many sign-in attempts. Try again later."}), 429
+    user = auth_service.authenticate(email, password)
+    if (
+        not user
+        or user["email"].lower() != owner_email
+        or not user.get("email_verified")
+    ):
+        return jsonify({"success": False, "error": "Invalid owner credentials or owner email is not verified."}), 401
+    session.clear()
+    session["phishguard_admin_user_id"] = user["id"]
+    session["phishguard_admin_email"] = user["email"]
+    session["phishguard_admin_session_version"] = user.get("session_version", 0)
+    session.permanent = True
+    return jsonify({"success": True, "redirect": "/admin"}), 200
+
+
+@admin_bp.post("/api/admin/logout")
+def admin_logout():
+    if not _authorized_admin():
+        return jsonify({"success": False, "error": "Owner authorization required."}), 401
+    session.clear()
+    return jsonify({"success": True}), 200
 
 
 @admin_bp.post("/api/admin/scan-credits")
@@ -127,3 +191,51 @@ def admin_overview():
             "period_timezone": "UTC",
         },
     }), 200
+
+
+@admin_bp.get("/api/admin/users")
+def admin_users():
+    if not _authorized_admin():
+        return jsonify({"success": False, "error": "Owner authorization required."}), 401
+    try:
+        limit = min(max(int(request.args.get("limit", "50")), 1), 100)
+        offset = max(int(request.args.get("offset", "0")), 0)
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid pagination values."}), 400
+    with auth_service.connection() as db:
+        rows = db.execute(
+            """SELECT u.id, u.email, u.created_at, u.is_active, u.email_verified,
+                      s.plan_id, s.status AS subscription_status
+               FROM users u
+               LEFT JOIN subscriptions s ON s.id=(
+                   SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=u.id
+               )
+               ORDER BY u.created_at DESC LIMIT ? OFFSET ?""",
+            (limit, offset),
+        ).fetchall()
+        total = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    return jsonify({"success": True, "users": [dict(row) for row in rows],
+                    "total": total, "limit": limit, "offset": offset}), 200
+
+
+@admin_bp.get("/api/admin/payments")
+def admin_payments():
+    if not _authorized_admin():
+        return jsonify({"success": False, "error": "Owner authorization required."}), 401
+    try:
+        limit = min(max(int(request.args.get("limit", "50")), 1), 100)
+        offset = max(int(request.args.get("offset", "0")), 0)
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid pagination values."}), 400
+    with auth_service.connection() as db:
+        rows = db.execute(
+            """SELECT p.id, u.email, p.plan_id, p.amount, p.currency,
+                      p.payment_method, p.status, p.created_at
+               FROM payment_transactions p
+               JOIN users u ON u.id=p.user_id
+               ORDER BY p.created_at DESC LIMIT ? OFFSET ?""",
+            (limit, offset),
+        ).fetchall()
+        total = db.execute("SELECT COUNT(*) FROM payment_transactions").fetchone()[0]
+    return jsonify({"success": True, "payments": [dict(row) for row in rows],
+                    "total": total, "limit": limit, "offset": offset}), 200
