@@ -168,8 +168,11 @@ def admin_overview():
         ).fetchone()[0]
         active_subscriptions = db.execute(
             """SELECT COUNT(*) FROM subscriptions s JOIN users u ON u.id=s.user_id
-               WHERE s.status='active' AND LOWER(u.email)<>?""",
-            (owner_email,),
+               WHERE s.status='active' AND s.plan_id IN ('pro','business')
+                 AND LOWER(u.email)<>?
+                 AND (s.current_period_end IS NULL OR s.current_period_end>?)
+                 AND s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=s.user_id)""",
+            (owner_email, now.isoformat()),
         ).fetchone()[0]
         # Scan usage is an operational metric; scan_usage has owner_id, not user_id.
         scans_this_month = db.execute(

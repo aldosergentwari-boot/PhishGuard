@@ -170,6 +170,12 @@ def set_user_plan(user_id):
         if not user: return jsonify({"success": False, "error": "Active user not found."}), 404
         if user["email"].strip().lower() == _owner_email():
             return jsonify({"success": False, "error": "Owner account is not a customer account."}), 400
+        # A manual plan override replaces the previous active plan; it must not
+        # leave multiple active subscriptions for the same customer.
+        db.execute(
+            "UPDATE subscriptions SET status='cancelled',updated_at=? WHERE user_id=? AND status='active'",
+            (stamp, user_id),
+        )
         db.execute(
             """INSERT INTO subscriptions(user_id,plan_id,status,billing_interval_months,started_at,
                current_period_end,provider,provider_subscription_id,created_at,updated_at)
@@ -237,7 +243,9 @@ def management_analytics():
         active = db.execute("SELECT COUNT(*) FROM users WHERE is_active=1 AND LOWER(email)<>?", (owner,)).fetchone()[0]
         paid = db.execute("""SELECT COUNT(*) FROM subscriptions s JOIN users u ON u.id=s.user_id
             WHERE LOWER(u.email)<>? AND s.status='active' AND s.plan_id IN ('pro','business')
-            AND s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=s.user_id)""", (owner,)).fetchone()[0]
+            AND (s.current_period_end IS NULL OR s.current_period_end>?)
+            AND s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=s.user_id)""",
+            (owner, now.isoformat())).fetchone()[0]
         revenue = db.execute("""SELECT COALESCE(SUM(p.amount),0) FROM payment_transactions p JOIN users u ON u.id=p.user_id
             WHERE LOWER(u.email)<>? AND p.status='successful'""", (owner,)).fetchone()[0]
         monthly = db.execute("""SELECT COALESCE(SUM(p.amount),0) FROM payment_transactions p JOIN users u ON u.id=p.user_id
@@ -336,6 +344,28 @@ def send_user_notification():
                    (user_id,title.strip(),message.strip(),category,now))
         _audit(db,"notification.created","user",user_id,title.strip())
     return jsonify({"success":True})
+
+
+@admin_management_bp.get("/api/account/notifications")
+def account_notifications():
+    """Return the signed-in customer's own in-app notifications."""
+    user_id = session.get("account_id")
+    if not isinstance(user_id, int) or user_id < 1:
+        return jsonify({"success": False, "error": "Sign in to view your notifications."}), 401
+
+    now = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        db.execute(
+            "UPDATE user_notifications SET read_at=? WHERE user_id=? AND read_at IS NULL",
+            (now, user_id),
+        )
+        rows = db.execute(
+            """SELECT id,title,message,category,read_at,created_at
+               FROM user_notifications WHERE user_id=? ORDER BY id DESC LIMIT 50""",
+            (user_id,),
+        ).fetchall()
+    return jsonify({"success": True, "notifications": [dict(row) for row in rows]}), 200
 
 
 @admin_management_bp.get("/api/admin/management/notifications")

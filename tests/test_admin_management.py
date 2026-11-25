@@ -96,3 +96,47 @@ def test_owner_is_not_counted_as_customer_and_admin_audit_is_preserved(monkeypat
     with auth_service.connection() as db:
         owner_row = db.execute("SELECT is_active,email_verified FROM users WHERE id=?", (owner["id"],)).fetchone()
         assert owner_row["is_active"] == 1 and owner_row["email_verified"] == 1
+
+
+def test_plan_override_replaces_previous_active_subscription(monkeypatch, tmp_path):
+    from backend.services.plan_service import get_account_plan
+
+    _, client, _, csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user("plan-replace@example.com", "A-Strong-Customer-Password-123!")
+    headers = {"X-CSRF-Token": csrf}
+    first = client.post(f"/api/admin/management/users/{customer['id']}/plan",
+        json={"plan_id": "pro", "reason": "First approved upgrade"}, headers=headers)
+    assert first.status_code == 200
+    second = client.post(f"/api/admin/management/users/{customer['id']}/plan",
+        json={"plan_id": "business", "reason": "Approved plan replacement"}, headers=headers)
+    assert second.status_code == 200
+    with auth_service.connection() as db:
+        rows = db.execute("SELECT plan_id,status FROM subscriptions WHERE user_id=? ORDER BY id", (customer["id"],)).fetchall()
+    assert rows[-1]["plan_id"] == "business" and rows[-1]["status"] == "active"
+    assert all(row["status"] == "cancelled" for row in rows[:-1])
+    assert sum(row["status"] == "active" for row in rows) == 1
+    assert get_account_plan(customer["id"])["plan_id"] == "business"
+    assert client.get("/api/admin/overview").get_json()["overview"]["active_subscriptions"] == 1
+
+
+def test_customer_can_only_read_their_own_admin_notifications(monkeypatch, tmp_path):
+    app, owner_client_instance, _, owner_csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user("notice-customer@example.com", "A-Strong-Customer-Password-123!")
+    response = owner_client_instance.post("/api/admin/management/notifications",
+        json={"user_id": customer["id"], "title": "Security update", "message": "Your account settings were updated.", "category": "security"},
+        headers={"X-CSRF-Token": owner_csrf})
+    assert response.status_code == 200
+    assert owner_client_instance.get("/api/account/notifications").status_code == 401
+
+    customer_client = app.test_client()
+    csrf = customer_client.get("/api/auth/csrf").get_json()["csrf_token"]
+    login = customer_client.post("/api/auth/login",
+        json={"email": "notice-customer@example.com", "password": "A-Strong-Customer-Password-123!"},
+        headers={"X-CSRF-Token": csrf})
+    assert login.status_code == 200
+    notices = customer_client.get("/api/account/notifications")
+    assert notices.status_code == 200
+    payload = notices.get_json()["notifications"]
+    assert len(payload) == 1
+    assert payload[0]["title"] == "Security update"
+    assert payload[0]["read_at"]
