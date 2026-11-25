@@ -843,3 +843,18 @@ tr[data-id] { cursor: pointer; }
 @media (max-width: 560px) {
     .admin-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* Customer account notifications */
+.account-notifications{margin-top:24px;padding:18px;border:1px solid var(--border-color,#26344c);border-radius:14px;background:rgba(12,20,35,.55)}
+.account-notifications-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.account-notifications-heading h3{margin:5px 0 0;font-size:16px}
+.account-notifications-list{display:grid;gap:9px}
+.account-notifications-empty{margin:0;padding:16px;border-radius:10px;background:rgba(255,255,255,.025);color:var(--muted,#91a0b8);font-size:13px}
+.account-notification-item{padding:13px 14px;border:1px solid rgba(145,160,184,.15);border-radius:10px;background:rgba(255,255,255,.025)}
+.account-notification-meta{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.account-notification-meta strong{font-size:13px}
+.account-notification-meta span{font-size:9px;letter-spacing:1px;color:var(--accent,#8b7cff);font-weight:800}
+.account-notification-item p{margin:8px 0;color:var(--text,#f5f7fb);font-size:13px;line-height:1.55}
+.account-notification-item time{font-size:10px;color:var(--muted,#91a0b8)}
+@media(max-width:560px){.account-notifications{padding:13px}.account-notification-meta{align-items:flex-start;flex-direction:column;gap:5px}}
