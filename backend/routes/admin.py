@@ -165,18 +165,23 @@ def admin_overview():
             (owner_email,),
         ).fetchone()[0]
         active_subscriptions = db.execute(
-            "SELECT COUNT(*) FROM subscriptions WHERE status='active'"
+            """SELECT COUNT(*) FROM subscriptions s JOIN users u ON u.id=s.user_id
+               WHERE s.status='active' AND LOWER(u.email)<>?""",
+            (owner_email,),
         ).fetchone()[0]
         scans_this_month = db.execute(
-            "SELECT COUNT(*) FROM scan_usage WHERE scanned_at>=?",
-            (month_start,),
+            """SELECT COUNT(*) FROM scan_usage su JOIN users u ON u.id=su.user_id
+               WHERE su.scanned_at>=? AND LOWER(u.email)<>?""",
+            (month_start, owner_email),
         ).fetchone()[0]
         bonus_scans_this_month = db.execute(
             "SELECT COALESCE(SUM(granted_scans), 0) FROM admin_scan_grants WHERE created_at>=?",
             (month_start,),
         ).fetchone()[0]
         payment_rows = db.execute(
-            "SELECT status, COUNT(*) AS count FROM payment_transactions GROUP BY status"
+            """SELECT p.status, COUNT(*) AS count FROM payment_transactions p
+               JOIN users u ON u.id=p.user_id WHERE LOWER(u.email)<>? GROUP BY p.status""",
+            (owner_email,),
         ).fetchall()
 
     return jsonify({
@@ -212,10 +217,12 @@ def admin_users():
                LEFT JOIN subscriptions s ON s.id=(
                    SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=u.id
                )
+               WHERE LOWER(u.email)<>?
                ORDER BY u.created_at DESC LIMIT ? OFFSET ?""",
-            (limit, offset),
+            (os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower(), limit, offset),
         ).fetchall()
-        total = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        total = db.execute("SELECT COUNT(*) FROM users WHERE LOWER(email)<>?",
+                           (os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower(),)).fetchone()[0]
     return jsonify({"success": True, "users": [dict(row) for row in rows],
                     "total": total, "limit": limit, "offset": offset}), 200
 
@@ -235,9 +242,12 @@ def admin_payments():
                       p.payment_method, p.status, p.created_at
                FROM payment_transactions p
                JOIN users u ON u.id=p.user_id
+               WHERE LOWER(u.email)<>?
                ORDER BY p.created_at DESC LIMIT ? OFFSET ?""",
-            (limit, offset),
+            (os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower(), limit, offset),
         ).fetchall()
-        total = db.execute("SELECT COUNT(*) FROM payment_transactions").fetchone()[0]
+        total = db.execute("""SELECT COUNT(*) FROM payment_transactions p JOIN users u ON u.id=p.user_id
+                              WHERE LOWER(u.email)<>?""",
+                           (os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip().lower(),)).fetchone()[0]
     return jsonify({"success": True, "payments": [dict(row) for row in rows],
                     "total": total, "limit": limit, "offset": offset}), 200
