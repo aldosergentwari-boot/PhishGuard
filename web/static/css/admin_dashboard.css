@@ -141,3 +141,14 @@ table{width:100%;border-collapse:separate;border-spacing:0;white-space:normal}th
 .admin-profile-form .feedback{grid-column:1/-1;margin:0}
 .admin-profile-form .btn{min-height:43px}
 @media(max-width:760px){.owner-chip-copy strong{font-size:10px}.admin-profile-panel{grid-template-columns:1fr;gap:16px;padding:15px}.admin-profile-preview{width:88px;height:88px;border-radius:23px}.admin-profile-form{grid-template-columns:minmax(0,1fr);gap:12px}.admin-profile-form .feedback{grid-column:auto}}
+
+
+/* Clickable owner identity: a direct shortcut to the Admin profile */
+.owner-profile-trigger{font:inherit;text-align:left;cursor:pointer;transition:border-color .18s,background .18s,transform .18s}
+.owner-profile-trigger:hover{border-color:#8174e8;background:#17243a;transform:translateY(-1px)}
+.owner-profile-trigger:focus-visible{outline:2px solid #a99cff;outline-offset:3px}
+.owner-profile-trigger .owner-chip-copy{display:grid;gap:3px;min-width:0}
+.owner-profile-trigger .owner-chip-copy strong,.owner-profile-trigger .owner-chip-copy small{display:block;text-align:left}
+.owner-profile-arrow{margin-left:auto;color:#a99cff;font-size:13px;opacity:.8}
+.owner-avatar img{width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit}
+@media(max-width:760px){.owner-profile-trigger{width:100%;min-height:52px}.owner-profile-arrow{margin-left:auto}}
