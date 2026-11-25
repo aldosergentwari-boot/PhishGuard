@@ -281,7 +281,7 @@ def create_app():
 
 
     def render_legal_page(page_title, page_description, sections):
-        support_email = os.getenv("PUBLIC_SUPPORT_EMAIL", "").strip()
+        support_email = os.getenv("PUBLIC_SUPPORT_EMAIL", "").strip() or "aldosergentwari@gmail.com"
         return render_template(
             "legal.html",
             page_title=page_title,
