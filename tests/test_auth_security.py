@@ -140,3 +140,83 @@ def test_registration_rejects_non_string_email_without_server_error(client):
     )
     assert response.status_code == 400
     assert response.get_json()["error"] == "Enter a valid email address."
+
+
+
+def test_repeated_login_logout_cycles_keep_csrf_and_session_in_sync(client):
+    register(client)
+
+    for _ in range(3):
+        token = csrf(client)
+        logout_response = client.post(
+            "/api/auth/logout",
+            json={},
+            headers={"X-CSRF-Token": token},
+        )
+        assert logout_response.status_code == 200
+        assert client.get("/api/auth/me").get_json()["authenticated"] is False
+
+        # The anonymous session after logout must be able to obtain a fresh
+        # token and sign in again without refreshing the browser.
+        token = csrf(client)
+        login_response = client.post(
+            "/api/auth/login",
+            json={"email": "secure@example.com", "password": "correct horse battery"},
+            headers={"X-CSRF-Token": token},
+        )
+        assert login_response.status_code == 200
+        assert client.get("/api/auth/me").get_json()["authenticated"] is True
+
+
+def test_password_reset_requires_csrf_and_invalidates_old_password(client):
+    import hashlib
+    from datetime import datetime, timedelta, timezone
+
+    from backend.database.auth_service import auth_service
+
+    register(client)
+    raw_token = "test-password-reset-token-123456789"
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    auth_service.create_email_token(
+        1, "password_reset", hashlib.sha256(raw_token.encode()).hexdigest(), expires_at
+    )
+
+    rejected = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": raw_token, "password": "a completely new password"},
+    )
+    assert rejected.status_code == 403
+
+    token = csrf(client)
+    changed = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": raw_token, "password": "a completely new password"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert changed.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is False
+
+    # Reset links are single-use, and only the new password can authenticate.
+    token = csrf(client)
+    reused = client.post(
+        "/api/auth/password-reset/confirm",
+        json={"token": raw_token, "password": "another different password"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert reused.status_code == 400
+
+    token = csrf(client)
+    old_login = client.post(
+        "/api/auth/login",
+        json={"email": "secure@example.com", "password": "correct horse battery"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert old_login.status_code == 401
+
+    token = csrf(client)
+    new_login = client.post(
+        "/api/auth/login",
+        json={"email": "secure@example.com", "password": "a completely new password"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert new_login.status_code == 200
