@@ -2,7 +2,7 @@
   const $ = (id) => document.getElementById(id);
   let token = "";
   let userOffset = 0;
-  const pageSize = 25;
+  const pageSize = 100;
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const dt = (v) => { if (!v) return "—"; const d = new Date(v); return Number.isNaN(d.getTime()) ? esc(v) : d.toLocaleString(); };
   async function csrf() {
