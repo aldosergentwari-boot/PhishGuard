@@ -2,7 +2,6 @@ from pathlib import Path
 import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
-from tkinter import simpledialog
 
 
 # Ensure the project root is importable when launched as:
