@@ -8,7 +8,7 @@ An offline-first phishing URL detection project with a Flask web dashboard, a Tk
 - Offline heuristic checks, brand-impersonation checks, and local blocklist/allowlist matching.
 - Optional Google Safe Browsing and URLhaus lookups when API credentials are configured.
 - Web dashboard with overview, URL scanner, scan history, filtering, pagination, and CSV export.
-- Desktop scanner built with Python Tkinter.
+- Desktop scanner built with Python Tkinter, with persistent device-local scan history that works offline.
 - SQLite history storage.
 - URL normalization shared by dataset feature extraction and live prediction.
 
@@ -100,7 +100,7 @@ Open a second terminal in the project root:
 python desktop/main.py
 ```
 
-The desktop client uses the same local model and local intelligence services. It does not require the Flask server to be running.
+The desktop client uses the same local model and local intelligence services. It does not require the Flask server to be running. Desktop scan history is stored locally under the current Windows user profile (or the platform's application-data directory) and remains available after restarting the app. This local desktop history is separate from a signed-in web account's cloud history; cross-device account sync is a later desktop integration step.
 
 ## Run tests
 
