@@ -287,7 +287,7 @@ def create_app():
             page_title=page_title,
             page_description=page_description,
             sections=sections,
-            updated_date="November 24, 2026",
+            updated_date="November 25, 2026",
             support_email=support_email or "Official support email not configured yet.",
             show_setup_notice=not bool(support_email),
         )
@@ -301,21 +301,22 @@ def create_app():
                 {
                     "heading": "Information we handle",
                     "paragraphs": [
-                        "When you create an account, PhishGuard processes your email address and a securely hashed password. The web application also uses session and browser-identity information to keep you signed in and associate scan history with your account.",
-                        "When you scan a URL, the submitted URL and its analysis result may be stored in the scan history database. Do not submit passwords, private access tokens, or other secrets as part of a URL.",
+                        "When you create an account, PhishGuard processes your email address and a securely hashed password. If you choose to add profile details, the service also stores your username, full name and profile picture so they can be displayed in your account. Profile pictures are stored with the account data.",
+                        "When you scan a URL, the submitted URL, its analysis result and scan timestamp may be stored in the scan-history and usage records. Do not place passwords, private access tokens, session identifiers or other secrets inside a URL submitted for analysis.",
                     ],
                     "bullets": [
-                        "Account details such as email address and password hash.",
+                        "Account details such as email address, password hash, username, full name and optional profile picture.",
                         "Submitted URLs, scan results, timestamps, and scan-history records.",
                         "Session and browser identifiers needed for authentication and history.",
-                        "Plan, usage, and payment-transaction references needed to operate subscriptions.",
+                        "Plan, monthly scan-usage, administrator-set scan-limit and bonus-credit records.",
+                        "Payment transaction references and status information needed to operate paid plans; full card numbers and Mobile Money PINs are not required by PhishGuard.",
                     ],
                 },
                 {
                     "heading": "Offline and online scanning",
                     "paragraphs": [
-                        "Offline mode processes URL analysis using the local model and local rules and does not send the submitted URL to online reputation providers. The app may still communicate with its own server to use account and scan-history features.",
-                        "If you deliberately enable Online mode and configure the relevant providers, PhishGuard may send the submitted URL to Google Safe Browsing and URLhaus for reputation checks. Domain-age checks send the domain name to RDAP. The OpenPhish community feed is downloaded by the service and compared locally. Provider terms and privacy practices also apply.",
+                        "In Offline mode, URL analysis uses the model and local rules available to the PhishGuard application server. The submitted URL is not sent to external online reputation providers by that scan mode. The browser may still communicate with the PhishGuard server for authentication, scan processing, history, account limits and other enabled application features; Offline mode does not mean that the entire website runs without a network connection.",
+                        "If you deliberately enable Online mode and the relevant providers are configured, PhishGuard may send the submitted URL to Google Safe Browsing and URLhaus for reputation checks. Domain-age checks send the domain name to RDAP. The OpenPhish community feed is downloaded by the service and compared locally. Those providers process requests under their own terms and privacy practices.",
                     ],
                 },
                 {
@@ -336,8 +337,8 @@ def create_app():
                 {
                     "heading": "Retention and your choices",
                     "paragraphs": [
-                        "Account and scan-history information is retained as needed to provide the service, enforce plan limits, maintain security, and handle payment records. Exact retention periods depend on the deployment and operational requirements; do not assume that deleting a browser session deletes server-side records.",
-                        "You can use Offline mode to avoid sending scanned URLs to external reputation providers. For questions or requests concerning personal information, contact the service using the official support address shown below.",
+                        "Account, profile, scan-history, scan-usage and security records are retained for as long as reasonably necessary to operate the service, enforce monthly limits, investigate abuse, maintain audit trails and meet payment or legal obligations. Retention periods may vary by record type and deployment. Deleting a browser session does not delete server-side records.",
+                        "You can use Offline mode to avoid sending scanned URLs to external reputation providers. You may update profile details through your account where those controls are available. For privacy questions or requests concerning personal information, contact the service using the official support address shown below. Requests may be subject to identity verification and applicable legal requirements.",
                     ],
                 },
                 {
@@ -360,6 +361,7 @@ def create_app():
                     "paragraphs": [
                         "You may use PhishGuard to assess URLs for defensive, educational, and legitimate security purposes. You must not use the service to attack systems, distribute malware, access accounts without permission, interfere with the service, or violate applicable laws or third-party rights.",
                         "You are responsible for the URLs you submit and for ensuring that you have the right to submit them for analysis.",
+                        "You must not attempt to bypass account, scan, rate or security limits; disrupt the service; probe accounts or infrastructure without authorization; or use the platform to facilitate phishing, fraud, malware distribution or other harmful activity.",
                     ],
                 },
                 {
@@ -382,6 +384,7 @@ def create_app():
                         "The Free plan is available at no charge and has usage limits displayed in the application. Paid plans and their current prices and limits are displayed on the pricing page.",
                         "Where Flutterwave checkout is enabled, payments are processed by Flutterwave. Current paid subscriptions use one-time payments and manual renewal; automatic recurring billing is not enabled. Access lasts for the period stated for the purchased plan, subject to successful payment verification.",
                         "Refunds, cancellation, and payment disputes are subject to the payment provider's rules and applicable consumer-protection laws. The site owner must publish a clear refund and cancellation process before accepting public payments.",
+                        "Monthly scan allowances are based on the plan shown in your account. The service owner may apply an individual account limit or grant additional bonus scans for support or operational reasons. Bonus scans are added to the applicable monthly limit and may expire at the date shown by the service. A customized account limit remains in effect until it is changed or reset. Scan counters use the UTC calendar month unless the application states otherwise.",
                     ],
                 },
                 {
@@ -411,6 +414,7 @@ def create_app():
                     "paragraphs": [
                         "PhishGuard is a defensive URL-analysis aid, not a guarantee of website safety. Threats change rapidly, new phishing domains appear continuously, and no model, blocklist, or reputation provider detects every malicious URL.",
                         "A LEGITIMATE classification means only that the currently available checks did not identify a threat. It does not certify the website, its owner, its content, or its payment forms as trustworthy.",
+                        "A PHISHING classification is an automated warning based on available signals and may require independent review. Both false positives and false negatives are possible. Risk scores and confidence values are estimates, not probabilities or guarantees unless explicitly defined by the product.",
                     ],
                 },
                 {
@@ -427,6 +431,7 @@ def create_app():
                     "heading": "Third-party intelligence",
                     "paragraphs": [
                         "Online reputation checks depend on external providers and may be unavailable, delayed, incomplete, or subject to their own terms. When Online mode is enabled, submitted URL or domain information may be shared with the providers described in the Privacy Policy.",
+                        "An ordinary URL scan analyzes the submitted address and available reputation signals; it is not a full penetration test, malware sandbox, content review or certification of the destination website. Do not treat a successful scan as permission to open an unfamiliar link or enter sensitive information.",
                     ],
                 },
                 {
