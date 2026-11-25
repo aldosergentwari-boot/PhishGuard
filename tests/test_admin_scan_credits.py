@@ -109,5 +109,5 @@ def test_public_website_does_not_expose_owner_console(monkeypatch, tmp_path):
     assert 'id="page-admin"' not in html
     assert 'data-page="admin"' not in html
     assert "Owner Console" not in html
-    assert client_redirect := app.test_client().get("/admin/login")
+    client_redirect = app.test_client().get("/admin/login")
     assert client_redirect.status_code == 200
