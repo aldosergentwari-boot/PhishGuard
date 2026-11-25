@@ -1519,6 +1519,7 @@ function bindEvents() {
     $('accountLogout')?.addEventListener('click', signOutAccount);
     $('accountViewPlans')?.addEventListener('click', () => goToPage('pricing'));
     $('refreshAccountNotifications')?.addEventListener('click', loadAccountNotifications);
+    $('refreshAccountPayments')?.addEventListener('click', loadAccountPayments);
     $('userProfileImage')?.addEventListener('change', previewUserProfileImage);
     $('userRemovePhoto')?.addEventListener('click', removeUserProfileImage);
     $('userProfileForm')?.addEventListener('submit', saveUserProfile);
@@ -2041,9 +2042,37 @@ async function loadAccount() {
                 plan.plan_id === 'pro' ? '$4.99 per month' : 'Free plan') +
             '</strong></div><div><span>Plan period ends</span><strong>' +
             escapeHtml(end) + '</strong></div>';
-        await loadAccountNotifications();
+        await Promise.all([loadAccountNotifications(), loadAccountPayments()]);
     } catch (error) {
         showToast('Could not load account details: ' + error.message, 'error');
+    }
+}
+
+async function loadAccountPayments() {
+    const list = $('accountPaymentHistory');
+    if (!list) return;
+    list.innerHTML = '<p class="account-notifications-empty">Loading payment history…</p>';
+    try {
+        const data = await apiRequest('/api/billing/payments');
+        const payments = Array.isArray(data.payments) ? data.payments : [];
+        if (!payments.length) {
+            list.innerHTML = '<p class="account-notifications-empty">No payment transactions have been recorded yet.</p>';
+            return;
+        }
+        list.innerHTML = payments.map(payment => {
+            const amount = Number(payment.amount || 0).toFixed(2);
+            const when = payment.created_at ? new Date(payment.created_at).toLocaleString() : '—';
+            const status = String(payment.status || 'pending').toLowerCase();
+            return '<article class="account-payment-item">' +
+                '<div><strong>' + escapeHtml(String(payment.plan_id || '').toUpperCase()) +
+                ' plan</strong><span>' + escapeHtml(when) + '</span></div>' +
+                '<div class="account-payment-value"><strong>' + escapeHtml(amount + ' ' + payment.currency) +
+                '</strong><span class="payment-status payment-status-' + escapeHtml(status) + '">' +
+                escapeHtml(status.replace(/_/g, ' ')) + '</span></div></article>';
+        }).join('');
+    } catch (error) {
+        list.innerHTML = '<p class="account-notifications-empty">' +
+            escapeHtml(error.message || 'Could not load payment history.') + '</p>';
     }
 }
 
