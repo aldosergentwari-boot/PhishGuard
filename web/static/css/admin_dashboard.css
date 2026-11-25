@@ -226,3 +226,4 @@ main{width:100%;min-width:0;max-width:none;padding:28px clamp(14px,2.6vw,38px) 6
  .actions .owner{grid-column:1/-1}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+#advUserPrev:disabled,#advUserNext:disabled{display:none}
