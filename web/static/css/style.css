@@ -963,3 +963,22 @@ html,body{max-width:100%;overflow-x:clip}
 .profile-remove-photo{border-color:transparent;background:transparent;color:#ff9cab;padding-left:0}
 #saveUserProfile{width:max-content;min-width:145px;margin-top:5px}
 @media(max-width:600px){.profile-editor{padding:14px}.profile-photo-preview{width:64px;height:64px;flex-basis:64px}}
+
+
+/* Expanded About PhishGuard page */
+.about-feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.about-feature-card{display:flex;align-items:flex-start;gap:13px;min-width:0;padding:17px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(145deg,rgba(20,34,54,.92),rgba(12,21,35,.92))}
+.about-feature-icon{width:35px;height:35px;flex:0 0 35px;display:grid;place-items:center;border:1px solid #4b9bc333;border-radius:10px;background:#2b78951c;color:var(--cyan);font-size:18px;font-weight:800}
+.about-feature-card h3{margin:1px 0 7px;color:var(--text);font-size:12px}
+.about-feature-card p{margin:0;color:var(--muted);font-size:10px;line-height:1.75}
+.about-feature-card p strong{color:#c8d7e9}
+.about-workflow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:19px}
+.about-workflow-step{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.about-workflow-step>span{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border:1px solid #8b7cff44;border-radius:10px;background:#8b7cff17;color:#b5aaff;font-size:10px;font-weight:900}
+.about-workflow-step strong{display:block;margin:2px 0 6px;font-size:11px}
+.about-workflow-step p{margin:0;color:var(--muted);font-size:10px;line-height:1.65}
+.about-security-note{margin-top:20px;border-color:#347b5d55;background:linear-gradient(120deg,#15362a44,#101b2a)}
+.about-security-note h3{margin:0 0 8px;color:#85d8b5;font-size:12px}
+.about-security-note p{margin:0;color:#a9c4b9;font-size:10px;line-height:1.75}
+@media(max-width:900px){.about-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.about-workflow{grid-template-columns:1fr}}
+@media(max-width:600px){.about-feature-grid{grid-template-columns:1fr}.about-feature-card{padding:14px}.about-hero{align-items:flex-start;gap:15px;padding:18px}.about-logo{width:55px;height:55px;border-radius:14px;font-size:18px}.about-hero h2{font-size:21px}.about-workflow{padding:14px}}
