@@ -165,3 +165,66 @@ table{width:100%;border-collapse:separate;border-spacing:0;white-space:normal}th
 
 .metric strong.status-ready{color:#55d6a5}
 .metric strong.status-pending{color:#f1bf68}
+
+
+/* Quick workspace navigation: scroll to top and bottom */
+.workspace-scroll-controls {
+  position: fixed;
+  z-index: 80;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity .2s ease, transform .2s ease, visibility .2s ease;
+}
+.workspace-scroll-controls.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.workspace-scroll-controls button {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(157,145,255,.38);
+  border-radius: 13px;
+  background: linear-gradient(145deg, #202d49, #111d30);
+  color: #c8c0ff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.32);
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+.workspace-scroll-controls button:hover {
+  transform: translateY(-2px);
+  border-color: #a99cff;
+  background: linear-gradient(145deg, #34456b, #192943);
+  color: #fff;
+}
+.workspace-scroll-controls button:focus-visible {
+  outline: 2px solid #a99cff;
+  outline-offset: 3px;
+}
+.workspace-scroll-controls button[hidden] { display: none; }
+.workspace-scroll-controls svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media(max-width:760px) {
+  .workspace-scroll-controls { right: 14px; bottom: 16px; gap: 7px; }
+  .workspace-scroll-controls button { width: 40px; height: 40px; border-radius: 12px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .workspace-scroll-controls, .workspace-scroll-controls button { transition: none; }
+}
