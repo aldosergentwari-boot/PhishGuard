@@ -858,3 +858,70 @@ tr[data-id] { cursor: pointer; }
 .account-notification-item p{margin:8px 0;color:var(--text,#f5f7fb);font-size:13px;line-height:1.55}
 .account-notification-item time{font-size:10px;color:var(--muted,#91a0b8)}
 @media(max-width:560px){.account-notifications{padding:13px}.account-notification-meta{align-items:flex-start;flex-direction:column;gap:5px}}
+
+
+/* Responsive polish: customer workspace on phones, tablets and compact laptops */
+html { min-width: 320px; scroll-padding-top: 16px; }
+body { overflow-x: hidden; }
+.app-shell, .main-area, .content-area, .page, .panel, .overview-grid,
+.stats-grid, .pricing-grid, .account-panel, .history-toolbar { min-width: 0; }
+img, svg, video, canvas { max-width: 100%; }
+button, input, select, textarea { max-width: 100%; }
+.table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { min-width: 560px; }
+@media (max-width: 800px) {
+  .app-shell { min-height: 100dvh; }
+  .main-area { width: 100%; min-width: 0; }
+  .content-area { padding-left: clamp(12px, 3vw, 22px); padding-right: clamp(12px, 3vw, 22px); }
+  .topbar { gap: 10px; }
+  .topbar-left { min-width: 0; }
+  .topbar-right { min-width: 0; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+  .page-heading { align-items: flex-start; gap: 14px; }
+  .page-heading > div { min-width: 0; }
+  .page-heading p, .section-heading p, .panel-heading p { overflow-wrap: anywhere; }
+  .welcome-banner { min-width: 0; }
+  .overview-grid { grid-template-columns: minmax(0, 1fr); }
+  .usage-heading { align-items: flex-start; flex-wrap: wrap; }
+  .account-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .account-tab { flex: 0 0 auto; min-height: 44px; }
+}
+@media (max-width: 560px) {
+  .content-area { padding: 14px 12px calc(24px + env(safe-area-inset-bottom)); }
+  .topbar { padding-left: 12px; padding-right: 12px; min-height: 64px; }
+  .topbar-subtitle { display: none; }
+  .topbar-right { gap: 6px; }
+  .connection-pill { display: none; }
+  .mode-pill { min-height: 40px; }
+  .profile-avatar { width: 40px; height: 40px; }
+  .page-heading { flex-direction: column; align-items: stretch; }
+  .page-heading .primary-button { width: 100%; min-height: 46px; }
+  .welcome-banner { padding: 20px 17px; }
+  .welcome-content { max-width: 100%; }
+  .shield-art { opacity: .18; right: -32px; transform: scale(.78); transform-origin: center right; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .stat-card { min-width: 0; padding: 13px; }
+  .stat-value { overflow-wrap: anywhere; }
+  .section-heading, .panel-heading { align-items: flex-start; gap: 10px; }
+  .section-heading { flex-wrap: wrap; }
+  .section-heading .text-button, .panel-heading .text-button { min-height: 40px; }
+  .overview-grid, .pricing-grid { grid-template-columns: minmax(0, 1fr); }
+  .account-panel { width: 100%; }
+  .account-profile { align-items: flex-start; min-width: 0; }
+  .account-profile > div:last-child { min-width: 0; }
+  .account-plan-row { align-items: flex-start; flex-wrap: wrap; }
+  .account-actions { width: 100%; }
+  .account-actions button { width: 100%; }
+  .modal-overlay { align-items: flex-end; padding: 8px; }
+  .modal-card { width: 100%; max-width: 100%; max-height: calc(100dvh - 16px); overflow-y: auto; border-radius: 16px 16px 10px 10px; }
+}
+@media (max-width: 380px) {
+  .stats-grid, .details-grid, .account-plan-details { grid-template-columns: minmax(0, 1fr); }
+  .topbar-right { gap: 5px; }
+  .mode-pill { padding: 7px 8px; font-size: 8px; }
+  .stat-card { padding: 12px; }
+}
+@media (pointer: coarse) {
+  .menu-toggle, .nav-link, .primary-button, .banner-button, .mode-pill,
+  .profile-avatar, .text-button, .account-tab { touch-action: manipulation; }
+  input, select, textarea { font-size: 16px; }
+}
