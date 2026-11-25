@@ -69,3 +69,30 @@ def test_management_mutations_require_csrf_and_owner(monkeypatch, tmp_path):
     response = client.post(f"/api/admin/management/users/{customer['id']}/status",
         json={"active": False, "reason": "Support request"})
     assert response.status_code == 403
+
+def test_owner_is_not_counted_as_customer_and_admin_audit_is_preserved(monkeypatch, tmp_path):
+    _, client, owner, csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user("listed-customer@example.com", "A-Strong-Customer-Password-123!")
+    management_users = client.get("/api/admin/management/users").get_json()
+    assert management_users["total"] == 1
+    assert [row["id"] for row in management_users["users"]] == [customer["id"]]
+    legacy_users = client.get("/api/admin/users").get_json()
+    assert legacy_users["total"] == 1
+    assert [row["id"] for row in legacy_users["users"]] == [customer["id"]]
+    analytics = client.get("/api/admin/management/analytics").get_json()["analytics"]
+    assert analytics["total_users"] == 1
+    assert analytics["active_users"] == 1
+    blocked = client.post(f"/api/admin/management/users/{owner['id']}/status",
+        json={"active": False, "reason": "Do not suspend owner"},
+        headers={"X-CSRF-Token": csrf})
+    assert blocked.status_code == 400
+    action = client.post(f"/api/admin/management/users/{customer['id']}/status",
+        json={"active": False, "reason": "Customer requested suspension"},
+        headers={"X-CSRF-Token": csrf})
+    assert action.status_code == 200
+    audit = client.get("/api/admin/management/audit").get_json()["events"]
+    assert audit[0]["actor_user_id"] == owner["id"]
+    assert audit[0]["actor_email"] == OWNER_EMAIL
+    with auth_service.connection() as db:
+        owner_row = db.execute("SELECT is_active,email_verified FROM users WHERE id=?", (owner["id"],)).fetchone()
+        assert owner_row["is_active"] == 1 and owner_row["email_verified"] == 1
