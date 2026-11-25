@@ -9,6 +9,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 from werkzeug.security import generate_password_hash
 
 from backend.services import email_service
+from backend.services.profile_utils import validate_profile_image
 
 from backend.database.auth_service import auth_service
 
@@ -150,6 +151,41 @@ def admin_logout():
     session.clear()
     session["csrf_token"] = secrets.token_urlsafe(32)
     return jsonify({"success": True}), 200
+
+
+@admin_bp.get("/api/admin/profile")
+def admin_profile():
+    if not _authorized_admin():
+        return jsonify({"success": False, "error": "Owner authorization required."}), 401
+    user = auth_service.get_user(session["phishguard_admin_user_id"])
+    return jsonify({"success": True, "profile": {
+        "email": user["email"], "full_name": user.get("full_name"),
+        "profile_image": user.get("profile_image")
+    }}), 200
+
+
+@admin_bp.post("/api/admin/profile")
+def update_admin_profile():
+    if not _authorized_admin():
+        return jsonify({"success": False, "error": "Owner authorization required."}), 401
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "A JSON object is required."}), 400
+    full_name = data.get("full_name")
+    if not isinstance(full_name, str) or not 2 <= len(full_name.strip()) <= 80:
+        return jsonify({"success": False, "error": "Full name must contain 2 to 80 characters."}), 400
+    try:
+        profile_image = validate_profile_image(data.get("profile_image"))
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    user_id = session["phishguard_admin_user_id"]
+    with auth_service.connection() as db:
+        db.execute("UPDATE users SET full_name=?, profile_image=? WHERE id=? AND is_active=1",
+                   (full_name.strip(), profile_image, user_id))
+    user = auth_service.get_user(user_id)
+    return jsonify({"success": True, "message": "Admin profile updated successfully.",
+                    "profile": {"email": user["email"], "full_name": user.get("full_name"),
+                                "profile_image": user.get("profile_image")}}), 200
 
 
 @admin_bp.post("/api/admin/scan-credits")
