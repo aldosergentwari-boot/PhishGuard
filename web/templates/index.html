@@ -584,26 +584,50 @@
                 <div class="about-hero panel">
                     <div class="about-logo">PG</div>
                     <div>
-                        <div class="eyebrow">CYBERSECURITY PROJECT</div>
+                        <div class="eyebrow">AI-POWERED CYBERSECURITY PLATFORM</div>
                         <h2>PhishGuard<span class="brand-dot">.</span></h2>
-                        <p>An offline-first URL threat detection platform combining character-level machine learning, local rules, and optional live threat-intelligence lookups.</p>
+                        <p>PhishGuard helps users assess suspicious website links before opening them. It combines a locally available machine-learning model, defensive URL rules and optional online threat-intelligence checks in an offline-first security workflow.</p>
                         <span class="version-tag">VERSION 1.0.0</span>
                     </div>
                 </div>
 
-                <div class="section-heading"><div><h2>Technology stack</h2><p>Core technologies used in this project</p></div></div>
-                <div class="tech-grid">
-                    <div class="tech-card"><strong>Python</strong><span>Core programming</span></div>
-                    <div class="tech-card"><strong>Flask</strong><span>Backend API</span></div>
-                    <div class="tech-card"><strong>Scikit-learn</strong><span>Machine learning</span></div>
-                    <div class="tech-card"><strong>SQLite</strong><span>Local database</span></div>
-                    <div class="tech-card"><strong>HTML / CSS</strong><span>User interface</span></div>
-                    <div class="tech-card"><strong>JavaScript</strong><span>Frontend logic</span></div>
+                <div class="section-heading"><div><h2>What PhishGuard does</h2><p>Core capabilities available in the security workspace</p></div></div>
+                <div class="about-feature-grid">
+                    <article class="about-feature-card"><span class="about-feature-icon">⌕</span><div><h3>URL security scanning</h3><p>Submit a website URL for analysis and receive a clear <strong>Legitimate</strong> or <strong>Phishing</strong> assessment, together with a risk score and model confidence where available.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">✳</span><div><h3>Machine-learning detection</h3><p>A trained classification model examines URL patterns and extracted characteristics that can help distinguish suspicious links from ordinary website addresses.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">⌘</span><div><h3>Layered security checks</h3><p>Local detection rules add defensive checks such as known blocked indicators, trusted allowlist handling and suspicious address patterns alongside the model assessment.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">◉</span><div><h3>Offline-first protection</h3><p>The local model and available rules can perform scans without requiring a live threat-intelligence connection. This helps keep the core detection workflow available when internet access is limited.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">⇄</span><div><h3>Optional online intelligence</h3><p>When Online Mode and provider configuration are available, PhishGuard can use external threat-intelligence lookups to add current context to a URL assessment.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">▤</span><div><h3>Scan history and review</h3><p>Review previous scan records in the dashboard, revisit available analysis details and keep track of security checks performed in your account.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">◌</span><div><h3>Personal account</h3><p>Manage your account details, choose a username and profile picture, and access account-specific dashboard information.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">◇</span><div><h3>Plans and scan usage</h3><p>View available plans, check your scan allowance and review subscription-related information shown in your account. Paid access is activated only after a payment is verified.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">♧</span><div><h3>Account notifications</h3><p>View relevant in-app updates about account, subscription, payment and security activity when notifications are available for your account.</p></div></article>
                 </div>
 
+                <div class="section-heading"><div><h2>How a URL scan works</h2><p>A simple view of the analysis process</p></div></div>
+                <div class="about-workflow panel">
+                    <div class="about-workflow-step"><span>01</span><div><strong>Submit a URL</strong><p>Enter or paste the website address you want to check.</p></div></div>
+                    <div class="about-workflow-step"><span>02</span><div><strong>Analyze its signals</strong><p>The local model and configured defensive rules examine URL characteristics and available threat indicators.</p></div></div>
+                    <div class="about-workflow-step"><span>03</span><div><strong>Review the result</strong><p>See the classification, risk information and available explanation, then use your history to revisit recorded scans.</p></div></div>
+                </div>
+
+                <div class="section-heading"><div><h2>Technology stack</h2><p>Core technologies used to build the platform</p></div></div>
+                <div class="tech-grid">
+                    <div class="tech-card"><strong>Python</strong><span>Core application and detection logic</span></div>
+                    <div class="tech-card"><strong>Flask</strong><span>Web server and REST API</span></div>
+                    <div class="tech-card"><strong>Scikit-learn</strong><span>Machine-learning model</span></div>
+                    <div class="tech-card"><strong>SQLite</strong><span>Local application data</span></div>
+                    <div class="tech-card"><strong>HTML / CSS</strong><span>Responsive dashboard interface</span></div>
+                    <div class="tech-card"><strong>JavaScript</strong><span>Interactive user experience</span></div>
+                </div>
+
+                <div class="about-security-note panel">
+                    <h3>Privacy and security approach</h3>
+                    <p>PhishGuard is designed around an offline-first workflow. Local scans use the detection resources available on the device or server. External lookups are optional and depend on Online Mode and the configuration of supported providers. Avoid submitting private or confidential URLs unless you understand how any enabled external provider may process lookup requests.</p>
+                </div>
                 <div class="panel disclaimer-panel">
                     <h3>Important security disclaimer</h3>
-                    <p>PhishGuard is a defensive detection tool. Its results are based on the current model, local rules and available intelligence data. A legitimate classification means that no threat was detected by the current checks; it is not a guarantee that a website is safe.</p>
+                    <p>PhishGuard is a defensive decision-support tool, not a guarantee of website safety. Detection depends on the model, local rules and intelligence data available at the time of a scan. A <strong>Legitimate</strong> result means that the current checks did not identify a threat; a new, compromised or previously unseen phishing page may still be missed. Always verify the website address and use safe browsing practices.</p>
                 </div>
             </section>
 
