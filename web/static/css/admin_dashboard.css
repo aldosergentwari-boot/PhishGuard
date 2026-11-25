@@ -82,3 +82,20 @@ table{width:100%;border-collapse:separate;border-spacing:0;white-space:normal}th
  .table-wrap td[colspan]:before{content:none}
 }
 @media(prefers-reduced-motion:reduce){.content-area>.section{animation:none}}
+
+
+/* Inline visual accents inside dashboard content */
+.inline-section-icon{width:17px;height:17px;flex:0 0 17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-heading{display:flex;align-items:center;gap:10px}
+.icon-heading .inline-section-icon{width:30px;height:30px;flex-basis:30px;padding:7px;border:1px solid rgba(139,124,255,.28);border-radius:10px;background:linear-gradient(145deg,rgba(139,124,255,.17),rgba(84,215,208,.08));color:#b9adff;box-shadow:0 5px 16px rgba(0,0,0,.16)}
+.metric-icon{position:absolute!important;z-index:2;right:15px;top:14px;width:34px;height:34px;display:grid!important;place-items:center;border:1px solid rgba(139,124,255,.24);border-radius:11px;background:rgba(139,124,255,.10);color:#b9adff}
+.metric-icon .inline-section-icon{width:18px;height:18px}
+.metric:nth-child(2) .metric-icon{border-color:#54d7d033;background:#54d7d012;color:#69e0d8}
+.metric:nth-child(3) .metric-icon{border-color:#51d6a433;background:#51d6a414;color:#67dfb1}
+.metric:nth-child(4) .metric-icon{border-color:#f5bd7233;background:#f5bd7214;color:#f5c783}
+.metric>span:not(.metric-icon){padding-right:40px}
+.section-head .btn{display:inline-flex;align-items:center;gap:7px}
+.chart-heading h3{display:flex;align-items:center;gap:8px}
+.chart-heading h3:before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px #54d7d077}
+.field label{display:flex;align-items:center;gap:6px}
+@media(max-width:760px){.icon-heading .inline-section-icon{width:27px;height:27px;flex-basis:27px;padding:6px}.metric-icon{right:9px;top:9px;width:28px;height:28px;border-radius:9px}.metric-icon .inline-section-icon{width:16px;height:16px}.metric>span:not(.metric-icon){padding-right:30px}}
