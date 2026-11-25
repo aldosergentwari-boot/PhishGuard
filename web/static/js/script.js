@@ -1822,7 +1822,6 @@ async function loadAccount() {
         }
 
         const plan = billing.plan || {};
-        const usage = billing.usage || {};
         $('accountEmail').textContent = auth.user.email;
         const verificationNotice = $('emailVerificationNotice');
         if (verificationNotice) verificationNotice.hidden = Boolean(auth.user.email_verified);
