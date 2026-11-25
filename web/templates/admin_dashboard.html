@@ -146,7 +146,7 @@ $("adminProfileForm").addEventListener("submit", async event => {
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({
         full_name: $("adminFullName").value.trim(),
-        profile_image: adminProfileImageChanged ? adminProfileImageDraft : undefined
+        profile_image: adminProfileImageDraft
       })
     });
     adminProfileImageChanged = false;
