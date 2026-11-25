@@ -53,6 +53,8 @@ def protect_auth_mutations():
         ("POST", "/api/auth/logout"),
         ("POST", "/api/auth/verification/resend"),
         ("POST", "/api/auth/password-reset/request"),
+        ("POST", "/api/admin/password-reset/request"),
+        ("POST", "/api/admin/password-reset/confirm"),
         ("POST", "/api/admin/login"),
         ("POST", "/api/admin/logout"),
         ("POST", "/api/admin/scan-credits"),
