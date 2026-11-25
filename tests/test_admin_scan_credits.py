@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import backend.database.auth_service as auth_module
 from backend.app import create_app
 from backend.database.auth_service import auth_service
@@ -97,7 +99,7 @@ def test_admin_overview_requires_token_and_returns_operational_counts(
     with auth_service.connection() as db:
         db.execute(
             "INSERT INTO scan_usage(owner_id, scanned_at) VALUES (?, ?)",
-            (f"account:{user['id']}", "2026-11-25T10:00:00+00:00"),
+            (f"account:{user['id']}", datetime.now(timezone.utc).isoformat()),
         )
 
     response = client.get(
