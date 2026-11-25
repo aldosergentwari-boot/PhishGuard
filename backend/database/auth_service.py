@@ -101,6 +101,22 @@ class AuthService:
             )""")
             db.execute("CREATE INDEX IF NOT EXISTS idx_admin_scan_grants_user_expiry ON admin_scan_grants(user_id, expires_at)")
 
+            # Scan accounting is intentionally independent of deletable history.
+            db.execute("""CREATE TABLE IF NOT EXISTS scan_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_id TEXT NOT NULL,
+                scanned_at TEXT NOT NULL,
+                history_scan_id INTEGER UNIQUE
+            )""")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_scan_usage_owner_time ON scan_usage(owner_id, scanned_at)")
+            history_table = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_history'"
+            ).fetchone()
+            if history_table:
+                db.execute("""INSERT OR IGNORE INTO scan_usage(owner_id, scanned_at, history_scan_id)
+                    SELECT owner_id, scanned_at, id FROM scan_history
+                    WHERE owner_id IS NOT NULL""")
+
     def allow_auth_attempt(self, bucket, limit=8, window_seconds=900):
         now = time.time()
         with self.connection() as db:
