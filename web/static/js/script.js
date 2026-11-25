@@ -2052,19 +2052,52 @@ async function resendVerificationEmail() {
     }
 }
 
+let signOutInProgress = false;
+
 async function signOutAccount() {
+    // Ignore rapid repeated clicks while the first logout request is running.
+    if (signOutInProgress) return;
+
+    const button = $('accountLogout');
+    signOutInProgress = true;
+    if (button) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.textContent = 'Signing out…';
+    }
+
+    let loggedOut = false;
     try {
         const headers = await csrfHeader();
         await apiRequest(API.logout, { method: 'POST', headers, body: '{}' });
+
+        // The server has confirmed logout. Update local auth state immediately;
+        // dashboard refreshes must not make a successful logout look like a failure.
+        loggedOut = true;
         state.authenticated = false;
         state.account = null;
+
         await loadAccount();
-        await loadOverview();
-        await loadHistory();
-        await loadAdPlacement();
+        await Promise.allSettled([
+            loadOverview(),
+            loadHistory(),
+            loadAdPlacement()
+        ]);
         showToast('You have signed out.', 'success');
     } catch (error) {
-        showToast('Sign out failed: ' + error.message, 'error');
+        showToast(
+            loggedOut
+                ? 'You have signed out, but some dashboard data could not refresh.'
+                : 'Sign out failed: ' + error.message,
+            loggedOut ? 'info' : 'error'
+        );
+    } finally {
+        signOutInProgress = false;
+        if (button) {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+            button.textContent = 'Sign out';
+        }
     }
 }
 
