@@ -23,7 +23,11 @@
   async function users() {
     const q = new URLSearchParams({limit:pageSize,offset:userOffset,q:$("advUserQ").value,status:$("advUserStatus").value,plan:$("advUserPlan").value});
     const d = await api("/api/admin/management/users?"+q);
-    $("advUsers").innerHTML = d.users.length ? d.users.map(u => '<tr><td>'+esc(u.id)+'</td><td>'+esc(u.email)+'</td><td>'+esc(u.plan_id)+'</td><td>'+esc(u.is_active?"Active":"Suspended")+'</td><td>'+esc(u.email_verified?"Verified":"Unverified")+'</td><td><button class="btn" data-toggle-user="'+u.id+'" data-active="'+(!u.is_active)+'">'+(u.is_active?"Suspend":"Activate")+'</button> <select data-plan-user="'+u.id+'"><option value="free">Free</option><option value="pro">Pro</option><option value="business">Business</option></select><button class="btn" data-set-plan="'+u.id+'">Set</button></td></tr>').join("") : '<tr><td colspan="6" class="empty">No matching accounts.</td></tr>';
+    $("advUsers").innerHTML = d.users.length ? d.users.map(u => {
+      const usage=u.scan_usage||{}, used=Number(usage.scans_used||0), total=Number(usage.scans_limit||0);
+      const base=Number(usage.plan_scans_limit??usage.default_plan_limit??0);
+      return '<tr><td>'+esc(u.id)+'</td><td>'+esc(u.email)+'</td><td>'+esc(u.plan_id)+'</td><td>'+esc(u.is_active?"Active":"Suspended")+'</td><td>'+esc(u.email_verified?"Verified":"Unverified")+'</td><td><strong>'+esc(used)+' / '+esc(total)+' scans</strong><small class="scan-usage-note">'+esc(Math.max(0,total-used))+' remaining this month</small><div class="scan-limit-controls"><input aria-label="Monthly scan limit for '+esc(u.email)+'" type="number" min="0" max="100000" step="1" value="'+esc(base)+'" data-scan-limit-input="'+esc(u.id)+'"><button class="btn" data-set-scan-limit="'+esc(u.id)+'">Save</button><button class="btn subtle" data-reset-scan-limit="'+esc(u.id)+'">Default</button></div></td><td><button class="btn" data-toggle-user="'+u.id+'" data-active="'+(!u.is_active)+'">'+(u.is_active?"Suspend":"Activate")+'</button> <select data-plan-user="'+u.id+'"><option value="free">Free</option><option value="pro">Pro</option><option value="business">Business</option></select><button class="btn" data-set-plan="'+u.id+'">Set plan</button></td></tr>';
+    }).join("") : '<tr><td colspan="7" class="empty">No matching accounts.</td></tr>';
     $("advUserPage").textContent = "Showing "+(d.total?userOffset+1:0)+"–"+Math.min(userOffset+d.users.length,d.total)+" of "+d.total;
     $("advUserPrev").disabled = userOffset === 0; $("advUserNext").disabled = userOffset+d.users.length >= d.total;
   }
@@ -56,6 +60,24 @@
       if(t.dataset.toggleUser){
         const reason=prompt("Reason for this account status change (required):"); if(!reason)return;
         await api("/api/admin/management/users/"+t.dataset.toggleUser+"/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:t.dataset.active==="true",reason})}); await users();
+      }
+      if(t.dataset.setScanLimit || t.dataset.resetScanLimit){
+        const userId=t.dataset.setScanLimit || t.dataset.resetScanLimit;
+        const input=document.querySelector('[data-scan-limit-input="'+userId+'"]');
+        const monthlyLimit=t.dataset.resetScanLimit ? null : Number(input && input.value);
+        if(monthlyLimit!==null && (!Number.isInteger(monthlyLimit)||monthlyLimit<0||monthlyLimit>100000)){
+          alert("Enter a whole-number monthly limit from 0 to 100000."); return;
+        }
+        const reason=prompt(t.dataset.resetScanLimit
+          ? "Reason for restoring this user's plan default scan limit:"
+          : "Reason for changing this user's monthly scan limit:");
+        if(!reason || reason.trim().length<3)return;
+        await api("/api/admin/management/users/"+userId+"/scan-limit",{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({monthly_limit:monthlyLimit,reason:reason.trim()})
+        });
+        await users();
+        alert(t.dataset.resetScanLimit ? "Plan default scan limit restored." : "Monthly scan limit updated.");
       }
       if(t.dataset.setPlan){
         const plan=document.querySelector('[data-plan-user="'+t.dataset.setPlan+'"]').value;
