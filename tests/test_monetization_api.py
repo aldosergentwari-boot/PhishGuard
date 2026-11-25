@@ -77,3 +77,35 @@ def test_paid_checkout_cannot_be_activated_by_client(client):
     )
     assert response.status_code == 503
     assert client.get("/api/billing/me").get_json()["plan"]["plan_id"] == "free"
+
+
+
+def test_ads_are_disabled_by_default(client, monkeypatch):
+    for key in ("ADS_ENABLED", "ADSENSE_APPROVED", "ADSENSE_CLIENT_ID", "ADSENSE_SLOT_ID"):
+        monkeypatch.delenv(key, raising=False)
+    response = client.get("/api/ads/config")
+    assert response.status_code == 200
+    assert response.get_json()["enabled"] is False
+
+
+def test_ads_require_approval_and_valid_publisher_configuration(client, monkeypatch):
+    monkeypatch.setenv("ADS_ENABLED", "true")
+    monkeypatch.setenv("ADSENSE_APPROVED", "true")
+    monkeypatch.setenv("ADSENSE_CLIENT_ID", "ca-pub-1234567890123456")
+    monkeypatch.setenv("ADSENSE_SLOT_ID", "1234567890")
+    response = client.get("/api/ads/config")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["enabled"] is True
+    assert payload["provider"] == "adsense"
+    assert payload["client_id"] == "ca-pub-1234567890123456"
+
+
+def test_ads_never_enable_without_publisher_approval(client, monkeypatch):
+    monkeypatch.setenv("ADS_ENABLED", "true")
+    monkeypatch.setenv("ADSENSE_APPROVED", "false")
+    monkeypatch.setenv("ADSENSE_CLIENT_ID", "ca-pub-1234567890123456")
+    monkeypatch.setenv("ADSENSE_SLOT_ID", "1234567890")
+    response = client.get("/api/ads/config")
+    assert response.status_code == 200
+    assert response.get_json()["enabled"] is False
