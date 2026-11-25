@@ -92,5 +92,5 @@
     if(e.target.id==="advSubscriptionsRefresh")subscriptions().catch(x=>alert(x.message));
     if(e.target.id==="advAuditRefresh")audit().catch(x=>alert(x.message));
   });
-  csrf().catch(e=>console.warn(e.message));
+  csrf().then(()=>Promise.allSettled([users(),payments(),analytics(),subscriptions(),audit()])).catch(e=>console.warn(e.message));
 })();
