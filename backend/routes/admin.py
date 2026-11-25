@@ -279,8 +279,8 @@ def admin_overview():
         ).fetchone()[0]
         # Scan usage is an operational metric; scan_usage has owner_id, not user_id.
         scans_this_month = db.execute(
-            "SELECT COUNT(*) FROM scan_usage WHERE scanned_at>=?",
-            (month_start,),
+            """SELECT COUNT(*) FROM scan_usage WHERE scanned_at>=? AND owner_id<>?""",
+            (month_start, f"account:{session['phishguard_admin_user_id']}"),
         ).fetchone()[0]
         bonus_scans_this_month = db.execute(
             "SELECT COALESCE(SUM(granted_scans), 0) FROM admin_scan_grants WHERE created_at>=?",
