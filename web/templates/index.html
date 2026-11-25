@@ -543,6 +543,15 @@
                         <p id="accountUsageNote">Your scan allowance resets at the start of each UTC calendar month.</p>
                     </div>
                     <div class="account-plan-details" id="accountPlanDetails"></div>
+                    <section class="account-payment-history" aria-labelledby="accountPaymentHistoryTitle">
+                        <div class="account-notifications-heading">
+                            <div><span class="account-label">BILLING RECORDS</span><h3 id="accountPaymentHistoryTitle">Payment history</h3></div>
+                            <button class="text-button" type="button" id="refreshAccountPayments">Refresh</button>
+                        </div>
+                        <div id="accountPaymentHistory" class="account-payment-list" aria-live="polite">
+                            <p class="account-notifications-empty">Your payment records will appear here.</p>
+                        </div>
+                    </section>
                     <section class="account-notifications" aria-labelledby="accountNotificationsTitle">
                         <div class="account-notifications-heading">
                             <div><span class="account-label">ACCOUNT UPDATES</span><h3 id="accountNotificationsTitle">Notifications</h3></div>
