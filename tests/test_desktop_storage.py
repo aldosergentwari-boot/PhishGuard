@@ -17,7 +17,7 @@ def test_desktop_identity_is_persistent_and_install_specific(tmp_path):
 
 def test_invalid_desktop_identity_is_replaced(tmp_path):
     identity_file = tmp_path / "desktop_identity"
-    identity_file.parent.mkdir(parents=True)
+    identity_file.parent.mkdir(parents=True, exist_ok=True)
     identity_file.write_text("not-a-uuid", encoding="utf-8")
 
     identity = local_storage.get_desktop_owner_id(identity_file)
