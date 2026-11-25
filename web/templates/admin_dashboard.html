@@ -6,7 +6,7 @@
 <title>PhishGuard | Admin Control Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/admin_dashboard.css?v=12">
+<link rel="stylesheet" href="/static/css/admin_dashboard.css?v=13">
 </head>
 <body data-owner="{{ owner_email|e }}">
 <div class="admin-app">
@@ -16,6 +16,7 @@
     <div class="workspace-label">WORKSPACE</div>
     <nav class="navs" id="adminNav" aria-label="Admin navigation">
       <div class="workspace-label">MAIN MENU</div>
+      <button class="nav" type="button" data-section="profile"><svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>My Profile</span><i></i></button>
       <button class="nav active" type="button" data-section="overview"><svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/></svg><span>Overview</span><i></i></button>
       <button class="nav" type="button" data-section="users"><svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v6m3-3h-6"/></svg><span>Users</span><i></i></button>
       <button class="nav" type="button" data-section="payments"><svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20m-15 5h4"/></svg><span>Payments</span><i></i></button>
@@ -34,9 +35,23 @@
   <main class="main-area">
     <header class="topbar">
       <div class="heading-wrap"><div class="eyebrow">PHISHGUARD <span>/</span> ADMINISTRATION</div><h1 id="pageTitle">Website overview</h1><p>Monitor your platform, customers and operations.</p></div>
-      <div class="top-actions"><div class="owner-chip"><span class="owner-avatar">A</span><span id="ownerEmail">Owner</span></div><button class="btn refresh-btn" id="refresh"><span>↻</span> Refresh</button><button class="btn signout-btn" id="logout">Sign out <span>↗</span></button></div>
+      <div class="top-actions"><div class="owner-chip"><span class="owner-avatar" id="ownerAvatar">A</span><span id="ownerEmail">Owner</span></div><button class="btn refresh-btn" id="refresh"><span>↻</span> Refresh</button><button class="btn signout-btn" id="logout">Sign out <span>↗</span></button></div>
     </header>
-    <div class="content-area"><section class="section active" id="section-overview"><div class="metrics">
+    <div class="content-area">
+<section class="section" id="section-profile">
+  <div class="section-head"><div><h2 class="icon-heading"><svg class="inline-section-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Admin profile</span></h2><p>Manage the name and profile picture displayed in your owner workspace.</p></div></div>
+  <div class="panel admin-profile-panel">
+    <div class="admin-profile-preview" id="adminProfilePreview"><span>A</span></div>
+    <form id="adminProfileForm" class="admin-profile-form">
+      <div class="field"><label for="adminFullName">FULL NAME</label><input id="adminFullName" name="full_name" type="text" minlength="2" maxlength="80" autocomplete="name" placeholder="Enter your full name" required></div>
+      <div class="field"><label>PROFILE PICTURE</label><label class="admin-upload-button" for="adminProfileImage">Choose photo</label><input id="adminProfileImage" type="file" accept="image/png,image/jpeg,image/webp" hidden><small class="admin-profile-hint">JPG, PNG or WEBP · Maximum 2 MB</small><button class="admin-remove-photo" type="button" id="adminRemovePhoto">Remove photo</button></div>
+      <div class="field"><label>OWNER EMAIL</label><div class="admin-profile-email" id="adminProfileEmail">—</div></div>
+      <div class="field"><button class="btn primary" id="saveAdminProfile" type="submit">Save profile</button></div>
+      <p class="feedback" id="adminProfileFeedback" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+<section class="section active" id="section-overview"><div class="metrics">
 <article class="metric"><span class="metric-icon" aria-hidden="true"><svg class="inline-section-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v6m3-3h-6"/></svg></span><span>ACTIVE ACCOUNTS</span><strong id="activeAccounts">—</strong><small>Registered users</small></article>
 <article class="metric"><span class="metric-icon" aria-hidden="true"><svg class="inline-section-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 12.4-3"/></svg></span><span>ACTIVE SUBSCRIPTIONS</span><strong id="activeSubs">—</strong><small>Current active subscriptions</small></article>
 <article class="metric"><span class="metric-icon" aria-hidden="true"><svg class="inline-section-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M8 16v-5m5 5V6m5 10v-8"/></svg></span><span>SCANS THIS MONTH</span><strong id="scansMonth">—</strong><small>UTC calendar month</small></article>
@@ -63,7 +78,7 @@ async function api(url,options={}){const headers={...(options.headers||{})};if(o
 function safe(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function date(v){if(!v)return "—";const d=new Date(v);return Number.isNaN(d.getTime())?safe(v):d.toLocaleDateString();}
 function status(v){const active=String(v).toLowerCase()==="active"||v===1;return '<span class="pill '+(active?"":"off")+'">'+safe(v)+'</span>';}
-function show(name){const target=$("section-"+name);if(!target)return;document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s===target));document.querySelectorAll(".nav[data-section]").forEach(b=>{const active=b.dataset.section===name;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});const titles={overview:"Website overview",users:"Customer accounts",payments:"Payment management",credits:"Scan credit management","advanced-users":"Manage customers","advanced-payments":"Payment details",analytics:"Business analytics",subscriptions:"Subscription lifecycle",audit:"Security audit log",notifications:"Customer notifications"};$("pageTitle").textContent=titles[name]||"Management";if(name==="overview")loadOverview().catch(e=>console.warn(e));if(name==="users")loadUsers().catch(e=>console.warn(e));if(name==="payments")loadPayments().catch(e=>console.warn(e));if(name==="audit"&&typeof window.loadAdminAudit==="function")window.loadAdminAudit();window.scrollTo({top:0,behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}
+function show(name){const target=$("section-"+name);if(!target)return;document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s===target));document.querySelectorAll(".nav[data-section]").forEach(b=>{const active=b.dataset.section===name;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});const titles={profile:"Admin profile",overview:"Website overview",users:"Customer accounts",payments:"Payment management",credits:"Scan credit management","advanced-users":"Manage customers","advanced-payments":"Payment details",analytics:"Business analytics",subscriptions:"Subscription lifecycle",audit:"Security audit log",notifications:"Customer notifications"};$("pageTitle").textContent=titles[name]||"Management";if(name==="profile")loadAdminProfile().catch(e=>console.warn(e));if(name==="overview")loadOverview().catch(e=>console.warn(e));if(name==="users")loadUsers().catch(e=>console.warn(e));if(name==="payments")loadPayments().catch(e=>console.warn(e));if(name==="audit"&&typeof window.loadAdminAudit==="function")window.loadAdminAudit();window.scrollTo({top:0,behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});}
 async function loadOverview(){const d=await api("/api/admin/overview");const o=d.overview;$("activeAccounts").textContent=o.active_accounts.toLocaleString();$("activeSubs").textContent=o.active_subscriptions.toLocaleString();$("scansMonth").textContent=o.scans_this_month.toLocaleString();const statuses=o.payment_transactions||{};$("paymentCount").textContent=Object.values(statuses).reduce((a,b)=>a+b,0).toLocaleString();$("paymentBreakdown").textContent=Object.entries(statuses).map(([k,v])=>k+": "+v).join(" · ")||"No payments yet";$("ownerEmail").textContent=document.body.dataset.owner||"Owner";const u=await api("/api/admin/users?limit=6");$("recentUsers").innerHTML=u.users.length?u.users.map(x=>'<tr><td>'+safe(x.email)+'</td><td>'+safe(x.plan_id||"—")+'</td><td>'+status(x.is_active?"Active":"Disabled")+'</td><td>'+date(x.created_at)+'</td></tr>').join(""):'<tr><td colspan="4" class="empty">No accounts registered yet.</td></tr>';}
 async function loadUsers(){const d=await api("/api/admin/users?limit=100");$("usersTable").innerHTML=d.users.length?d.users.map(x=>'<tr><td>'+safe(x.email)+'</td><td>'+safe(x.plan_id||"—")+'</td><td>'+status(x.is_active?"Active":"Disabled")+'</td><td>'+status(x.email_verified?"Verified":"Unverified")+'</td><td>'+date(x.created_at)+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">No users found.</td></tr>';}
 async function loadPayments(){const d=await api("/api/admin/payments?limit=100");$("paymentsTable").innerHTML=d.payments.length?d.payments.map(x=>'<tr><td>'+safe(x.email)+'</td><td>'+safe(x.plan_id)+'</td><td>'+safe(x.amount)+" "+safe(x.currency)+'</td><td>'+safe(x.payment_method)+'</td><td>'+status(x.status)+'</td><td>'+date(x.created_at)+'</td></tr>').join(""):'<tr><td colspan="6" class="empty">No payment transactions recorded.</td></tr>';}
