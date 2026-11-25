@@ -10,6 +10,7 @@
 .card{width:min(100%,430px);padding:36px;border:1px solid var(--line);border-radius:22px;background:rgba(17,26,43,.96);box-shadow:0 24px 80px #0008}
 .brand{display:flex;align-items:center;gap:12px;margin-bottom:34px}.mark{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#7465ff,#31b6c9);font-weight:900}.eyebrow{font-size:11px;letter-spacing:2px;color:#a99fff;font-weight:700}h1{font-size:27px;margin:9px 0}p{color:var(--muted);line-height:1.6;margin:0 0 25px}
 label{display:block;font-size:11px;letter-spacing:1px;font-weight:700;color:#b8c4d8;margin:17px 0 8px}input{width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;background:#0a1221;color:var(--text);font:inherit;outline:none}input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #8b7cff25}
+.password-wrap{position:relative}.password-wrap input{padding-right:82px}.toggle-password{position:absolute;right:9px;top:50%;transform:translateY(-50%);width:auto;margin:0;padding:7px 10px;border:1px solid #34425d;border-radius:7px;background:#172238;color:#cbd5e8;font-size:11px;font-weight:700}.toggle-password:hover{background:#263552}.toggle-password:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button{width:100%;margin-top:24px;padding:14px;border:0;border-radius:10px;background:linear-gradient(100deg,#7869ff,#4d9dff);color:white;font-weight:800;font-size:14px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.message{min-height:22px;margin:14px 0 0;color:#ff9d9d;font-size:13px}.foot{margin-top:24px;font-size:12px;color:#71809a;text-align:center}
 </style></head>
 <body><main class="card">
@@ -17,11 +18,21 @@ button{width:100%;margin-top:24px;padding:14px;border:0;border-radius:10px;backg
 <div class="eyebrow">RESTRICTED ACCESS</div><h1>Welcome back.</h1><p>Sign in with the verified owner account to manage your PhishGuard website.</p>
 <form id="ownerLogin" autocomplete="on">
 <label for="email">OWNER EMAIL</label><input id="email" name="email" type="email" autocomplete="username" maxlength="254" required>
-<label for="password">PASSWORD</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+<label for="password">PASSWORD</label><div class="password-wrap"><input id="password" name="password" type="password" autocomplete="current-password" required><button class="toggle-password" id="togglePassword" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
 <button id="submit" type="submit">Sign in to management →</button><div class="message" id="message" role="status" aria-live="polite"></div>
 </form><div class="foot">Private administration area · PhishGuard</div>
 </main>
 <script>
+const passwordInput=document.getElementById("password");
+const togglePassword=document.getElementById("togglePassword");
+togglePassword.addEventListener("click",()=>{
+ const visible=passwordInput.type==="password";
+ passwordInput.type=visible?"text":"password";
+ togglePassword.textContent=visible?"Hide":"Show";
+ togglePassword.setAttribute("aria-label",visible?"Hide password":"Show password");
+ togglePassword.setAttribute("aria-pressed",String(visible));
+ passwordInput.focus();
+});
 let csrfToken="";
 async function getCsrf(){const r=await fetch("/api/auth/csrf",{credentials:"same-origin",cache:"no-store"});const d=await r.json();if(!r.ok||!d.csrf_token)throw new Error("Could not start a secure session. Refresh and try again.");csrfToken=d.csrf_token;}
 document.getElementById("ownerLogin").addEventListener("submit",async e=>{e.preventDefault();const button=document.getElementById("submit"),message=document.getElementById("message");button.disabled=true;message.textContent="";try{if(!csrfToken)await getCsrf();const r=await fetch("/api/admin/login",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","X-CSRF-Token":csrfToken},body:JSON.stringify({email:document.getElementById("email").value,password:document.getElementById("password").value})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Sign-in failed.");location.assign(d.redirect||"/admin");}catch(err){message.textContent=err.message;button.disabled=false;}});
