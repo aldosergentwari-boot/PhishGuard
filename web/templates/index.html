@@ -525,6 +525,15 @@
                         <p id="accountUsageNote">Your scan allowance resets at the start of each UTC calendar month.</p>
                     </div>
                     <div class="account-plan-details" id="accountPlanDetails"></div>
+                    <section class="account-notifications" aria-labelledby="accountNotificationsTitle">
+                        <div class="account-notifications-heading">
+                            <div><span class="account-label">ACCOUNT UPDATES</span><h3 id="accountNotificationsTitle">Notifications</h3></div>
+                            <button class="text-button" type="button" id="refreshAccountNotifications">Refresh</button>
+                        </div>
+                        <div id="accountNotifications" class="account-notifications-list" aria-live="polite">
+                            <p class="account-notifications-empty">Your account notifications will appear here.</p>
+                        </div>
+                    </section>
                     <div class="account-actions">
                         <button class="secondary-button" type="button" id="accountViewPlans">View plans</button>
                         <button class="text-button" type="button" id="accountLogout">Sign out</button>
