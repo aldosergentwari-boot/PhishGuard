@@ -28,6 +28,8 @@ def _owner_client(monkeypatch, tmp_path, filename="admin.sqlite3"):
         headers={"X-CSRF-Token": csrf},
     )
     assert response.status_code == 200
+    # Login rotates the session and clears the pre-login CSRF token.
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
     return app, client, user, csrf
 
 
