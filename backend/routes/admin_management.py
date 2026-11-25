@@ -114,7 +114,67 @@ def management_users():
             (*args, limit, offset),
         ).fetchall()
         total = db.execute(f"SELECT COUNT(*) FROM users u LEFT JOIN subscriptions s ON s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=u.id){where}", args).fetchone()[0]
-    return jsonify({"success": True, "users": [dict(r) for r in rows], "total": total, "limit": limit, "offset": offset})
+    from backend.services.plan_service import get_account_plan, get_usage
+    users = []
+    for row in rows:
+        item = dict(row)
+        plan_id = get_account_plan(item["id"])["plan_id"]
+        item["scan_usage"] = get_usage(f"account:{item['id']}", plan_id)
+        users.append(item)
+    return jsonify({"success": True, "users": users, "total": total, "limit": limit, "offset": offset})
+
+
+@admin_management_bp.post("/api/admin/management/users/<int:user_id>/scan-limit")
+def set_user_scan_limit(user_id):
+    denied = _guard(True)
+    if denied: return denied
+    data = _json()
+    monthly_limit = data.get("monthly_limit")
+    reason = data.get("reason", "")
+    if monthly_limit is not None and (
+        isinstance(monthly_limit, bool) or not isinstance(monthly_limit, int)
+        or monthly_limit < 0 or monthly_limit > 100000
+    ):
+        return jsonify({"success": False, "error": "Monthly scan limit must be a whole number from 0 to 100000, or null to restore the plan default."}), 400
+    if not isinstance(reason, str) or len(reason.strip()) < 3 or len(reason) > 200:
+        return jsonify({"success": False, "error": "Provide a reason between 3 and 200 characters."}), 400
+
+    now = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        user = db.execute("SELECT id,email FROM users WHERE id=?", (user_id,)).fetchone()
+        if not user:
+            return jsonify({"success": False, "error": "User not found."}), 404
+        if user["email"].strip().lower() == _owner_email():
+            return jsonify({"success": False, "error": "Owner account is not a customer account."}), 400
+
+        if monthly_limit is None:
+            db.execute("DELETE FROM admin_scan_limit_overrides WHERE user_id=?", (user_id,))
+            details = "Restored plan default: " + reason.strip()
+            action = "user.scan_limit_reset"
+            message = "Your monthly URL scan allowance has been restored to the standard limit for your current plan."
+        else:
+            db.execute(
+                """INSERT INTO admin_scan_limit_overrides(user_id,monthly_limit,reason,updated_by,updated_at)
+                   VALUES (?,?,?,?,?)
+                   ON CONFLICT(user_id) DO UPDATE SET monthly_limit=excluded.monthly_limit,
+                       reason=excluded.reason,updated_by=excluded.updated_by,updated_at=excluded.updated_at""",
+                (user_id, monthly_limit, reason.strip(), session["phishguard_admin_user_id"], now),
+            )
+            details = f"Monthly scan limit set to {monthly_limit}: {reason.strip()}"
+            action = "user.scan_limit_updated"
+            message = f"Your monthly URL scan allowance has been set to {monthly_limit:,} scans. Existing bonus scans, if any, are added separately."
+
+        _audit(db, action, "user", user_id, details)
+        db.execute(
+            "INSERT INTO user_notifications(user_id,title,message,category,created_at) VALUES (?,?,?,?,?)",
+            (user_id, "Monthly scan allowance updated", message, "account", now),
+        )
+
+    from backend.services.plan_service import get_account_plan, get_usage
+    plan_id = get_account_plan(user_id)["plan_id"]
+    usage = get_usage(f"account:{user_id}", plan_id)
+    return jsonify({"success": True, "user_id": user_id, "monthly_limit": monthly_limit, "usage": usage})
 
 
 @admin_management_bp.post("/api/admin/management/users/<int:user_id>/status")
