@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import datetime, timezone
 
 import backend.database.auth_service as auth_module
@@ -212,3 +213,51 @@ def test_owner_password_reset_request_creates_supported_single_use_token(
         json={"token": sent["token"], "password": "Another-Strong-Password-789!"},
         headers={"X-CSRF-Token": client.get("/api/auth/csrf").get_json()["csrf_token"]},
     ).status_code == 400
+
+
+
+def test_existing_database_migrates_email_token_constraint(monkeypatch, tmp_path):
+    database_path = tmp_path / "legacy-owner-reset.sqlite3"
+    monkeypatch.setattr(auth_module, "DATABASE_PATH", database_path)
+
+    with sqlite3.connect(database_path) as db:
+        db.execute("""CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1
+        )""")
+        db.execute(
+            "INSERT INTO users(email,password_hash,created_at) VALUES (?,?,?)",
+            ("legacy-owner@example.com", "hash", datetime.now(timezone.utc).isoformat()),
+        )
+        db.execute("""CREATE TABLE account_email_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            purpose TEXT NOT NULL CHECK(purpose IN ('verify_email', 'password_reset')),
+            token_hash TEXT NOT NULL UNIQUE,
+            expires_at TEXT NOT NULL,
+            used_at TEXT,
+            created_at TEXT NOT NULL
+        )""")
+        db.execute(
+            """INSERT INTO account_email_tokens
+               (user_id,purpose,token_hash,expires_at,created_at)
+               VALUES (1,'password_reset','legacy-hash','2099-01-01T00:00:00+00:00',?)""",
+            (datetime.now(timezone.utc).isoformat(),),
+        )
+
+    auth_service.initialize()
+    with auth_service.connection() as db:
+        legacy = db.execute(
+            "SELECT purpose,token_hash FROM account_email_tokens WHERE token_hash='legacy-hash'"
+        ).fetchone()
+        assert legacy["purpose"] == "password_reset"
+        assert legacy["token_hash"] == "legacy-hash"
+        db.execute(
+            """INSERT INTO account_email_tokens
+               (user_id,purpose,token_hash,expires_at,created_at)
+               VALUES (1,'admin_password_reset','admin-hash','2099-01-01T00:00:00+00:00',?)""",
+            (datetime.now(timezone.utc).isoformat(),),
+        )
