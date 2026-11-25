@@ -139,3 +139,8 @@ def test_payment_history_returns_only_the_signed_in_users_records(client):
     assert payload["payments"][0]["plan_id"] == "pro"
     assert payload["payments"][0]["status"] == "successful"
     assert "tx_ref" not in payload["payments"][0]
+
+
+def test_admin_monetization_status_is_private(client):
+    response = client.get("/api/admin/management/monetization")
+    assert response.status_code == 401
