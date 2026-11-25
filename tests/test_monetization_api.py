@@ -144,3 +144,31 @@ def test_payment_history_returns_only_the_signed_in_users_records(client):
 def test_admin_monetization_status_is_private(client):
     response = client.get("/api/admin/management/monetization")
     assert response.status_code == 401
+
+
+def test_verified_new_subscription_supersedes_previous_active_period(client):
+    token = _csrf(client)
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "renewal@example.com", "password": "correct horse battery"},
+        headers={"X-CSRF-Token": token},
+    )
+    assert registered.status_code == 201
+
+    from backend.services.plan_service import activate_subscription, get_account_plan
+    from datetime import datetime, timezone
+    start = datetime.now(timezone.utc)
+    activate_subscription(1, "pro", "test", "provider-period-one", period_start=start)
+    activate_subscription(1, "business", "test", "provider-period-two", period_start=start)
+
+    from backend.database.auth_service import auth_service
+    with auth_service.connection() as db:
+        rows = db.execute(
+            "SELECT plan_id,status FROM subscriptions WHERE user_id=1 ORDER BY id"
+        ).fetchall()
+    assert [(row["plan_id"], row["status"]) for row in rows] == [
+        ("free", "active"),
+        ("pro", "superseded"),
+        ("business", "active"),
+    ]
+    assert get_account_plan(1)["plan_id"] == "business"
