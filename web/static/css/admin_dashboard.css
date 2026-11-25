@@ -228,3 +228,45 @@ table{width:100%;border-collapse:separate;border-spacing:0;white-space:normal}th
 @media(prefers-reduced-motion:reduce) {
   .workspace-scroll-controls, .workspace-scroll-controls button { transition: none; }
 }
+
+
+/* Sidebar navigation has its own vertical scroll area, independent of the page. */
+.sidebar > .navs {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #58658d rgba(255,255,255,.035);
+  padding: 2px 5px 12px 0;
+  scrollbar-gutter: stable;
+}
+.sidebar > .navs::-webkit-scrollbar { width: 7px; }
+.sidebar > .navs::-webkit-scrollbar-track {
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+}
+.sidebar > .navs::-webkit-scrollbar-thumb {
+  border: 1px solid rgba(10,17,29,.9);
+  border-radius: 10px;
+  background: linear-gradient(180deg,#8b7cff,#4e9da8);
+}
+.sidebar > .navs::-webkit-scrollbar-thumb:hover { background: #a99cff; }
+
+@media(max-width:760px) {
+  .sidebar > .navs {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    scrollbar-gutter: auto;
+    padding: 0;
+  }
+  .sidebar.menu-open > .navs {
+    max-height: min(65vh, 560px);
+    overflow-y: auto;
+    padding: 10px 5px 8px 0;
+    scrollbar-gutter: stable;
+  }
+}
