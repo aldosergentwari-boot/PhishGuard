@@ -50,12 +50,35 @@ class AuthService:
             db.execute("""CREATE TABLE IF NOT EXISTS account_email_tokens (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                purpose TEXT NOT NULL CHECK(purpose IN ('verify_email', 'password_reset')),
+                purpose TEXT NOT NULL CHECK(purpose IN ('verify_email', 'password_reset', 'admin_password_reset')),
                 token_hash TEXT NOT NULL UNIQUE,
                 expires_at TEXT NOT NULL,
                 used_at TEXT,
                 created_at TEXT NOT NULL
             )""")
+            # Existing installations may have the older CHECK constraint. SQLite
+            # cannot alter a CHECK in place, so rebuild this table while preserving
+            # every issued token and its single-use/expiry state.
+            token_schema = db.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='account_email_tokens'"
+            ).fetchone()["sql"]
+            if "admin_password_reset" not in token_schema:
+                db.execute("DROP INDEX IF EXISTS idx_account_email_tokens_user_purpose")
+                db.execute("ALTER TABLE account_email_tokens RENAME TO account_email_tokens_legacy")
+                db.execute("""CREATE TABLE account_email_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    purpose TEXT NOT NULL CHECK(purpose IN ('verify_email', 'password_reset', 'admin_password_reset')),
+                    token_hash TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    used_at TEXT,
+                    created_at TEXT NOT NULL
+                )""")
+                db.execute("""INSERT INTO account_email_tokens
+                    (id,user_id,purpose,token_hash,expires_at,used_at,created_at)
+                    SELECT id,user_id,purpose,token_hash,expires_at,used_at,created_at
+                    FROM account_email_tokens_legacy""")
+                db.execute("DROP TABLE account_email_tokens_legacy")
             db.execute("CREATE INDEX IF NOT EXISTS idx_account_email_tokens_user_purpose ON account_email_tokens(user_id, purpose, used_at)")
             db.execute("""CREATE TABLE IF NOT EXISTS auth_rate_limits (
                 bucket TEXT PRIMARY KEY,
