@@ -61,3 +61,15 @@ def test_admin_scan_credit_endpoint_rejects_invalid_token(
     )
 
     assert response.status_code == 401
+
+
+def test_owner_console_is_available_without_exposing_admin_token():
+    app = create_app()
+    response = app.test_client().get("/")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'id="page-admin"' in html
+    assert 'id="adminCreditForm"' in html
+    assert 'id="adminToken"' in html
+    assert 'data-page="admin"' in html
