@@ -463,6 +463,7 @@ def management_monetization():
             "enabled_requested": requested,
             "publisher_id_configured": publisher_valid,
             "slot_configured": slot_valid,
+            "ads_txt_endpoint_configured": publisher_valid,
             "ready": ads_ready,
         },
         "checkout": checkout_availability(),
