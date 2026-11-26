@@ -160,9 +160,11 @@ The web dashboard now exposes account and plan APIs:
 - `GET /api/billing/plans` returns the public plan catalog.
 - `GET /api/billing/me` returns the current account plan (anonymous visitors receive the Guest plan and its 10-scan monthly allowance).
 - `GET /api/billing/payments` returns the signed-in user's own recent payment history; transaction references are not exposed.
-- `POST /api/billing/checkout` creates a Flutterwave hosted checkout for signed-in users.
-- `GET /api/billing/callback` and `POST /api/billing/webhook` verify successful transactions directly with Flutterwave before activating a plan.
-- Payment attempts are stored as pending transactions; browser redirects and client-supplied plan IDs never grant paid access.
+- `POST /api/billing/checkout` creates a Flutterwave hosted card checkout or a PalmKash Rwanda Mobile Money collection for signed-in users.
+- `GET /api/billing/callback` and `POST /api/billing/webhook` verify Flutterwave transactions directly before activating a plan.
+- `POST /api/billing/palmkash/callback` treats provider callbacks as notifications and re-checks the payment status with PalmKash before activating a plan.
+- `GET /api/billing/payments/<tx_ref>/status` lets a signed-in customer refresh only their own PalmKash payment.
+- Payment attempts record their provider and remain pending until verified; browser redirects and client-supplied plan IDs never grant paid access.
 
 Flutterwave setup (all values are server-side environment variables):
 
@@ -197,7 +199,7 @@ AdSense is disabled by default. The website only requests an ad placement for Gu
 
 Visitors can reject optional advertising and continue using PhishGuard normally; they can reopen Advertising preferences from the dashboard footer. Paid Pro and Business plans do not load ads. The private Admin > Ads & monetization page reports AdSense and Flutterwave readiness without exposing provider secrets. Update server environment variables and restart the service to change provider configuration.
 
-The ad configuration endpoint is `GET /api/ads/config`. No ad script is loaded when the publisher is not approved, configuration is incomplete, the visitor is on a paid plan, or the browser is offline. Complete applicable privacy disclosures and consent requirements before enabling ads.
+The ad configuration endpoint is `GET /api/ads/config`. The root `/ads.txt` endpoint generates Google's authorized-seller line from the configured publisher ID; it returns 404 until a valid ID is configured. No ad script is loaded when the publisher is not approved, configuration is incomplete, the visitor is on a paid plan, or the browser is offline. In AdSense, check that the site approval status is Ready and that ads.txt is Authorized or Not applicable. Google recommends ads.txt and notes that crawl status may take time to update. Complete applicable privacy disclosures and consent requirements before enabling ads.
 
 
 ### Account management and server-side entitlements
