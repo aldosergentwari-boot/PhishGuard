@@ -36,7 +36,7 @@ def _authorized_admin():
                FROM users WHERE id=?""",
             (user_id,),
         ).fetchone()
-    return bool(
+    authorized = bool(
         user
         and user["is_active"]
         and user["email_verified"]
@@ -44,6 +44,13 @@ def _authorized_admin():
         and session.get("phishguard_admin_email") == user["email"]
         and session.get("phishguard_admin_session_version") == user["session_version"]
     )
+    if authorized:
+        # Keep the owner cookie alive during normal dashboard use. Account
+        # deactivation, password reset, logout and session-version changes
+        # still revoke access immediately.
+        session.permanent = True
+        session.modified = True
+    return authorized
 
 
 @admin_bp.get("/admin/login")
