@@ -47,6 +47,11 @@ def protect_auth_mutations():
             or session.get("account_email") != user.get("email")
         ):
             session.clear()
+        else:
+            # Refresh the rolling persistent cookie while the account remains
+            # active and its revocation version still matches the database.
+            session.permanent = True
+            session.modified = True
 
     protected = {
         ("POST", "/api/auth/register"),
