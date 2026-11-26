@@ -34,7 +34,7 @@
   async function payments() {
     const q=new URLSearchParams({limit:100,q:$("advPaymentQ").value,status:$("advPaymentStatus").value});
     const d=await api("/api/admin/management/payments?"+q);
-    $("advPayments").innerHTML=d.payments.length?d.payments.map(p=>'<tr><td>'+esc(p.id)+'</td><td>'+esc(p.email)+'</td><td>'+esc(p.plan_id)+'</td><td>'+esc(p.amount)+' '+esc(p.currency)+'</td><td>'+esc(p.payment_method)+'</td><td>'+esc(p.status)+'</td><td>'+dt(p.created_at)+'</td><td><button class="btn" data-payment="'+p.id+'">Details</button></td></tr>').join(""):'<tr><td colspan="8" class="empty">No payments.</td></tr>';
+    $("advPayments").innerHTML=d.payments.length?d.payments.map(p=>'<tr><td>'+esc(p.id)+'</td><td>'+esc(p.email)+'</td><td>'+esc(p.plan_id)+'</td><td>'+esc(p.amount)+' '+esc(p.currency)+'</td><td>'+esc(p.payment_method)+' ('+esc(p.provider||'flutterwave')+')</td><td>'+esc(p.status)+'</td><td>'+dt(p.created_at)+'</td><td><button class="btn" data-payment="'+p.id+'">Details</button></td></tr>').join(""):'<tr><td colspan="8" class="empty">No payments.</td></tr>';
   }
   async function analytics(){
     const a=(await api("/api/admin/management/analytics")).analytics;
