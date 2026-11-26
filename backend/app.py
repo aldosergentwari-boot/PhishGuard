@@ -200,7 +200,7 @@ def create_app():
         # Keep authenticated browsers signed in for 90 days of inactivity.
         # Flask refreshes permanent cookies on each request, so active users
         # receive a rolling expiry without weakening logout or revocation.
-        PERMANENT_SESSION_LIFETIME=timedelta(days=90),
+        PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         SESSION_REFRESH_EACH_REQUEST=True
     )
 
