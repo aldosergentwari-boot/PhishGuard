@@ -220,3 +220,15 @@ def test_password_reset_requires_csrf_and_invalidates_old_password(client):
         headers={"X-CSRF-Token": token},
     )
     assert new_login.status_code == 200
+
+
+
+def test_authenticated_user_session_is_permanent_and_survives_dashboard_reloads(client):
+    register(client)
+
+    for _ in range(4):
+        assert client.get("/api/auth/me").get_json()["authenticated"] is True
+        assert client.get("/api/billing/me").status_code == 200
+        with client.session_transaction() as session:
+            assert session.permanent is True
+            assert session.get("account_id") is not None
