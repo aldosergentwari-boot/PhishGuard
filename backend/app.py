@@ -6,6 +6,7 @@ from pathlib import Path
 from flask import (
     Flask,
     jsonify,
+    Response,
     render_template,
     render_template_string,
     request,
@@ -272,6 +273,18 @@ def create_app():
             render_template_string(MAINTENANCE_PAGE),
             503,
             {"Retry-After": "3600"}
+        )
+
+    @app.route("/ads.txt")
+    def ads_txt():
+        """Serve Google's authorized-seller declaration from the site root."""
+        client_id = os.getenv("ADSENSE_CLIENT_ID", "").strip()
+        if not re.fullmatch(r"ca-pub-[0-9]{10,30}", client_id):
+            return Response("AdSense publisher ID is not configured.\\n", status=404, mimetype="text/plain")
+        publisher_id = client_id.removeprefix("ca-")
+        return Response(
+            f"google.com, {publisher_id}, DIRECT, f08c47fec0942fa0\\n",
+            mimetype="text/plain",
         )
 
     @app.route("/")
