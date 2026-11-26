@@ -53,6 +53,12 @@ def checkout_availability():
         "mobile_money_provider": "palmkash" if palm["mobile_money"] else (
             "flutterwave" if flutterwave_mobile else None
         ),
+        "mobile_money_prices_rwf": palm["prices_rwf"] if palm["mobile_money"] else {
+            plan: int(_config(f"FLW_{plan.upper()}_PRICE_RWF"))
+            for plan in ("pro", "business")
+            if _config(f"FLW_{plan.upper()}_PRICE_RWF").isdigit()
+            and int(_config(f"FLW_{plan.upper()}_PRICE_RWF") or "0") > 0
+        },
         "providers": {
             "flutterwave": {"card": base_ready, "mobile_money": flutterwave_mobile},
             "palmkash": {"mobile_money": palm["mobile_money"]},
