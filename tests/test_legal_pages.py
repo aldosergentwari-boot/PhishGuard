@@ -41,3 +41,26 @@ def test_legal_pages_display_configured_support_email(monkeypatch):
     assert response.status_code == 200
     assert "help@phishguard.example" in page
     assert "Official support email not configured yet." not in page
+
+
+
+def test_ads_txt_is_generated_from_the_configured_publisher_id(monkeypatch):
+    from backend.app import app
+
+    monkeypatch.setenv("ADSENSE_CLIENT_ID", "ca-pub-1234567890123456")
+    response = app.test_client().get("/ads.txt")
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/plain"
+    assert response.get_data(as_text=True) == (
+        "google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\\n"
+    )
+
+
+def test_ads_txt_is_not_published_without_a_valid_publisher_id(monkeypatch):
+    from backend.app import app
+
+    monkeypatch.delenv("ADSENSE_CLIENT_ID", raising=False)
+    response = app.test_client().get("/ads.txt")
+
+    assert response.status_code == 404
