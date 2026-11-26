@@ -9,6 +9,12 @@ from backend.services.flutterwave_service import (
     FlutterwaveError, create_checkout, is_configured, checkout_availability,
     validate_webhook_signature, verify_and_activate,
 )
+from backend.services.palmkash_service import (
+    PalmKashError, is_configured as palmkash_is_configured,
+    create_payment as palmkash_create_payment,
+    verify_and_activate as palmkash_verify_and_activate,
+    refresh_payment as palmkash_refresh_payment,
+)
 
 billing_bp = Blueprint("billing", __name__)
 
@@ -53,7 +59,7 @@ def account_payment_history():
         return jsonify({"success": False, "error": "Sign in to view payment history."}), 401
     with auth_service.connection() as db:
         rows = db.execute(
-            """SELECT id,plan_id,amount,currency,payment_method,status,created_at,updated_at
+            """SELECT id,plan_id,amount,currency,payment_method,status,provider,created_at,updated_at
                FROM payment_transactions WHERE user_id=?
                ORDER BY created_at DESC,id DESC LIMIT 20""",
             (user_id,),
@@ -66,21 +72,32 @@ def create_paid_checkout():
     user_id = session.get("account_id")
     if not user_id:
         return jsonify({"success": False, "error": "Sign in before choosing a paid plan."}), 401
-    if not is_configured():
-        return jsonify({"success": False, "error": "Flutterwave checkout is not configured yet."}), 503
     payload = request.get_json(silent=True)
     payload = payload if isinstance(payload, dict) else {}
+    method = payload.get("payment_method")
+    provider = str(payload.get("provider") or "").strip().lower()
     try:
+        if method == "mobile_money" and (
+            provider == "palmkash" or (not provider and palmkash_is_configured())
+        ):
+            result = palmkash_create_payment(
+                user_id=user_id,
+                plan_id=payload.get("plan_id"),
+                phone_number=payload.get("phone_number"),
+            )
+            return jsonify({"success": True, "provider": "palmkash", **result}), 200
+        if not is_configured():
+            return jsonify({"success": False, "error": "No approved payment provider is configured for this method yet."}), 503
         result = create_checkout(
             user_id=user_id,
             email=session.get("account_email", ""),
             plan_id=payload.get("plan_id"),
-            method=payload.get("payment_method"),
+            method=method,
             phone_number=payload.get("phone_number"),
         )
-    except FlutterwaveError as exc:
+    except (FlutterwaveError, PalmKashError) as exc:
         return jsonify({"success": False, "error": str(exc)}), 400
-    return jsonify({"success": True, **result}), 200
+    return jsonify({"success": True, "provider": "flutterwave", **result}), 200
 
 
 @billing_bp.get("/api/billing/callback")
@@ -114,3 +131,47 @@ def flutterwave_webhook():
         # useful for temporary verification API failures.
         return jsonify({"success": False, "error": "Webhook transaction could not be verified."}), 400
     return jsonify({"success": True}), 200
+
+
+
+@billing_bp.post("/api/billing/palmkash/callback")
+def palmkash_callback():
+    """Accept a PalmKash notification only after checking its status server-to-server."""
+    payload = request.get_json(silent=True)
+    payload = payload if isinstance(payload, dict) else {}
+    client_reference = str(payload.get("client_reference") or "").strip()
+    provider_reference = str(payload.get("reference") or "").strip()
+    if not client_reference or not provider_reference:
+        return jsonify({"success": False, "error": "Payment reference is missing."}), 400
+    try:
+        result = palmkash_verify_and_activate(client_reference, provider_reference)
+    except PalmKashError:
+        return jsonify({"success": False, "error": "Payment could not be verified."}), 400
+    return jsonify({"success": True, **result}), 200
+
+
+@billing_bp.get("/api/billing/payments/<path:tx_ref>/status")
+def payment_status(tx_ref):
+    """Allow a signed-in customer to refresh only their own payment status."""
+    user_id = session.get("account_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "Sign in to view payment status."}), 401
+    with auth_service.connection() as db:
+        row = db.execute(
+            "SELECT provider FROM payment_transactions WHERE tx_ref=? AND user_id=?",
+            (tx_ref, user_id),
+        ).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Payment record not found."}), 404
+    if row["provider"] == "palmkash":
+        try:
+            result = palmkash_refresh_payment(tx_ref, user_id)
+        except PalmKashError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 502
+        return jsonify({"success": True, **result}), 200
+    with auth_service.connection() as db:
+        payment = db.execute(
+            "SELECT status,plan_id,amount,currency,provider FROM payment_transactions WHERE tx_ref=? AND user_id=?",
+            (tx_ref, user_id),
+        ).fetchone()
+    return jsonify({"success": True, **dict(payment)}), 200
