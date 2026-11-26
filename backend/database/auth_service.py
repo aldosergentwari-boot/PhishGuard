@@ -118,10 +118,14 @@ class AuthService:
                 currency TEXT NOT NULL,
                 payment_method TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',
+                provider TEXT NOT NULL DEFAULT 'flutterwave',
                 provider_transaction_id TEXT UNIQUE,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )""")
+            payment_columns = {row["name"] for row in db.execute("PRAGMA table_info(payment_transactions)")}
+            if "provider" not in payment_columns:
+                db.execute("ALTER TABLE payment_transactions ADD COLUMN provider TEXT NOT NULL DEFAULT 'flutterwave'")
             db.execute("CREATE INDEX IF NOT EXISTS idx_payment_transactions_user ON payment_transactions(user_id, created_at)")
             db.execute("""CREATE TABLE IF NOT EXISTS admin_scan_grants (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
