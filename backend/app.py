@@ -195,8 +195,11 @@ def create_app():
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=secure_cookie,
-        # Browser identities are persistent, but should not live for a year.
-        PERMANENT_SESSION_LIFETIME=timedelta(days=30)
+        # Keep authenticated browsers signed in for 90 days of inactivity.
+        # Flask refreshes permanent cookies on each request, so active users
+        # receive a rolling expiry without weakening logout or revocation.
+        PERMANENT_SESSION_LIFETIME=timedelta(days=90),
+        SESSION_REFRESH_EACH_REQUEST=True
     )
 
     app.register_blueprint(prediction_bp)
