@@ -268,7 +268,7 @@ def management_payments():
     with auth_service.connection() as db:
         rows = db.execute(
             f"""SELECT p.id,p.user_id,u.email,p.plan_id,p.amount,p.currency,p.payment_method,
-                       p.status,p.tx_ref,p.provider_transaction_id,p.created_at,p.updated_at
+                       p.status,p.provider,p.tx_ref,p.provider_transaction_id,p.created_at,p.updated_at
                 FROM payment_transactions p JOIN users u ON u.id=p.user_id{where}
                 ORDER BY p.created_at DESC LIMIT ? OFFSET ?""", (*args,limit,offset)
         ).fetchall()
