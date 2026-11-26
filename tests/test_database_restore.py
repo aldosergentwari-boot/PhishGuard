@@ -1,14 +1,16 @@
 import sqlite3
+from contextlib import closing
 
 import scripts.restore_database as restore_module
 
 
 def _make_database(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection:
         connection.execute("CREATE TABLE IF NOT EXISTS sample (value TEXT)")
         connection.execute("DELETE FROM sample")
         connection.execute("INSERT INTO sample VALUES (?)", (value,))
+        connection.commit()
 
 
 def test_restore_replaces_database_and_creates_safety_backup(tmp_path, monkeypatch):
@@ -22,10 +24,10 @@ def test_restore_replaces_database_and_creates_safety_backup(tmp_path, monkeypat
 
     assert restored == target.resolve()
     assert safety is not None and safety.is_file()
-    with sqlite3.connect(target) as connection:
+    with closing(sqlite3.connect(target)) as connection:
         assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert connection.execute("SELECT value FROM sample").fetchone()[0] == "from-backup"
-    with sqlite3.connect(safety) as connection:
+    with closing(sqlite3.connect(safety)) as connection:
         assert connection.execute("SELECT value FROM sample").fetchone()[0] == "current-data"
 
 
