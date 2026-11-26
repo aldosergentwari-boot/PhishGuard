@@ -51,7 +51,11 @@ def test_plan_catalog_reports_checkout_unavailable_without_provider_configuratio
         monkeypatch.delenv(key, raising=False)
     response = client.get("/api/billing/plans")
     assert response.status_code == 200
-    assert response.get_json()["checkout"] == {"card": False, "mobile_money": False}
+    checkout = response.get_json()["checkout"]
+    assert checkout["card"] is False
+    assert checkout["mobile_money"] is False
+    assert checkout["mobile_money_provider"] is None
+    assert checkout["mobile_money_prices_rwf"] == {}
 
 
 def test_account_page_is_available(client):
