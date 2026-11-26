@@ -2328,13 +2328,51 @@ async function requestPlanUpgrade(planId) {
             body: JSON.stringify({
                 plan_id: planId,
                 payment_method: paymentMethod,
-                phone_number: phoneNumber
+                phone_number: phoneNumber,
+                provider: paymentMethod === 'mobile_money'
+                    ? (available.mobile_money_provider || 'flutterwave')
+                    : 'flutterwave'
             })
         });
-        window.location.assign(result.checkout_url);
+        if (result.checkout_url) {
+            window.location.assign(result.checkout_url);
+            return;
+        }
+        if (result.provider === 'palmkash' && result.tx_ref) {
+            showToast('Payment request sent. Approve it on your MTN/Airtel phone. Waiting for confirmation…', 'info');
+            goToPage('account');
+            await waitForPalmKashPayment(result.tx_ref);
+            return;
+        }
+        throw new Error('The payment provider did not return a checkout destination.');
     } catch (error) {
         showToast(error.message, 'error');
     }
+}
+
+async function waitForPalmKashPayment(txRef) {
+    const started = Date.now();
+    while (Date.now() - started < 120000) {
+        await new Promise(resolve => window.setTimeout(resolve, 5000));
+        try {
+            const status = await apiRequest('/api/billing/payments/' + encodeURIComponent(txRef) + '/status');
+            if (status.status === 'successful') {
+                showToast('Payment confirmed. Your paid plan is now active.', 'success');
+                await loadAccount();
+                return;
+            }
+            if (status.status === 'failed' || status.status === 'cancelled') {
+                showToast('Payment was not completed. No subscription was activated.', 'error');
+                await loadAccountPayments();
+                return;
+            }
+        } catch (error) {
+            showToast('Payment is still being checked. Refresh Payment History in My Account shortly.', 'info');
+            return;
+        }
+    }
+    showToast('Payment is still pending. You can refresh Payment History in My Account.', 'info');
+    await loadAccountPayments();
 }
 
 /* =========================================
