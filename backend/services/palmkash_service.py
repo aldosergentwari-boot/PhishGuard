@@ -115,7 +115,7 @@ def _get_payment_status(reference):
     if status not in ("pending", "completed", "failed"):
         raise PalmKashError("PalmKash returned an unrecognized payment status.")
     returned_reference = str(result.get("reference", "")).strip()
-    if returned_reference and returned_reference != reference:
+    if returned_reference != reference:
         raise PalmKashError("PalmKash payment reference did not match.")
     return status
 
@@ -194,7 +194,10 @@ def _verify_and_apply(client_reference, provider_reference, user_id=None):
         raise PalmKashError("This PalmKash payment reference is not recognized.")
     if payment["status"] == "successful":
         return {"status": "successful", "already_processed": True, "plan_id": payment["plan_id"]}
-    if payment["provider_transaction_id"] and payment["provider_transaction_id"] != provider_reference:
+    if (
+        not payment["provider_transaction_id"]
+        or payment["provider_transaction_id"] != provider_reference
+    ):
         raise PalmKashError("PalmKash payment reference did not match the pending order.")
 
     status = _get_payment_status(provider_reference)
