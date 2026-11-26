@@ -2317,6 +2317,11 @@ async function requestPlanUpgrade(planId) {
 
         let phoneNumber;
         if (paymentMethod === 'mobile_money') {
+            const localPrice = available.mobile_money_prices_rwf?.[planId];
+            if (localPrice && !window.confirm(
+                'You will be charged RWF ' + Number(localPrice).toLocaleString() +
+                ' for the ' + planId.toUpperCase() + ' plan. Continue?'
+            )) return;
             phoneNumber = window.prompt('Enter the MTN or Airtel Rwanda phone number used for payment:');
             if (!phoneNumber) return;
         }
