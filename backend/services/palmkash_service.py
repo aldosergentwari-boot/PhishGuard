@@ -52,7 +52,17 @@ def checkout_availability():
         and int(_config(f"PK_{plan.upper()}_PRICE_RWF") or "0") > 0
         for plan in ("pro", "business")
     )
-    return {"mobile_money": ready and prices_ready}
+    prices = {
+        plan: int(_config(f"PK_{plan.upper()}_PRICE_RWF"))
+        if _config(f"PK_{plan.upper()}_PRICE_RWF").isdigit()
+        and int(_config(f"PK_{plan.upper()}_PRICE_RWF") or "0") > 0
+        else None
+        for plan in ("pro", "business")
+    }
+    return {
+        "mobile_money": ready and prices_ready,
+        "prices_rwf": prices,
+    }
 
 
 def normalize_phone_number(value):
