@@ -308,3 +308,15 @@ def test_existing_database_migrates_email_token_constraint(monkeypatch, tmp_path
                VALUES (1,'admin_password_reset','admin-hash','2099-01-01T00:00:00+00:00',?)""",
             (datetime.now(timezone.utc).isoformat(),),
         )
+
+
+
+def test_owner_session_survives_dashboard_reloads_and_management_requests(monkeypatch, tmp_path):
+    _, client, _, _ = owner_client(monkeypatch, tmp_path)
+
+    for _ in range(4):
+        assert client.get("/admin").status_code == 200
+        assert client.get("/api/admin/management/analytics").status_code == 200
+        with client.session_transaction() as session:
+            assert session.permanent is True
+            assert session.get("phishguard_admin_user_id") is not None
