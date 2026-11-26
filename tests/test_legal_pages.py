@@ -53,7 +53,7 @@ def test_ads_txt_is_generated_from_the_configured_publisher_id(monkeypatch):
     assert response.status_code == 200
     assert response.mimetype == "text/plain"
     assert response.get_data(as_text=True) == (
-        "google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\\n"
+        "google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n"
     )
 
 
