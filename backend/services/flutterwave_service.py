@@ -44,9 +44,19 @@ def checkout_availability():
         and int(_config(f"FLW_{plan.upper()}_PRICE_RWF") or "0") > 0
         for plan in ("pro", "business")
     )
+    from backend.services.palmkash_service import checkout_availability as palmkash_availability
+    palm = palmkash_availability()
+    flutterwave_mobile = base_ready and mobile_prices_ready
     return {
         "card": base_ready,
-        "mobile_money": base_ready and mobile_prices_ready,
+        "mobile_money": palm["mobile_money"] or flutterwave_mobile,
+        "mobile_money_provider": "palmkash" if palm["mobile_money"] else (
+            "flutterwave" if flutterwave_mobile else None
+        ),
+        "providers": {
+            "flutterwave": {"card": base_ready, "mobile_money": flutterwave_mobile},
+            "palmkash": {"mobile_money": palm["mobile_money"]},
+        },
     }
 
 
