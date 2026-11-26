@@ -24,14 +24,20 @@ def test_palmkash_checkout_requires_approval_credentials_and_both_prices(monkeyp
     for key in ("PK_API_TOKEN", "PK_MERCHANT_KEY", "PK_CALLBACK_URL",
                 "PK_PRO_PRICE_RWF", "PK_BUSINESS_PRICE_RWF"):
         monkeypatch.delenv(key, raising=False)
-    assert palm.checkout_availability() == {"mobile_money": False}
+    assert palm.checkout_availability() == {
+        "mobile_money": False,
+        "prices_rwf": {"pro": None, "business": None},
+    }
 
     monkeypatch.setenv("PK_API_TOKEN", "test-token")
     monkeypatch.setenv("PK_MERCHANT_KEY", "test-merchant-key")
     monkeypatch.setenv("PK_CALLBACK_URL", "https://example.com/api/billing/palmkash/callback")
     monkeypatch.setenv("PK_PRO_PRICE_RWF", "2500")
     monkeypatch.setenv("PK_BUSINESS_PRICE_RWF", "9000")
-    assert palm.checkout_availability() == {"mobile_money": True}
+    assert palm.checkout_availability() == {
+        "mobile_money": True,
+        "prices_rwf": {"pro": 2500, "business": 9000},
+    }
 
 
 def test_palmkash_request_signs_exact_json_body(monkeypatch):
