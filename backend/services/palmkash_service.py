@@ -125,9 +125,9 @@ def _get_payment_status(reference):
     if status not in ("pending", "completed", "failed"):
         raise PalmKashError("PalmKash returned an unrecognized payment status.")
     returned_reference = str(result.get("reference", "")).strip()
-    if returned_reference != reference:
-        raise PalmKashError("PalmKash payment reference did not match.")
-    return status
+    if not returned_reference:
+        raise PalmKashError("PalmKash did not return a payment reference.")
+    return status, returned_reference
 
 
 def create_payment(user_id, plan_id, phone_number):
@@ -144,8 +144,8 @@ def create_payment(user_id, plan_id, phone_number):
         db.execute(
             """INSERT INTO payment_transactions
                (user_id,plan_id,tx_ref,amount,currency,payment_method,status,provider,created_at,updated_at)
-               VALUES (?,?,?,?,?,'mobile_money','pending','palmkash',?,?)""",
-            (user_id, plan_id, client_reference, amount, "RWF", now, now),
+               VALUES (?,?,?,?,?,'mobile_money','pending','palmkash',?,?,?)""",
+            (user_id, plan_id, client_reference, amount, "RWF", client_reference, now, now),
         )
 
     try:
@@ -161,22 +161,29 @@ def create_payment(user_id, plan_id, phone_number):
             },
         )
     except PalmKashError:
-        with auth_service.connection() as db:
-            db.execute(
-                "UPDATE payment_transactions SET status='failed',updated_at=? WHERE tx_ref=? AND status='pending'",
-                (datetime.now(timezone.utc).isoformat(), client_reference),
-            )
-        raise
+        # The request may have reached PalmKash even if the response timed out.
+        # Keep it pending and reconcile using our client_reference rather than
+        # falsely marking a potentially collected payment as failed.
+        return {
+            "tx_ref": client_reference,
+            "provider_reference": None,
+            "status": "pending",
+            "amount": amount,
+            "currency": "RWF",
+            "reconciliation_pending": True,
+        }
 
     status = str(result.get("status", "")).lower()
     provider_reference = str(result.get("reference", "")).strip()
-    if status != "pending" or not provider_reference:
+    if status == "failed":
         with auth_service.connection() as db:
             db.execute(
                 "UPDATE payment_transactions SET status='failed',updated_at=? WHERE tx_ref=? AND status='pending'",
                 (datetime.now(timezone.utc).isoformat(), client_reference),
             )
         raise PalmKashError("PalmKash did not accept the payment request.")
+    if status != "pending" or not provider_reference:
+        raise PalmKashError("PalmKash returned an incomplete payment reference.")
     with auth_service.connection() as db:
         db.execute(
             """UPDATE payment_transactions SET provider_transaction_id=?,updated_at=?
@@ -192,7 +199,7 @@ def create_payment(user_id, plan_id, phone_number):
     }
 
 
-def _verify_and_apply(client_reference, provider_reference, user_id=None):
+def _verify_and_apply(client_reference, provider_reference=None, user_id=None):
     with auth_service.connection() as db:
         query = "SELECT * FROM payment_transactions WHERE tx_ref=? AND provider='palmkash'"
         args = [client_reference]
@@ -204,29 +211,44 @@ def _verify_and_apply(client_reference, provider_reference, user_id=None):
         raise PalmKashError("This PalmKash payment reference is not recognized.")
     if payment["status"] == "successful":
         return {"status": "successful", "already_processed": True, "plan_id": payment["plan_id"]}
-    if (
-        not payment["provider_transaction_id"]
-        or payment["provider_transaction_id"] != provider_reference
-    ):
-        raise PalmKashError("PalmKash payment reference did not match the pending order.")
 
-    status = _get_payment_status(provider_reference)
+    stored_reference = str(payment["provider_transaction_id"] or "")
+    if not stored_reference:
+        raise PalmKashError("The PalmKash payment is awaiting reconciliation.")
+    if stored_reference == client_reference:
+        # The initiation request may have timed out after PalmKash accepted it.
+        # Their status endpoint also accepts our client_reference.
+        status, verified_reference = _get_payment_status(client_reference)
+        if provider_reference and verified_reference != provider_reference:
+            raise PalmKashError("PalmKash payment reference did not match the pending order.")
+    else:
+        if provider_reference and stored_reference != provider_reference:
+            raise PalmKashError("PalmKash payment reference did not match the pending order.")
+        status, verified_reference = _get_payment_status(stored_reference)
+        if verified_reference != stored_reference:
+            raise PalmKashError("PalmKash payment reference did not match the pending order.")
+
     now = datetime.now(timezone.utc).isoformat()
     if status == "failed":
         with auth_service.connection() as db:
             db.execute(
                 "UPDATE payment_transactions SET status='failed',provider_transaction_id=?,updated_at=? WHERE tx_ref=? AND status='pending'",
-                (provider_reference, now, client_reference),
+                (verified_reference, now, client_reference),
             )
         return {"status": "failed", "plan_id": payment["plan_id"]}
     if status != "completed":
+        with auth_service.connection() as db:
+            db.execute(
+                "UPDATE payment_transactions SET provider_transaction_id=?,updated_at=? WHERE tx_ref=? AND status='pending'",
+                (verified_reference, now, client_reference),
+            )
         return {"status": "pending", "plan_id": payment["plan_id"]}
 
     activate_subscription(
         payment["user_id"],
         payment["plan_id"],
         "palmkash",
-        f"palmkash-{provider_reference}",
+        f"palmkash-{verified_reference}",
         period_start=datetime.now(timezone.utc),
     )
     with auth_service.connection() as db:
@@ -234,10 +256,9 @@ def _verify_and_apply(client_reference, provider_reference, user_id=None):
             """UPDATE payment_transactions
                SET status='successful',provider_transaction_id=?,updated_at=?
                WHERE tx_ref=? AND provider='palmkash' AND status='pending'""",
-            (provider_reference, now, client_reference),
+            (verified_reference, now, client_reference),
         )
     return {"status": "successful", "already_processed": False, "plan_id": payment["plan_id"]}
-
 
 def verify_and_activate(client_reference, provider_reference):
     """Verify provider state before activating a plan; safe for repeated callbacks."""
@@ -263,9 +284,11 @@ def refresh_payment(client_reference, user_id):
                 (client_reference,),
             ).fetchone()
         return dict(payment)
-    if not row["provider_transaction_id"]:
-        raise PalmKashError("PalmKash has not returned a payment reference yet.")
-    result = _verify_and_apply(client_reference, row["provider_transaction_id"], user_id=user_id)
+    result = _verify_and_apply(
+        client_reference,
+        None if row["provider_transaction_id"] == client_reference else row["provider_transaction_id"],
+        user_id=user_id,
+    )
     with auth_service.connection() as db:
         payment = db.execute(
             "SELECT status,plan_id,amount,currency,provider FROM payment_transactions WHERE tx_ref=?",
