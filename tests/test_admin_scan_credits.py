@@ -100,8 +100,8 @@ def test_admin_overview_returns_operational_counts(monkeypatch, tmp_path):
             (f"account:{customer['id']}", datetime.now(timezone.utc).isoformat()),
         )
     overview = client.get("/api/admin/overview").get_json()["overview"]
-    # The owner remains authenticated but is not counted as a customer.
-    assert overview["active_accounts"] == 0
+    # The customer is counted; the owner is excluded.
+    assert overview["active_accounts"] == 1
     assert overview["active_subscriptions"] == 0
     assert overview["scans_this_month"] == 1
     assert overview["period_timezone"] == "UTC"
