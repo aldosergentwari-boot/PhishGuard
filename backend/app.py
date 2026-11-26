@@ -1,5 +1,6 @@
 
 import os
+import re
 import secrets
 from pathlib import Path
 
@@ -280,10 +281,10 @@ def create_app():
         """Serve Google's authorized-seller declaration from the site root."""
         client_id = os.getenv("ADSENSE_CLIENT_ID", "").strip()
         if not re.fullmatch(r"ca-pub-[0-9]{10,30}", client_id):
-            return Response("AdSense publisher ID is not configured.\\n", status=404, mimetype="text/plain")
+            return Response("AdSense publisher ID is not configured.\n", status=404, mimetype="text/plain")
         publisher_id = client_id.removeprefix("ca-")
         return Response(
-            f"google.com, {publisher_id}, DIRECT, f08c47fec0942fa0\\n",
+            f"google.com, {publisher_id}, DIRECT, f08c47fec0942fa0\n",
             mimetype="text/plain",
         )
 
@@ -338,7 +339,7 @@ def create_app():
                 {
                     "heading": "Email, payments, and advertising providers",
                     "paragraphs": [
-                        "Brevo is used to deliver account-verification and password-reset emails. Flutterwave processes hosted checkout and payment information when paid plans are available. PhishGuard does not need to receive or store your full card number or Mobile Money PIN.",
+                        "Brevo is used to deliver account-verification and password-reset emails. Flutterwave may process hosted card checkout, and PalmKash may process Rwanda MTN MoMo or Airtel Money collections when the merchant account is approved and configured. PhishGuard does not receive or store full card numbers or Mobile Money PINs.",
                         "Google AdSense scripts are not loaded unless the publisher is approved, the required configuration is enabled, and a visitor explicitly accepts the advertising-consent prompt. Visitors can reject optional advertising and continue using PhishGuard. If accepted, Google may use cookies or similar technologies according to its own policies and applicable consent requirements.",
                     ],
                 },
@@ -398,7 +399,7 @@ def create_app():
                     "heading": "Plans, billing, and cancellation",
                     "paragraphs": [
                         "The Free plan is available at no charge and has usage limits displayed in the application. Paid plans and their current prices and limits are displayed on the pricing page.",
-                        "Where Flutterwave checkout is enabled, payments are processed by Flutterwave. Current paid subscriptions use one-time payments and manual renewal; automatic recurring billing is not enabled. Access lasts for the period stated for the purchased plan, subject to successful payment verification.",
+                        "Where enabled, card payments are processed by Flutterwave and Rwanda MTN MoMo/Airtel Money collections may be processed by PalmKash. Current paid subscriptions use one-time payments and manual renewal; automatic recurring billing is not enabled. Access lasts for the period stated for the purchased plan, subject to successful server-side payment verification.",
                         "Refunds, cancellation, and payment disputes are subject to the payment provider's rules and applicable consumer-protection laws. The site owner must publish a clear refund and cancellation process before accepting public payments.",
                         "Monthly scan allowances are based on the plan shown in your account. The service owner may apply an individual account limit or grant additional bonus scans for support or operational reasons. Bonus scans are added to the applicable monthly limit and may expire at the date shown by the service. A customized account limit remains in effect until it is changed or reset. Scan counters use the UTC calendar month unless the application states otherwise.",
                     ],
