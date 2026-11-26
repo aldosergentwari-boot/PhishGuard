@@ -54,8 +54,10 @@
       ["Publisher ID valid",a.publisher_id_configured],
       ["Ad slot valid",a.slot_configured],
       ["Google AdSense ready",a.ready],
+      ["Root ads.txt configured",a.ads_txt_endpoint_configured],
       ["Flutterwave card checkout",c.card],
-      ["Rwanda Mobile Money checkout",c.mobile_money]
+      ["PalmKash MTN/Airtel checkout",c.providers?.palmkash?.mobile_money],
+      ["Flutterwave Rwanda Mobile Money",c.providers?.flutterwave?.mobile_money]
     ];
     $("monetizationMetrics").innerHTML=items.map(([label,ready])=>
       '<article class="metric"><span>'+esc(label.toUpperCase())+'</span><strong class="'+(ready?'status-ready':'status-pending')+'">'+(ready?'Ready':'Not configured')+'</strong></article>'
