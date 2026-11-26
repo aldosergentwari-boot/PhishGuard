@@ -93,6 +93,12 @@ def test_admin_overview_returns_operational_counts(monkeypatch, tmp_path):
             "INSERT INTO scan_usage(owner_id, scanned_at) VALUES (?, ?)",
             (f"account:{owner['id']}", datetime.now(timezone.utc).isoformat()),
         )
+    customer = auth_service.create_user("overview-customer@example.com", "A-Strong-Test-Password-123!")
+    with auth_service.connection() as db:
+        db.execute(
+            "INSERT INTO scan_usage(owner_id, scanned_at) VALUES (?, ?)",
+            (f"account:{customer['id']}", datetime.now(timezone.utc).isoformat()),
+        )
     overview = client.get("/api/admin/overview").get_json()["overview"]
     # The owner remains authenticated but is not counted as a customer.
     assert overview["active_accounts"] == 0
