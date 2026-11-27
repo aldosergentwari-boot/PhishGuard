@@ -84,7 +84,8 @@ Create a Render **Web Service** connected to the GitHub repository and use:
 - Build command: `pip install -r requirements.txt`
 - Start command: `gunicorn --bind 0.0.0.0:$PORT backend.app:app`
 - Runtime: Python 3
-- Health check path: `/api/health`
+- Liveness check path: `/api/health`
+- Readiness check path: `/api/ready` (checks that the ML model and primary database are available)
 
 Add `GOOGLE_SAFE_BROWSING_API_KEY` and/or `URLHAUS_AUTH_KEY` under Render Environment Variables if you want online reputation checks. Keep the values private; never commit `.env` or paste API keys into source files.
 
