@@ -327,7 +327,7 @@ def create_app():
             page_title=page_title,
             page_description=page_description,
             sections=sections,
-            updated_date="November 25, 2026",
+            updated_date="November 27, 2026",
             support_email=support_email,
             show_setup_notice=not valid_support_email,
         )
@@ -363,7 +363,7 @@ def create_app():
                     "heading": "Email, payments, and advertising providers",
                     "paragraphs": [
                         "Brevo is used to deliver account-verification and password-reset emails. New paid checkout is currently unavailable while PhishGuard completes merchant onboarding and its approved payment integration. Legacy Flutterwave and PalmKash handlers are retained only for verification and audit of older transactions; they are not offered for new purchases. PhishGuard does not receive or store full card numbers or Mobile Money PINs.",
-                        "Google AdSense is disabled by default. It can load for Guest and Free accounts only after the publisher is approved, a Google-certified IAB TCF consent-management platform (CMP) has been installed and verified, the operator enables the consent-configuration gate, and the browser receives the required valid consent signals. PhishGuard applies a strict global gate: it requires affirmative TCF consent for purposes 1, 3 and 4 and Google as an advertising vendor before requesting the AdSense script, for every visitor. This does not replace the publisher's responsibility to configure a certified CMP for all applicable regional privacy requirements. If the CMP is missing, unavailable, or consent is declined, no AdSense script is requested. Paid plans do not load ads. Advertising Preferences is informational and is not itself a CMP. Google requires a certified TCF CMP for personalized ads served to users in the EEA, UK and Switzerland.",
+                        "Google AdSense is disabled by default. It can load for Guest and Free accounts only after the publisher is approved, a Google-certified IAB TCF consent-management platform (CMP) has been installed and verified, the operator enables the consent-configuration gate, and the browser receives the required valid consent signals. PhishGuard applies a strict global gate: it requires affirmative TCF consent for purposes 1, 3 and 4 and Google as an advertising vendor before requesting the AdSense script, for every visitor. This does not replace the publisher's responsibility to configure a certified CMP for all applicable regional privacy requirements. If the CMP is missing, unavailable, or consent is declined, no AdSense script is requested. Paid plans do not load ads. Advertising Preferences is informational and is not itself a CMP; its Manage advertising consent control opens the configured CMP preferences interface when the integration is installed. If that interface is unavailable, ads remain disabled. Google requires a certified TCF CMP for personalized ads served to users in the EEA, UK and Switzerland.",
                     ],
                 },
                 {
