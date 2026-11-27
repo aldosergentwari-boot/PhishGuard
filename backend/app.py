@@ -300,15 +300,23 @@ def create_app():
 
 
     def render_legal_page(page_title, page_description, sections):
-        support_email = os.getenv("PUBLIC_SUPPORT_EMAIL", "").strip() or "aldosergentwari@gmail.com"
+        configured_support_email = os.getenv("PUBLIC_SUPPORT_EMAIL", "").strip()
+        valid_support_email = bool(
+            re.fullmatch(r"[^@\\s<>]+@[^@\\s<>]+\\.[^@\\s<>]+", configured_support_email)
+        )
+        support_email = (
+            configured_support_email
+            if valid_support_email
+            else "Official support email not configured yet."
+        )
         return render_template(
             "legal.html",
             page_title=page_title,
             page_description=page_description,
             sections=sections,
             updated_date="November 25, 2026",
-            support_email=support_email or "Official support email not configured yet.",
-            show_setup_notice=not bool(support_email),
+            support_email=support_email,
+            show_setup_notice=not valid_support_email,
         )
 
     @app.route("/privacy")
