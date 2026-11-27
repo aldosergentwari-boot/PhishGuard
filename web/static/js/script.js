@@ -1531,6 +1531,16 @@ function bindEvents() {
     $('manageAdConsent')?.addEventListener('click', () => {
         goToPage('adpreferences');
     });
+    $('manageAdvertisingConsent')?.addEventListener('click', () => {
+        if (typeof window.phishguardShowConsentPreferences === 'function') {
+            window.phishguardShowConsentPreferences();
+        } else {
+            showToast(
+                'Advertising consent controls are not configured yet. Ads remain disabled.',
+                'info'
+            );
+        }
+    });
 
     $('adminCreditForm')?.addEventListener('submit', submitAdminCreditGrant);
     $('adminLoadOverview')?.addEventListener('click', loadAdminOverview);
