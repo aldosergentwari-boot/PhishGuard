@@ -186,4 +186,20 @@ $("creditForm").addEventListener("submit",async e=>{e.preventDefault();const b=$
 $("logout").addEventListener("click",async()=>{try{await api("/api/admin/logout",{method:"POST"});}finally{location.assign("/admin/login");}});
 (async()=>{try{await csrf();await Promise.allSettled([loadOverview(),loadUsers(),loadPayments(),loadAdminProfile()]);}catch(e){if(!e.message.includes("Owner session expired"))$("recentUsers").innerHTML='<tr><td colspan="4" class="empty">'+safe(e.message)+'</td></tr>';}})();
 </script><script src="/static/js/admin_dashboard_extras.js?v=4"></script><script src="/static/js/subscription_requests_admin.js?v=2"></script>
+
+<div id="customerEmailModal" hidden style="position:fixed;inset:0;z-index:1000;background:#050a14d9;display:grid;place-items:center;padding:18px">
+  <section style="width:min(100%,720px);max-height:90vh;overflow:auto;background:#111a2b;border:1px solid #344967;border-radius:18px;padding:24px;color:#edf3fb">
+    <div class="section-head"><div><h2>Reply to customer</h2><p id="customerEmailRecipient" class="muted">Prepare a professional subscription email.</p></div><button class="btn" type="button" id="closeCustomerEmail">Close</button></div>
+    <form id="customerEmailForm">
+      <label for="customerEmailSubject">EMAIL SUBJECT</label>
+      <input id="customerEmailSubject" maxlength="160" required style="width:100%;margin:8px 0 16px;padding:12px;background:#0b1424;color:#edf3fb;border:1px solid #344967;border-radius:8px">
+      <label for="customerEmailBody">MESSAGE</label>
+      <textarea id="customerEmailBody" rows="12" maxlength="5000" required style="width:100%;margin:8px 0 16px;padding:12px;background:#0b1424;color:#edf3fb;border:1px solid #344967;border-radius:8px;resize:vertical"></textarea>
+      <p class="muted">We recommend replying by email so the customer receives clear payment instructions or a status update. The same message is also saved in the customer's PhishGuard account.</p>
+      <p id="customerEmailFeedback" role="status" aria-live="polite"></p>
+      <div class="top-actions"><button class="btn primary" type="submit" id="sendCustomerEmail">Send email</button><a class="btn" id="openPreparedCustomerEmail" href="#" hidden>Open prepared email</a></div>
+    </form>
+  </section>
+</div>
+
 </body></html>
