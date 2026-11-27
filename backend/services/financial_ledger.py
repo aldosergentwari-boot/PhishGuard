@@ -53,8 +53,7 @@ def initialize_ledger():
                 currency TEXT NOT NULL CHECK (length(currency) = 3),
                 idempotency_key TEXT NOT NULL UNIQUE,
                 created_at TEXT NOT NULL,
-                notes TEXT,
-                UNIQUE(payment_transaction_id, entry_type)
+                notes TEXT
             )"""
         )
         db.execute(
@@ -68,6 +67,10 @@ def initialize_ledger():
         db.execute(
             """CREATE INDEX IF NOT EXISTS idx_financial_ledger_user_time
                ON financial_ledger_entries(user_id, created_at)"""
+        )
+        db.execute(
+            """CREATE INDEX IF NOT EXISTS idx_financial_ledger_payment_type
+               ON financial_ledger_entries(payment_transaction_id, entry_type)"""
         )
 
 
@@ -140,6 +143,7 @@ def reconcile_successful_payments(limit=500):
     """Backfill successful payment rows missing their idempotent ledger entry."""
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 5000:
         raise LedgerError("Reconciliation limit must be between 1 and 5000.")
+    initialize_ledger()
     with auth_service.connection() as db:
         rows = db.execute(
             """SELECT p.tx_ref FROM payment_transactions p
@@ -219,6 +223,7 @@ def record_confirmed_debit(
 
 def get_financial_summary():
     """Return gross collections and confirmed debits, grouped by currency."""
+    initialize_ledger()
     with auth_service.connection() as db:
         rows = db.execute(
             """SELECT currency,
@@ -230,6 +235,10 @@ def get_financial_summary():
                           THEN amount_minor ELSE 0 END) AS payouts_minor,
                  SUM(CASE WHEN entry_type='provider_fee' AND direction='debit'
                           THEN amount_minor ELSE 0 END) AS provider_fees_minor,
+                 SUM(CASE WHEN entry_type IN ('payment','adjustment') AND direction='credit'
+                          THEN amount_minor
+                          WHEN entry_type IN ('refund','provider_fee','adjustment') AND direction='debit'
+                          THEN -amount_minor ELSE 0 END) AS net_revenue_minor,
                  SUM(CASE WHEN direction='credit' THEN amount_minor
                           ELSE -amount_minor END) AS net_cash_movement_minor,
                  COUNT(*) AS entry_count
