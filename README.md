@@ -187,14 +187,15 @@ A new account receives Free automatically. A browser cannot grant itself a paid 
 
 ### Advertising rollout
 
-AdSense is disabled by default. The website only requests an ad placement for Guest and Free accounts, only when all of these environment variables are configured:
+AdSense is disabled by default and fails closed. Guest and Free accounts can receive ads only after Google publisher approval, a verified Google-certified IAB TCF consent-management platform (CMP), and valid consent signals from that CMP. Pro and Business plans never request ads. All of the following environment variables must be configured:
 
 - `ADS_ENABLED=true`
 - `ADSENSE_APPROVED=true` (set only after Google approves the publisher/site)
+- `ADS_CONSENT_CONFIGURED=true` (set only after a Google-certified TCF CMP is installed, configured and tested on every page; never use this as a substitute for installing a CMP)
 - `ADSENSE_CLIENT_ID=ca-pub-...`
 - `ADSENSE_SLOT_ID=...`
 
-The dashboard footer links to Advertising Preferences, an informational page. It is not a consent-management platform. Before enabling ads, implement and verify any consent mechanism required by applicable law and Google policy. Paid Pro and Business plans do not load ads. The private Admin > Ads & monetization page reports AdSense readiness without exposing provider secrets. Update server environment variables and restart the service to change provider configuration.
+The dashboard footer links to Advertising Preferences, an informational page; it is not itself a CMP. The browser fails closed and does not request the AdSense script unless the configured CMP exposes IAB TCF v2 signals showing the required consent for Google (vendor 755 and purposes 1, 3 and 4 where GDPR applies). If the CMP is missing, broken, or the user declines, no ad request is made. Google requires a certified CMP integrated with TCF for personalized ads to users in the EEA, UK and Switzerland; review current Google requirements and local law before launch. Paid Pro and Business plans do not load ads. The private Admin > Ads & monetization page reports AdSense readiness without exposing provider secrets. Update server environment variables and restart the service to change provider configuration.
 
 The ad configuration endpoint is `GET /api/ads/config`. The root `/ads.txt` endpoint generates Google's authorized-seller line from the configured publisher ID; it returns 404 until a valid ID is configured. No ad script is loaded when the publisher is not approved, configuration is incomplete, the visitor is on a paid plan, or the browser is offline. In AdSense, check that the site approval status is Ready and that ads.txt is Authorized or Not applicable. Google recommends ads.txt and notes that crawl status may take time to update. Complete applicable privacy disclosures and consent requirements before enabling ads.
 
