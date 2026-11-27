@@ -25,6 +25,10 @@ def test_session_cookie_defaults_are_hardened():
     assert app.config["SESSION_COOKIE_SAMESITE"] == "Lax"
 
 
+def test_authenticated_session_lifetime_is_thirty_days():
+    assert app.config["PERMANENT_SESSION_LIFETIME"].total_seconds() == 30 * 24 * 60 * 60
+
+
 def test_public_responses_include_browser_security_headers(monkeypatch):
     monkeypatch.delenv("RENDER", raising=False)
     response = app.test_client().get("/security-disclaimer")
