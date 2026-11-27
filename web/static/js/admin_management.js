@@ -105,9 +105,15 @@
       }
       if(t.dataset.setPlan){
         const plan=document.querySelector('[data-plan-user="'+t.dataset.setPlan+'"]').value;
-        const reason=prompt("Reason for this admin plan override (required):"); if(!reason)return;
-        await api("/api/admin/management/users/"+t.dataset.setPlan+"/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan_id:plan,reason})}); await users();
-        alert("Plan override saved. This action does not create or verify a payment.");
+        const reason=prompt("Reason for this admin plan change (required):"); if(!reason)return;
+        const payload={plan_id:plan,reason};
+        if(plan==="pro"||plan==="business"){
+          const reference=prompt("Enter the payment transaction reference. First verify that the money has arrived in your account."); if(!reference||reference.trim().length<3)return;
+          if(!confirm("Have you independently verified that the full payment has arrived?"))return;
+          payload.payment_confirmed=true;payload.payment_reference=reference.trim();
+        }
+        await api("/api/admin/management/users/"+t.dataset.setPlan+"/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}); await users();
+        alert("Plan change saved.");
       }
       if(t.dataset.payment){
         const d=await api("/api/admin/management/payments/"+t.dataset.payment);
