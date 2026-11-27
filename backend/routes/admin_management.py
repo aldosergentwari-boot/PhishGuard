@@ -516,5 +516,5 @@ def management_monetization():
             "ready": ads_ready,
         },
         "checkout": checkout_availability(),
-        "billing_model": "one_time_manual_renewal",
+        "billing_model": "pending_urubutopay_merchant_approval",
     }), 200
