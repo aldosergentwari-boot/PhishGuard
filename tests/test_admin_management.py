@@ -50,7 +50,7 @@ def test_management_plan_change_and_notification(monkeypatch, tmp_path):
     _, client, _, csrf = owner_client(monkeypatch, tmp_path)
     customer = auth_service.create_user("plan-user@example.com", "A-Strong-Customer-Password-123!")
     response = client.post(f"/api/admin/management/users/{customer['id']}/plan",
-        json={"plan_id": "pro", "reason": "Approved manual support upgrade"},
+        json={"plan_id": "pro", "reason": "Approved manual support upgrade", "payment_confirmed": True, "payment_reference": "TEST-REF-100"},
         headers={"X-CSRF-Token": csrf})
     assert response.status_code == 200
     assert response.get_json()["plan_id"] == "pro"
@@ -153,10 +153,10 @@ def test_plan_override_replaces_previous_active_subscription(monkeypatch, tmp_pa
     customer = auth_service.create_user("plan-replace@example.com", "A-Strong-Customer-Password-123!")
     headers = {"X-CSRF-Token": csrf}
     first = client.post(f"/api/admin/management/users/{customer['id']}/plan",
-        json={"plan_id": "pro", "reason": "First approved upgrade"}, headers=headers)
+        json={"plan_id": "pro", "reason": "First approved upgrade", "payment_confirmed": True, "payment_reference": "TEST-REF-101"}, headers=headers)
     assert first.status_code == 200
     second = client.post(f"/api/admin/management/users/{customer['id']}/plan",
-        json={"plan_id": "business", "reason": "Approved plan replacement"}, headers=headers)
+        json={"plan_id": "business", "reason": "Approved plan replacement", "payment_confirmed": True, "payment_reference": "TEST-REF-102"}, headers=headers)
     assert second.status_code == 200
     with auth_service.connection() as db:
         rows = db.execute("SELECT plan_id,status FROM subscriptions WHERE user_id=? ORDER BY id", (customer["id"],)).fetchall()
@@ -386,3 +386,16 @@ def test_financial_reconciliation_requires_owner_csrf_and_is_idempotent(monkeypa
     assert first.get_json()["created"] == 1
     assert second.status_code == 200
     assert second.get_json()["created"] == 0
+
+
+def test_admin_cannot_activate_paid_plan_without_payment_confirmation(monkeypatch, tmp_path):
+    _, client, _, csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user("unpaid-user@example.com", "A-Strong-Customer-Password-123!")
+    response = client.post(
+        f"/api/admin/management/users/{customer['id']}/plan",
+        json={"plan_id": "pro", "reason": "Upgrade without payment"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert response.status_code == 400
+    from backend.services.plan_service import get_account_plan
+    assert get_account_plan(customer["id"])["plan_id"] == "free"
