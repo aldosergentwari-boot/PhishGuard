@@ -75,7 +75,7 @@ def test_paid_checkout_cannot_be_activated_by_client(client):
         json={"plan_id": "business", "price_usd": 0.01},
         headers={"X-CSRF-Token": token},
     )
-    assert response.status_code == 503
+    assert response.status_code == 410
     assert client.get("/api/billing/me").get_json()["plan"]["plan_id"] == "free"
 
 
