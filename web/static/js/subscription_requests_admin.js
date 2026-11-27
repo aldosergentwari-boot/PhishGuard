@@ -101,7 +101,7 @@
     try{
       if(contact){
         const id=Number(contact.dataset.requestContact);
-        const row=await api("/api/admin/management/subscription-requests?status=");
+        const row=await api("/api/admin/management/subscription-requests?status=&limit=100");
         const request=row.requests.find(item=>Number(item.id)===id);
         if(request)openComposer(request);
       }else if(approve){
