@@ -111,6 +111,21 @@ def management_financial_summary():
         "offset": offset,
     }), 200
 
+
+@admin_management_bp.post("/api/admin/management/financial-reconcile")
+def management_financial_reconcile():
+    """Backfill successful verified payments into the ledger (owner + CSRF only)."""
+    denied = _guard(True)
+    if denied:
+        return denied
+    data = _json()
+    limit = data.get("limit", 500)
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 5000:
+        return jsonify({"success": False, "error": "Limit must be a whole number from 1 to 5000."}), 400
+    from backend.services.financial_ledger import reconcile_successful_payments
+    result = reconcile_successful_payments(limit=limit)
+    return jsonify({"success": True, **result}), 200
+
 @admin_management_bp.get("/api/admin/management/users")
 def management_users():
     denied = _guard()
