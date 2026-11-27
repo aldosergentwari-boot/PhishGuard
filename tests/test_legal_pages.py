@@ -18,7 +18,7 @@ def test_public_legal_pages_are_available():
             assert phrase.lower() in page
 
 
-def test_legal_pages_use_the_public_default_support_email_when_unset(monkeypatch):
+def test_legal_pages_do_not_publish_a_personal_email_when_support_is_unset(monkeypatch):
     monkeypatch.delenv("PUBLIC_SUPPORT_EMAIL", raising=False)
     client = app.test_client()
 
@@ -26,9 +26,21 @@ def test_legal_pages_use_the_public_default_support_email_when_unset(monkeypatch
     page = response.get_data(as_text=True)
 
     assert response.status_code == 200
-    assert "aldosergentwari@gmail.com" in page
-    assert 'href="mailto:aldosergentwari@gmail.com"' in page
-    assert "Official support email not configured yet." not in page
+    assert "Official support email not configured yet." in page
+    assert "aldosergentwari@gmail.com" not in page
+    assert "mailto:" not in page
+
+
+def test_legal_pages_reject_an_invalid_configured_support_email(monkeypatch):
+    monkeypatch.setenv("PUBLIC_SUPPORT_EMAIL", "not-an-email")
+    client = app.test_client()
+
+    response = client.get("/privacy")
+    page = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Official support email not configured yet." in page
+    assert "mailto:not-an-email" not in page
 
 
 def test_legal_pages_display_configured_support_email(monkeypatch):
