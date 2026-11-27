@@ -2421,13 +2421,8 @@ async function hasValidAdvertisingConsent() {
 
                 const ready = ['tcloaded', 'useractioncomplete'].includes(tcData.eventStatus);
                 if (!ready) return;
-                if (tcData.gdprApplies === false) {
-                    if (tcData.listenerId) {
-                        window.__tcfapi('removeEventListener', 2, () => {}, tcData.listenerId);
-                    }
-                    return finish(true);
-                }
-
+                // Require an affirmative TCF consent signal for every visitor.
+                // This is intentionally stricter than relying on region detection alone.
                 const purposes = tcData.purpose?.consents || {};
                 const vendors = tcData.vendor?.consents || {};
                 const consentGranted = Boolean(
