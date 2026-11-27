@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from backend.database.auth_service import auth_service
 
 _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
-_CURRENCY_EXPONENTS = {"JPY": 0, "KWD": 3, "BHD": 3}
+_CURRENCY_EXPONENTS = {"JPY": 0, "RWF": 0, "KWD": 3, "BHD": 3}
 
 
 class LedgerError(ValueError):
