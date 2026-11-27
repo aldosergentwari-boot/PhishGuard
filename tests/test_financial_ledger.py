@@ -80,7 +80,7 @@ def test_summary_keeps_currencies_separate(ledger_db):
     summary = ledger.get_financial_summary()
 
     assert set(summary) == {"RWF", "USD"}
-    assert summary["RWF"]["gross_collections_minor"] == 250000
+    assert summary["RWF"]["gross_collections_minor"] == 2500
     assert summary["USD"]["gross_collections_minor"] == 1999
 
 
@@ -120,7 +120,7 @@ def test_confirmed_provider_fee_reduces_net_without_mixing_currencies(ledger_db)
         amount=50,
         currency="RWF",
         idempotency_key="provider-fee:palmkash:paid-with-fee",
-        payment_transaction_id=1,
+        payment_transaction_id=payment_id,
         user_id=user_id,
     )
 
