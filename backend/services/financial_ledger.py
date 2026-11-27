@@ -235,9 +235,9 @@ def get_financial_summary():
                           THEN amount_minor ELSE 0 END) AS payouts_minor,
                  SUM(CASE WHEN entry_type='provider_fee' AND direction='debit'
                           THEN amount_minor ELSE 0 END) AS provider_fees_minor,
-                 SUM(CASE WHEN entry_type IN ('payment','adjustment') AND direction='credit'
+                 SUM(CASE WHEN entry_type='payment' AND direction='credit'
                           THEN amount_minor
-                          WHEN entry_type IN ('refund','provider_fee','adjustment') AND direction='debit'
+                          WHEN entry_type IN ('refund','provider_fee') AND direction='debit'
                           THEN -amount_minor ELSE 0 END) AS net_revenue_minor,
                  SUM(CASE WHEN direction='credit' THEN amount_minor
                           ELSE -amount_minor END) AS net_cash_movement_minor,
