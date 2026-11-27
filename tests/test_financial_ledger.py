@@ -95,3 +95,58 @@ def test_invalid_money_precision_is_rejected(ledger_db):
 def test_reconciliation_limit_is_validated(ledger_db):
     with pytest.raises(ledger.LedgerError, match="between 1 and 5000"):
         ledger.reconcile_successful_payments(limit=0)
+
+
+
+def test_confirmed_provider_fee_reduces_net_without_mixing_currencies(ledger_db):
+    accounts, user_id = ledger_db
+    _payment(accounts, user_id, "paid-with-fee", 2500, currency="RWF")
+    ledger.record_verified_payment("paid-with-fee")
+
+    first = ledger.record_confirmed_debit(
+        tx_ref="paid-with-fee",
+        provider="palmkash",
+        entry_type="provider_fee",
+        amount=50,
+        currency="RWF",
+        idempotency_key="provider-fee:palmkash:paid-with-fee",
+        payment_transaction_id=1,
+        user_id=user_id,
+    )
+    second = ledger.record_confirmed_debit(
+        tx_ref="paid-with-fee",
+        provider="palmkash",
+        entry_type="provider_fee",
+        amount=50,
+        currency="RWF",
+        idempotency_key="provider-fee:palmkash:paid-with-fee",
+        payment_transaction_id=1,
+        user_id=user_id,
+    )
+
+    assert first["created"] is True
+    assert second["created"] is False
+    summary = ledger.get_financial_summary()["RWF"]
+    assert summary["gross_collections_minor"] == 250000
+    assert summary["provider_fees_minor"] == 5000
+    assert summary["net_cash_movement_minor"] == 245000
+
+
+def test_idempotency_key_cannot_be_reused_for_different_amount(ledger_db):
+    with pytest.raises(ledger.LedgerError, match="different ledger entry"):
+        ledger.record_confirmed_debit(
+            tx_ref="payout-001",
+            provider="palmkash",
+            entry_type="payout",
+            amount=1000,
+            currency="RWF",
+            idempotency_key="payout:001",
+        )
+        ledger.record_confirmed_debit(
+            tx_ref="payout-001",
+            provider="palmkash",
+            entry_type="payout",
+            amount=2000,
+            currency="RWF",
+            idempotency_key="payout:001",
+        )
