@@ -46,6 +46,7 @@
 
         <nav class="navigation">
             <button class="nav-link" data-page="pricing"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 9h17M8 14h3"/></svg></span><span>Plans &amp; Billings</span></button>
+            <button class="nav-link" data-page="payments"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span><span>Payment History</span></button>
             <button class="nav-link" data-page="account"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="9" r="2.7"/><path d="M6.8 18c1.2-2.3 3-3.4 5.2-3.4s4 1.1 5.2 3.4"/></svg></span><span>My Account</span></button>
 
             <button class="nav-link" data-page="about">
@@ -538,15 +539,6 @@
                         <p id="accountUsageNote">Your scan allowance resets at the start of each UTC calendar month.</p>
                     </div>
                     <div class="account-plan-details" id="accountPlanDetails"></div>
-                    <section class="account-payment-history" aria-labelledby="accountPaymentHistoryTitle">
-                        <div class="account-notifications-heading">
-                            <div><span class="account-label">BILLING RECORDS</span><h3 id="accountPaymentHistoryTitle">Payment history</h3></div>
-                            <button class="text-button" type="button" id="refreshAccountPayments">Refresh</button>
-                        </div>
-                        <div id="accountPaymentHistory" class="account-payment-list" aria-live="polite">
-                            <p class="account-notifications-empty">Your payment records will appear here.</p>
-                        </div>
-                    </section>
                     <section class="account-notifications" aria-labelledby="accountNotificationsTitle">
                         <div class="account-notifications-heading">
                             <div><span class="account-label">ACCOUNT UPDATES</span><h3 id="accountNotificationsTitle">Notifications</h3></div>
@@ -562,6 +554,21 @@
                     </div>
                     <p class="account-feedback" id="accountFeedbackSigned" role="status" aria-live="polite"></p>
                 </div>
+            </section>
+
+
+            <!-- PAYMENT HISTORY -->
+            <section class="page" id="page-payments">
+                <div class="page-heading">
+                    <div><div class="eyebrow">BILLING RECORDS</div><h1>Payment History</h1><p>Review payments recorded for your PhishGuard subscriptions.</p></div>
+                    <button class="secondary-button" type="button" id="refreshAccountPayments">Refresh history</button>
+                </div>
+                <div class="panel account-payment-history">
+                    <div id="accountPaymentHistory" class="account-payment-list" aria-live="polite">
+                        <p class="account-notifications-empty">Your payment records will appear here.</p>
+                    </div>
+                </div>
+                <div class="bottom-note"><span>ⓘ</span><p>Manual subscription payments appear here after the PhishGuard owner verifies payment and approves your request. Pending requests are not shown as completed payments.</p></div>
             </section>
 
             <!-- PLANS & PRICING -->
