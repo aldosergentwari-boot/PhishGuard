@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <title>Request subscription | PhishGuard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+  <style>
+    body{min-height:100vh;background:#080d18;color:#edf3fb;display:grid;place-items:center;padding:24px}
+    .request-shell{width:min(100%,760px);background:#111a2b;border:1px solid #263650;border-radius:20px;padding:clamp(22px,5vw,42px);box-shadow:0 24px 80px #0006}
+    .request-brand{color:#8fb8ff;font-weight:800;letter-spacing:2px;margin-bottom:24px}
+    .request-shell h1{font-size:clamp(26px,4vw,38px);margin:8px 0 12px}
+    .request-shell p{color:#aebbd0;line-height:1.65}
+    .request-plan{margin:24px 0;padding:20px;border:1px solid #344967;border-radius:14px;background:#16243a}
+    .request-plan strong{font-size:25px;display:block;margin:8px 0}
+    .request-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:24px}
+    .request-form label{display:block;font-size:12px;font-weight:700;letter-spacing:.8px;margin-bottom:8px;color:#aebbd0}
+    .request-form input,.request-form select,.request-form textarea{width:100%;padding:13px;border:1px solid #344967;border-radius:9px;background:#0b1424;color:#edf3fb;font:inherit}
+    .request-form .wide{grid-column:1/-1}
+    .request-form button{cursor:pointer}
+    .request-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+    .request-actions a{color:#a9c8ff}
+    .request-feedback{margin-top:12px;min-height:24px}
+    .safety-note{font-size:13px;margin-top:22px}
+    @media(max-width:600px){.request-form{grid-template-columns:1fr}.request-form .wide{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <main class="request-shell">
+    <div class="request-brand">PHISHGUARD</div>
+    <div class="eyebrow">SECURE SUBSCRIPTION REQUEST</div>
+    <h1>Request your paid plan</h1>
+    <p>Send your request to the PhishGuard owner. You will receive payment instructions directly. Your account will only be upgraded after the owner verifies payment.</p>
+    <div class="request-plan">
+      <div class="eyebrow">YOUR SELECTED PLAN</div>
+      <strong>{{ 'Pro' if selected_plan == 'pro' else 'Business' }}</strong>
+      <div>{{ '$4.99 / month' if selected_plan == 'pro' else '$19.99 / 7 months' }}</div>
+    </div>
+    <form id="subscriptionRequestForm" class="request-form">
+      <input type="hidden" id="selectedPlan" value="{{ selected_plan }}">
+      <div><label for="customerName">FULL NAME</label><input id="customerName" name="customer_name" required minlength="2" maxlength="80" autocomplete="name" placeholder="Your full name"></div>
+      <div><label for="phoneNumber">PHONE NUMBER</label><input id="phoneNumber" name="phone_number" type="tel" required minlength="7" maxlength="24" autocomplete="tel" placeholder="+250 7XX XXX XXX"></div>
+      <div><label for="paymentMethod">PREFERRED PAYMENT METHOD</label><select id="paymentMethod" name="payment_method" required><option value="">Choose a method</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="bank_transfer">Bank transfer</option><option value="other">Other / discuss with owner</option></select></div>
+      <div><label for="message">MESSAGE (OPTIONAL)</label><textarea id="message" name="message" rows="3" maxlength="1000" placeholder="Any details that will help us contact you"></textarea></div>
+      <div class="wide"><p id="accountNotice">Checking your PhishGuard account…</p></div>
+      <div class="wide"><button class="primary-button" id="submitRequest" type="submit">Send subscription request</button><p class="request-feedback" id="feedback" role="status" aria-live="polite"></p></div>
+      <div class="wide" id="mailFallback" hidden><p>We saved your request, but automatic email delivery is unavailable. You can still send the prepared email yourself.</p><a id="mailLink" href="#">Open prepared email</a></div>
+    </form>
+    <p class="safety-note">Never send your Mobile Money PIN, bank password, OTP, or account password. PhishGuard will never ask for them.</p>
+    <div class="request-actions"><a href="/">Return to PhishGuard</a></div>
+  </main>
+  <script src="{{ url_for('static', filename='js/subscription_request.js') }}?v=1"></script>
+</body>
+</html>
