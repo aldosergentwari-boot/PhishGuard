@@ -579,25 +579,6 @@
                 <div class="bottom-note"><span>ⓘ</span><p>Subscriptions currently apply to scans and history in the web dashboard. The standalone desktop app remains local and does not yet sync account plans or usage. Paid subscriptions are requested manually. The owner will contact you with payment instructions; access is activated only after the owner verifies payment and approves your request. Pro lasts one month; Business lasts seven months.</p></div>
             </section>
 
-            <!-- MANUAL SUBSCRIPTION REQUEST -->
-            <section class="page" id="page-subscription-request">
-                <div class="page-heading"><div><div class="eyebrow">SECURE SUBSCRIPTION REQUEST</div><h1>Request a paid plan</h1><p>Send your subscription details to the PhishGuard owner. Your plan changes only after payment is independently verified and approved.</p></div></div>
-                <div class="panel" style="max-width:760px;margin:0 auto;padding:28px">
-                    <div id="subscriptionRequestPlan" class="policy-hero"><div><span class="eyebrow">SELECTED PLAN</span><h2 id="subscriptionRequestPlanName">Loading plan…</h2><p id="subscriptionRequestPlanPrice"></p></div></div>
-                    <form id="subscriptionRequestForm" class="form-grid" style="margin-top:22px">
-                        <div class="field"><label for="subscriptionCustomerName">FULL NAME</label><input id="subscriptionCustomerName" name="customer_name" type="text" minlength="2" maxlength="80" autocomplete="name" required placeholder="Your full name"></div>
-                        <div class="field"><label for="subscriptionPhone">PHONE NUMBER</label><input id="subscriptionPhone" name="phone_number" type="tel" minlength="7" maxlength="24" autocomplete="tel" required placeholder="+250 7XX XXX XXX"></div>
-                        <div class="field"><label for="subscriptionPaymentMethod">PREFERRED PAYMENT METHOD</label><select id="subscriptionPaymentMethod" name="payment_method" required><option value="">Choose a method</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="bank_transfer">Bank transfer</option><option value="other">Other / discuss with owner</option></select></div>
-                        <div class="field"><label for="subscriptionMessage">MESSAGE (OPTIONAL)</label><textarea id="subscriptionMessage" name="message" maxlength="1000" rows="4" placeholder="Any details that will help us contact you…"></textarea></div>
-                        <p id="subscriptionRequestAccount" class="muted" style="grid-column:1/-1">Checking your signed-in account…</p>
-                        <button class="primary-button" id="submitSubscriptionRequest" type="submit">Send subscription request</button>
-                        <p id="subscriptionRequestFeedback" class="feedback" role="status" aria-live="polite" style="grid-column:1/-1"></p>
-                        <div id="subscriptionMailFallback" hidden style="grid-column:1/-1"><p class="muted">Your request was saved, but automatic email delivery is not available right now. You can still open your email app and send the prepared request.</p><a class="secondary-button" id="subscriptionMailLink" href="#">Open prepared email</a></div>
-                    </form>
-                    <p class="muted" style="margin-top:18px">Never send your Mobile Money PIN, bank password, OTP, or account password. PhishGuard will never ask for them.</p>
-                    <button type="button" class="text-button" data-goto="pricing">← Back to plans</button>
-                </div>
-            </section>
             <!-- ADVERTISING PREFERENCES -->
             <section class="page" id="page-adpreferences">
                 <div class="page-heading">
