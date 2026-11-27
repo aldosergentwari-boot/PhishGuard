@@ -134,11 +134,6 @@
                 </div>
 
                 <div class="ad-placement" id="overviewAd" hidden aria-label="Advertisement"></div>
-                <section class="ad-consent-banner" id="adConsentBanner" hidden aria-label="Advertising preferences">
-                    <div><strong>Support PhishGuard with advertising</strong><p>Allow Google AdSense to use cookies or similar technologies to show ads. You can reject optional advertising and continue using PhishGuard normally.</p></div>
-                    <div class="ad-consent-actions"><button class="secondary-button" type="button" id="rejectAdConsent">Reject</button><button class="primary-button" type="button" id="acceptAdConsent">Allow ads</button></div>
-                </section>
-
                 <div class="section-heading">
                     <div>
                         <h2>Security statistics</h2>
@@ -465,27 +460,6 @@
                     </div>
                 </div>
 
-                <section class="panel ad-preferences-panel" aria-labelledby="adPreferencesTitle">
-                    <div class="ad-preferences-heading">
-                        <div><span class="account-label">PRIVACY CONTROLS</span><h3 id="adPreferencesTitle">Advertising preferences</h3><p>Choose whether optional ads may appear and whether they may be personalized. Your choices are saved in this browser.</p></div>
-                        <span class="ad-preferences-icon" aria-hidden="true">◎</span>
-                    </div>
-                    <div class="ad-preference-row">
-                        <div><strong>Allow advertising</strong><p>Allow optional advertisements in the PhishGuard dashboard. Turning this off hides ads.</p></div>
-                        <label class="preference-switch"><input type="checkbox" id="adAdsEnabled"><span></span><span class="sr-only">Allow advertising</span></label>
-                    </div>
-                    <div class="ad-preference-row">
-                        <div><strong>Personalized advertising</strong><p>Allow the ad provider to use available signals to personalize ads. If disabled, ads may be contextual instead.</p></div>
-                        <label class="preference-switch"><input type="checkbox" id="adPersonalized"><span></span><span class="sr-only">Allow personalized advertising</span></label>
-                    </div>
-                    <div class="ad-preferences-actions">
-                        <button class="primary-button" type="button" id="saveAdPreferences">Save preferences</button>
-                        <button class="text-button" type="button" id="resetAdPreferences">Reset choices</button>
-                        <span id="adPreferencesFeedback" role="status" aria-live="polite"></span>
-                    </div>
-                    <p class="ad-preferences-footnote">These controls manage PhishGuard's optional ad display and personalization request. Essential account and security features do not depend on accepting ads.</p>
-                </section>
-
                 <div class="panel account-panel" id="accountSignedOut">
                     <div class="account-tabs" role="tablist" aria-label="Account access">
                         <button type="button" class="account-tab active" data-auth-mode="login">Sign in</button>
@@ -603,6 +577,25 @@
                     <article class="panel pricing-card"><h2>Loading plans…</h2></article>
                 </div>
                 <div class="bottom-note"><span>ⓘ</span><p>Subscriptions currently apply to scans and history in the web dashboard. The standalone desktop app remains local and does not yet sync account plans or usage. Paid checkout availability depends on payment-provider configuration and regional merchant approval. Paid access activates only after the provider verifies a successful payment. Payments are one-time charges with manual renewal; Business access lasts seven months.</p></div>
+            </section>
+
+            <!-- ADVERTISING PREFERENCES -->
+            <section class="page" id="page-adpreferences">
+                <div class="page-heading">
+                    <div><div class="eyebrow">TRANSPARENCY &amp; ADVERTISING</div><h1>Advertising Preferences</h1><p>Understand how advertisements are displayed across PhishGuard and how your subscription affects your experience.</p></div>
+                </div>
+                <div class="policy-hero panel">
+                    <div class="policy-hero-icon" aria-hidden="true">◎</div>
+                    <div><span class="eyebrow">YOUR PHISHGUARD EXPERIENCE</span><h2>Advertising is determined by your plan</h2><p>PhishGuard uses your subscription level to determine whether advertisements may appear. You do not need to enable ads manually.</p></div>
+                </div>
+                <section class="panel ad-policy-section"><h2>1. Ads on the Free plan</h2><p>Users on the Free plan may see advertisements in supported areas of the dashboard. Advertising helps support the operation and continued development of PhishGuard.</p></section>
+                <section class="panel ad-policy-section"><h2>2. Ad-free paid plans</h2><p>Eligible paid subscriptions, such as Pro and Business, are designed to provide an ad-free experience while the subscription is active. Your plan and billing status determine eligibility.</p><p>You can review your current subscription, plan status and available upgrades in <button type="button" class="inline-policy-link" data-goto="pricing">Plans &amp; Billings</button>.</p></section>
+                <section class="panel ad-policy-section"><h2>3. Advertising relevance and personalization</h2><p>Where supported by the advertising provider and applicable law, ads may be contextual or personalized. Personalization may depend on provider settings, browser controls and consent requirements in your region.</p><p>PhishGuard does not use your scanned URLs as an advertising preference profile. URL scanning and threat detection remain separate from advertising.</p></section>
+                <section class="panel ad-policy-section"><h2>4. Cookies and advertising technologies</h2><p>Third-party advertising providers may use cookies or similar technologies to deliver, measure or limit advertisements, subject to their policies and applicable consent requirements. You can manage browser cookies through your browser settings.</p></section>
+                <section class="panel ad-policy-section"><h2>5. Changing your advertising experience</h2><p>To change whether ads are shown by PhishGuard, review or change your subscription in Plans &amp; Billings. Upgrading to an eligible ad-free plan changes ad eligibility according to the plan's terms. No separate “Allow ads” switch is required.</p></section>
+                <section class="panel ad-policy-section"><h2>6. Third-party providers</h2><p>When advertisements are served, the advertising provider may process limited technical information such as browser or device data in accordance with its own privacy terms. Review the provider's privacy information for details about its processing practices.</p></section>
+                <section class="panel ad-policy-note"><h2>Important note</h2><p>Advertising availability can change based on your plan, subscription status, regional requirements and the configuration of advertising services. PhishGuard's security scanning features are not conditional on interacting with an advertisement.</p></section>
+                <div class="policy-actions"><button type="button" class="secondary-button" data-goto="account">Back to My Account</button><button type="button" class="primary-button" data-goto="pricing">View Plans &amp; Billings</button></div>
             </section>
 
             <!-- ABOUT -->
