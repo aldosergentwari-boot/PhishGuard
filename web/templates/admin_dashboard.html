@@ -185,7 +185,7 @@ $("ownerProfileButton").addEventListener("click",()=>show("profile"));document.q
 $("creditForm").addEventListener("submit",async e=>{e.preventDefault();const b=$("grantButton"),f=$("creditFeedback");b.disabled=true;f.textContent="";try{const d=await api("/api/admin/scan-credits",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("creditEmail").value,scans:Number($("creditScans").value),reason:$("creditReason").value})});f.textContent="Granted "+d.granted_scans+" scans to "+d.user.email+". Expires "+date(d.expires_at)+"."; $("creditForm").reset();$("creditScans").value=25;await loadOverview();}catch(err){f.textContent=err.message;}finally{b.disabled=false;}});
 $("logout").addEventListener("click",async()=>{try{await api("/api/admin/logout",{method:"POST"});}finally{location.assign("/admin/login");}});
 (async()=>{try{await csrf();await Promise.allSettled([loadOverview(),loadUsers(),loadPayments(),loadAdminProfile()]);}catch(e){if(!e.message.includes("Owner session expired"))$("recentUsers").innerHTML='<tr><td colspan="4" class="empty">'+safe(e.message)+'</td></tr>';}})();
-</script><script src="/static/js/admin_dashboard_extras.js?v=4"></script><script src="/static/js/subscription_requests_admin.js?v=2"></script>
+</script><script src="/static/js/admin_dashboard_extras.js?v=4"></script><script src="/static/js/subscription_requests_admin.js?v=3"></script>
 
 <div id="customerEmailModal" style="display:none;position:fixed;inset:0;z-index:1000;background:#050a14d9;place-items:center;padding:18px">
   <section style="width:min(100%,720px);max-height:90vh;overflow:auto;background:#111a2b;border:1px solid #344967;border-radius:18px;padding:24px;color:#edf3fb">
