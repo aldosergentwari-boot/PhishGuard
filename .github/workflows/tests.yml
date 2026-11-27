@@ -34,4 +34,7 @@ jobs:
         run: python -m pytest -q
 
       - name: Check dashboard JavaScript syntax
-        run: node --check web/static/js/script.js
+        run: |
+          node --check web/static/js/script.js
+          node --check web/static/js/subscription_request.js
+          node --check web/static/js/subscription_requests_admin.js
