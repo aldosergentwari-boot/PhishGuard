@@ -158,3 +158,23 @@ def send_subscription_request_status_email(recipient, plan_id, status, note=""):
     text_body = f"Your request for the {title} plan was {state.lower()}. Owner note: {note or 'Please contact support if you need more information.'}"
     html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Subscription request {escape(state.lower())}</h2><p>Your request for the <strong>{escape(title)}</strong> plan was {escape(state.lower())}.</p><p>{escape(note or 'Please contact support if you need more information.')}</p></div></body></html>"""
     return _send(subject, recipient, text_body, html_body)
+
+
+def send_owner_customer_email(recipient, subject, body):
+    """Send a plain-text and HTML customer-service reply from the configured owner."""
+    safe_subject = str(subject).strip()
+    safe_body = str(body).strip()
+    if not safe_subject or not safe_body:
+        return False
+    paragraphs = "".join(
+        f"<p style='line-height:1.7;color:#c4cede;white-space:pre-wrap'>{escape(line)}</p>"
+        for line in safe_body.splitlines() if line.strip()
+    )
+    html_body = f"""<!doctype html><html><body style="margin:0;background:#0b1220;color:#e8eef8;font-family:Arial,sans-serif;padding:32px">
+<div style="max-width:620px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:16px;padding:32px">
+<div style="font-weight:700;letter-spacing:1px;color:#8fb8ff">PHISHGUARD</div>
+<h2 style="font-size:22px">A message from the PhishGuard team</h2>{paragraphs}
+<p style="margin-top:28px;color:#8fb8ff;font-weight:700">PhishGuard Customer Support</p>
+<p style="font-size:12px;color:#718096">This message relates to your PhishGuard account or subscription request.</p>
+</div></body></html>"""
+    return _send(safe_subject, recipient, safe_body + "\n\nPhishGuard Customer Support", html_body)
