@@ -55,6 +55,7 @@ def test_plan_catalog_reports_checkout_unavailable_without_provider_configuratio
     assert checkout["card"] is False
     assert checkout["mobile_money"] is False
     assert checkout["mobile_money_provider"] is None
+    assert checkout["mobile_money_provider"] is None
     assert checkout["mobile_money_prices_rwf"] == {}
 
 
