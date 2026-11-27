@@ -44,6 +44,8 @@ def checkout_availability():
         "status": "pending_merchant_approval",
         "card": False,
         "mobile_money": False,
+        "mobile_money_provider": None,
+        "mobile_money_prices_rwf": {},
         "providers": {
             "urubutopay": {"enabled": False, "status": "pending_merchant_approval"},
             "flutterwave": {"enabled": False, "legacy_only": True},
