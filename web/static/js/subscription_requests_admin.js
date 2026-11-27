@@ -35,9 +35,9 @@
     $("customerEmailBody").value=draft.body;
     $("customerEmailFeedback").textContent="This message will be emailed to the customer and saved in their in-app notifications.";
     $("openPreparedCustomerEmail").hidden=true;
-    $("customerEmailModal").hidden=false;
+    $("customerEmailModal").style.display="grid";
   }
-  function closeComposer(){ $("customerEmailModal").hidden=true; activeRequest=null; }
+  function closeComposer(){ $("customerEmailModal").style.display="none"; activeRequest=null; }
   async function load(){
     const body=$("subscriptionRequestsTable");
     if(!body)return;
