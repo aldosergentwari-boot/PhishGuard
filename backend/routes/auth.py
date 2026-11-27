@@ -68,6 +68,7 @@ def protect_auth_mutations():
         ("POST", "/api/admin/profile"),
         ("POST", "/api/admin/scan-credits"),
         ("POST", "/api/billing/checkout"),
+        ("POST", "/api/billing/requests"),
         ("DELETE", "/api/history"),
     }
     if (request.method, request.path) in protected or (
