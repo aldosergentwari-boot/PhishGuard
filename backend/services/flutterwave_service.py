@@ -34,38 +34,22 @@ def is_configured():
 
 
 def checkout_availability():
-    """Expose only whether each checkout path is fully configured."""
-    base_ready = bool(
-        _config("FLW_SECRET_KEY")
-        and _config("FLW_SECRET_HASH")
-        and _config("FLW_REDIRECT_URL").startswith("https://")
-    )
-    mobile_prices_ready = all(
-        _config(f"FLW_{plan.upper()}_PRICE_RWF").isdigit()
-        and int(_config(f"FLW_{plan.upper()}_PRICE_RWF") or "0") > 0
-        for plan in ("pro", "business")
-    )
-    from backend.services.palmkash_service import checkout_availability as palmkash_availability
-    palm = palmkash_availability()
-    flutterwave_mobile = base_ready and mobile_prices_ready
+    """Report the intentional payment hold until UrubutoPay is approved and integrated.
+
+    Legacy provider credentials are deliberately ignored for new checkout.
+    """
     return {
-        "card": base_ready,
-        "mobile_money": palm["mobile_money"] or flutterwave_mobile,
-        "mobile_money_provider": "palmkash" if palm["mobile_money"] else (
-            "flutterwave" if flutterwave_mobile else None
-        ),
-        "mobile_money_prices_rwf": palm["prices_rwf"] if palm["mobile_money"] else {
-            plan: int(_config(f"FLW_{plan.upper()}_PRICE_RWF"))
-            for plan in ("pro", "business")
-            if _config(f"FLW_{plan.upper()}_PRICE_RWF").isdigit()
-            and int(_config(f"FLW_{plan.upper()}_PRICE_RWF") or "0") > 0
-        },
+        "enabled": False,
+        "provider": "urubutopay",
+        "status": "pending_merchant_approval",
+        "card": False,
+        "mobile_money": False,
         "providers": {
-            "flutterwave": {"card": base_ready, "mobile_money": flutterwave_mobile},
-            "palmkash": {"mobile_money": palm["mobile_money"]},
+            "urubutopay": {"enabled": False, "status": "pending_merchant_approval"},
+            "flutterwave": {"enabled": False, "legacy_only": True},
+            "palmkash": {"enabled": False, "legacy_only": True},
         },
     }
-
 
 def _amount_for(plan_id, method):
     if plan_id not in ("pro", "business"):
