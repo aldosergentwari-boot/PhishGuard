@@ -465,6 +465,27 @@
                     </div>
                 </div>
 
+                <section class="panel ad-preferences-panel" aria-labelledby="adPreferencesTitle">
+                    <div class="ad-preferences-heading">
+                        <div><span class="account-label">PRIVACY CONTROLS</span><h3 id="adPreferencesTitle">Advertising preferences</h3><p>Choose whether optional ads may appear and whether they may be personalized. Your choices are saved in this browser.</p></div>
+                        <span class="ad-preferences-icon" aria-hidden="true">◎</span>
+                    </div>
+                    <div class="ad-preference-row">
+                        <div><strong>Allow advertising</strong><p>Allow optional advertisements in the PhishGuard dashboard. Turning this off hides ads.</p></div>
+                        <label class="preference-switch"><input type="checkbox" id="adAdsEnabled"><span></span><span class="sr-only">Allow advertising</span></label>
+                    </div>
+                    <div class="ad-preference-row">
+                        <div><strong>Personalized advertising</strong><p>Allow the ad provider to use available signals to personalize ads. If disabled, ads may be contextual instead.</p></div>
+                        <label class="preference-switch"><input type="checkbox" id="adPersonalized"><span></span><span class="sr-only">Allow personalized advertising</span></label>
+                    </div>
+                    <div class="ad-preferences-actions">
+                        <button class="primary-button" type="button" id="saveAdPreferences">Save preferences</button>
+                        <button class="text-button" type="button" id="resetAdPreferences">Reset choices</button>
+                        <span id="adPreferencesFeedback" role="status" aria-live="polite"></span>
+                    </div>
+                    <p class="ad-preferences-footnote">These controls manage PhishGuard's optional ad display and personalization request. Essential account and security features do not depend on accepting ads.</p>
+                </section>
+
                 <div class="panel account-panel" id="accountSignedOut">
                     <div class="account-tabs" role="tablist" aria-label="Account access">
                         <button type="button" class="account-tab active" data-auth-mode="login">Sign in</button>
