@@ -38,7 +38,7 @@ def test_checkout_is_disabled_until_urubutopay_is_approved(client, monkeypatch):
         json={"plan_id": "pro", "payment_method": "card"},
         headers={"X-CSRF-Token": csrf},
     )
-    assert response.status_code == 503
+    assert response.status_code == 410
 
 
 def test_checkout_stays_disabled_even_if_legacy_flutterwave_is_configured(client, monkeypatch):
@@ -58,7 +58,7 @@ def test_checkout_stays_disabled_even_if_legacy_flutterwave_is_configured(client
         headers={"X-CSRF-Token": csrf},
     )
     assert response.status_code == 503
-    assert response.get_json()["code"] == "PAYMENTS_NOT_AVAILABLE"
+    assert response.get_json()["code"] == "MANUAL_SUBSCRIPTION_ONLY"
     with service.auth_service.connection() as db:
         count = db.execute("SELECT COUNT(*) FROM payment_transactions").fetchone()[0]
     assert count == 0
@@ -92,7 +92,7 @@ def test_invalid_webhook_signature_is_rejected(client, monkeypatch):
         json={"data": {"id": 123, "tx_ref": "unknown"}},
         headers={"verif-hash": "wrong-hash"},
     )
-    assert response.status_code == 401
+    assert response.status_code == 410
 
 
 def test_payment_verification_rejects_amount_or_currency_mismatch(client, monkeypatch):
