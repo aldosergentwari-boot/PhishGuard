@@ -80,4 +80,4 @@ This checklist separates work that can be completed in the repository from appro
 - UrubutoPay business verification is not yet complete.
 - The deployed app domain is `https://phishguard-u6zg.onrender.com/`.
 - The proposed UrubutoPay webhook paths are not implemented yet and must not be entered in the merchant portal until verified end-to-end.
-- Latest GitHub Actions validation is running on the current branch head; do not merge until it completes successfully.
+- GitHub Actions run #762 passed on the current code head: 263 Python tests passed and the dashboard JavaScript syntax check passed.
