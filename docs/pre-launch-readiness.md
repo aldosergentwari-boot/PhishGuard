@@ -64,9 +64,20 @@ This checklist separates work that can be completed in the repository from appro
 - [ ] UrubutoPay provides the merchant API credentials, webhook/authentication requirements, supported services, and live activation/IP-whitelisting instructions.
 - [ ] The production integration is tested with UrubutoPay test credentials and then enabled for live transactions.
 
+## Completed in the current implementation pass
+
+- [x] New paid checkout is blocked server-side regardless of legacy provider environment variables.
+- [x] PalmKash and Flutterwave cannot be selected for new purchases; their historical verification paths and transaction records are retained.
+- [x] Public plan availability reports paid checkout as pending UrubutoPay merchant approval.
+- [x] Customer pricing controls remain disabled while payment approval/integration is pending.
+- [x] Owner monetization status reports UrubutoPay as pending instead of advertising legacy checkout readiness.
+- [x] README, environment template, and public privacy/terms wording no longer describe legacy providers as active checkout options.
+- [x] Regression tests cover attempts to start new payments through either legacy provider.
+
 ## Current known blockers
 
 - RDB registration is still reported as **Pending Decision**.
 - UrubutoPay business verification is not yet complete.
 - The deployed app domain is `https://phishguard-u6zg.onrender.com/`.
 - The proposed UrubutoPay webhook paths are not implemented yet and must not be entered in the merchant portal until verified end-to-end.
+- Latest GitHub Actions validation is running on the current branch head; do not merge until it completes successfully.
