@@ -50,7 +50,12 @@
         </section>
         {% endfor %}
         <div class="legal-notice">
-            Contact: <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+            Contact:
+            {% if show_setup_notice %}
+            <span>{{ support_email }}</span>
+            {% else %}
+            <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+            {% endif %}
         </div>
         <nav class="legal-links" aria-label="Other legal pages">
             <a href="/privacy">Privacy Policy</a>
