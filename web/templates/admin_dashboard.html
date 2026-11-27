@@ -78,11 +78,7 @@
     <p class="muted">Ads are shown only to Guest and Free users, only when Google publisher approval and all required settings are present, and only after a visitor accepts the advertising-consent prompt. To change publisher settings, update the server environment variables and restart the service.</p>
     <p class="muted"><code>ADS_ENABLED</code>, <code>ADSENSE_APPROVED</code>, <code>ADSENSE_CLIENT_ID</code>, <code>ADSENSE_SLOT_ID</code></p>
   </div>
-  <div class="panel" style="margin-top:14px">
-    <h3>Flutterwave checkout</h3>
-    <p class="muted">Checkout uses one-time payments with manual renewal. Paid access is activated only after server-side transaction verification. Keep secret keys in the hosting environment; never place them in browser code or GitHub.</p>
-    <p class="muted"><code>FLW_SECRET_KEY</code>, <code>FLW_SECRET_HASH</code>, <code>FLW_REDIRECT_URL</code>, <code>FLW_PRO_PRICE_RWF</code>, <code>FLW_BUSINESS_PRICE_RWF</code></p>
-  </div>
+  <div class="panel" style="margin-top:14px"><h3>Manual subscription workflow</h3><p class="muted">Customers choose Pro or Business, submit their account details and preferred payment method, and receive payment instructions from the owner. Verify the payment independently before using Approve &amp; activate in Subscription requests. No online checkout, webhook, or payment-provider callback can grant paid access.</p></div>
   <p class="feedback" id="monetizationNote" role="status" aria-live="polite"></p>
 </section>
 <section class="section" id="section-audit"><div class="section-head"><h2 class="icon-heading"><svg class="inline-section-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v5c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Owner audit log</span></h2><button class="btn" id="advAuditRefresh">Reload</button></div><div class="panel table-wrap"><table><thead><tr><th>TIME</th><th>OWNER</th><th>ACTION</th><th>TARGET</th><th>DETAILS</th></tr></thead><tbody id="advAudit"></tbody></table></div></section>
