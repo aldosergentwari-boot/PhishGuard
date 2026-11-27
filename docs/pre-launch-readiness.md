@@ -73,6 +73,7 @@ This checklist separates work that can be completed in the repository from appro
 - [x] Owner monetization status reports UrubutoPay as pending instead of advertising legacy checkout readiness.
 - [x] README, environment template, and public privacy/terms wording no longer describe legacy providers as active checkout options.
 - [x] Regression tests cover attempts to start new payments through either legacy provider.
+- [x] Public legal pages no longer expose a personal fallback email; they require a valid `PUBLIC_SUPPORT_EMAIL` and display a setup notice until configured.
 
 ## Current known blockers
 
