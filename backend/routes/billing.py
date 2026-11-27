@@ -6,12 +6,11 @@ from backend.services.plan_service import (
 )
 from backend.services.user_identity import get_current_user_id
 from backend.services.flutterwave_service import (
-    FlutterwaveError, create_checkout, is_configured, checkout_availability,
+    FlutterwaveError, checkout_availability,
     validate_webhook_signature, verify_and_activate,
 )
 from backend.services.palmkash_service import (
-    PalmKashError, is_configured as palmkash_is_configured,
-    create_payment as palmkash_create_payment,
+    PalmKashError,
     verify_and_activate as palmkash_verify_and_activate,
     refresh_payment as palmkash_refresh_payment,
 )
@@ -96,7 +95,7 @@ def create_paid_checkout():
 
 @billing_bp.get("/api/billing/callback")
 def payment_callback():
-    # A browser redirect is not proof of payment; verify with Flutterwave.
+    # Legacy callback: a browser redirect is not proof of payment; verify server-side.
     tx_ref = request.args.get("tx_ref", "")
     transaction_id = request.args.get("transaction_id", "")
     if request.args.get("status", "").lower() != "successful":
