@@ -105,12 +105,16 @@
         const request=row.requests.find(item=>Number(item.id)===id);
         if(request)openComposer(request);
       }else if(approve){
-        const reference=prompt("Enter the payment transaction reference or a clear record of the manual payment. Verify the money has arrived in your account before continuing.");
+        const reference=prompt("Enter the payment transaction reference or a clear record of the manual payment.");
         if(!reference||reference.trim().length<3)return;
-        if(!confirm("Have you independently verified that the full payment has arrived? Only continue if the money is confirmed in your account."))return;
+        const amountText=prompt("Enter the actual amount received (numbers only, e.g. 2500):");
+        if(!amountText||!Number.isFinite(Number(amountText))||Number(amountText)<=0)return;
+        const currency=(prompt("Enter the 3-letter currency code (e.g. RWF or USD):","RWF")||"").trim().toUpperCase();
+        if(!/^[A-Z]{3}$/.test(currency))return;
+        if(!confirm("Have you independently verified that "+amountText+" "+currency+" has arrived in your account? Only continue if the money is confirmed."))return;
         await api("/api/admin/management/subscription-requests/"+approve.dataset.requestApprove+"/approve",{
           method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({payment_confirmed:true,payment_reference:reference.trim(),admin_note:"Payment independently verified by owner."})
+          body:JSON.stringify({payment_confirmed:true,payment_reference:reference.trim(),payment_amount:Number(amountText),payment_currency:currency,admin_note:"Payment independently verified by owner."})
         });
         $("subscriptionRequestsFeedback").textContent="Payment confirmed, subscription activated and payment history updated.";
         await load();
