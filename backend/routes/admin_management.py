@@ -632,8 +632,6 @@ def management_monetization():
     denied = _guard()
     if denied:
         return denied
-    from backend.services.flutterwave_service import checkout_availability
-
     publisher_id = os.getenv("ADSENSE_CLIENT_ID", "").strip()
     slot_id = os.getenv("ADSENSE_SLOT_ID", "").strip()
     approved = os.getenv("ADSENSE_APPROVED", "").strip().lower() in ("1", "true", "yes", "on")
@@ -653,6 +651,6 @@ def management_monetization():
             "ads_txt_endpoint_configured": publisher_valid,
             "ready": ads_ready,
         },
-        "checkout": checkout_availability(),
-        "billing_model": "pending_urubutopay_merchant_approval",
+        "billing_model": "manual_owner_approval",
+        "automated_checkout_enabled": False,
     }), 200
