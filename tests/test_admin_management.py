@@ -320,3 +320,33 @@ def test_owner_session_survives_dashboard_reloads_and_management_requests(monkey
         with client.session_transaction() as session:
             assert session.permanent is True
             assert session.get("phishguard_admin_user_id") is not None
+
+
+def test_financial_summary_is_owner_only_and_currency_separated(monkeypatch, tmp_path):
+    from backend.services.financial_ledger import record_verified_payment
+
+    app, client, owner, _ = owner_client(monkeypatch, tmp_path)
+    anonymous = app.test_client()
+    assert anonymous.get("/api/admin/management/financial-summary").status_code == 401
+
+    customer = auth_service.create_user(
+        "finance-customer@example.com", "A-Strong-Customer-Password-123!"
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        db.execute(
+            """INSERT INTO payment_transactions
+               (user_id,plan_id,tx_ref,amount,currency,payment_method,status,
+                provider,created_at,updated_at)
+               VALUES (?, 'pro', 'finance-paid-001', 2500, 'RWF',
+                       'mobile_money', 'successful', 'palmkash', ?, ?)""",
+            (customer["id"], now, now),
+        )
+    record_verified_payment("finance-paid-001")
+
+    response = client.get("/api/admin/management/financial-summary")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["summary"]["RWF"]["gross_collections_minor"] == 2500
+    assert payload["total"] == 1
+    assert payload["entries"][0]["tx_ref"] == "finance-paid-001"
