@@ -160,19 +160,15 @@ The web dashboard now exposes account and plan APIs:
 - `GET /api/billing/plans` returns the public plan catalog.
 - `GET /api/billing/me` returns the current account plan (anonymous visitors receive the Guest plan and its 10-scan monthly allowance).
 - `GET /api/billing/payments` returns the signed-in user's own recent payment history; transaction references are not exposed.
-- `POST /api/billing/checkout` creates a Flutterwave hosted card checkout or a PalmKash Rwanda Mobile Money collection for signed-in users.
-- `GET /api/billing/callback` and `POST /api/billing/webhook` verify Flutterwave transactions directly before activating a plan.
-- `POST /api/billing/palmkash/callback` treats provider callbacks as notifications and re-checks the payment status with PalmKash before activating a plan.
+- `POST /api/billing/checkout` is intentionally unavailable until the approved UrubutoPay integration is deployed; it never falls back to PalmKash or Flutterwave.
+- Legacy Flutterwave callback/webhook routes remain only to verify and audit existing historical transactions; they are not used to start new checkouts.
+- The legacy PalmKash callback and payment-status routes are retained only for existing historical transactions.
 - `GET /api/billing/payments/<tx_ref>/status` lets a signed-in customer refresh only their own PalmKash payment.
 - Payment attempts record their provider and remain pending until verified; browser redirects and client-supplied plan IDs never grant paid access.
 
-Flutterwave setup (all values are server-side environment variables):
+Legacy provider note: PalmKash and Flutterwave integrations are retained for backward-compatible verification of old payment records only. They must not be configured or used to initiate new customer checkouts.
 
-- `FLW_SECRET_KEY`: Flutterwave secret API key.
-- `FLW_SECRET_HASH`: webhook secret hash; configure the same value in the Flutterwave dashboard.
-- `FLW_REDIRECT_URL`: public HTTPS URL ending in `/api/billing/callback`.
-- `FLW_PRO_PRICE_RWF` and `FLW_BUSINESS_PRICE_RWF`: local-currency Mobile Money amounts, set only after deciding RWF prices.
-- Optional `FLW_LOGO_URL`.
+New paid checkout remains disabled until UrubutoPay merchant approval, official API specifications, webhook requirements, and live credentials are available. Do not place unverified webhook URLs or credentials in the environment.
 
 Card checkout is charged in USD using the published plan price. Rwanda Mobile Money checkout uses RWF and requires the configured RWF amount plus the customer's MTN/Airtel number. Both are currently one-time charges: paid access lasts for the plan's stated period, and renewal is manual. Automatic recurring card billing is not enabled until the corresponding Flutterwave payment plans have been created and configured. Never place secret keys in frontend code or commit them to Git.
 
@@ -186,7 +182,7 @@ Plan catalog (USD):
 
 Current advertised plan features are limited to capabilities already implemented: monthly scan quotas, visible history caps, CSV scan-history export, and ad-free access for paid web plans. The catalog does not currently promise API keys, team workspaces/reporting, advanced analytics, or priority support. Subscription entitlements currently apply to the web dashboard only; the standalone desktop client does not yet sync account plans or monthly usage.
 
-A new account receives Free automatically. A browser cannot grant itself a paid plan: paid subscription activation is reserved for verified server-side payment events. Payment collection is integrated through Flutterwave hosted checkout with server-side transaction verification and webhook signature validation. Subscriptions are currently one-time payments with manual renewal; recurring card billing, customer self-service cancellation, and automated refunds are not enabled yet.
+A new account receives Free automatically. A browser cannot grant itself a paid plan: paid subscription activation is reserved for verified server-side payment events. New paid checkout is intentionally disabled pending the approved UrubutoPay integration. Existing Flutterwave/PalmKash callback handlers are legacy-only and must not be used to initiate new payments. Paid subscription activation remains restricted to server-verified successful payment events; recurring billing, customer self-service cancellation, and automated refunds are not enabled.
 
 ### Advertising rollout
 
@@ -197,7 +193,7 @@ AdSense is disabled by default. The website only requests an ad placement for Gu
 - `ADSENSE_CLIENT_ID=ca-pub-...`
 - `ADSENSE_SLOT_ID=...`
 
-Visitors can reject optional advertising and continue using PhishGuard normally; they can reopen Advertising preferences from the dashboard footer. Paid Pro and Business plans do not load ads. The private Admin > Ads & monetization page reports AdSense and Flutterwave readiness without exposing provider secrets. Update server environment variables and restart the service to change provider configuration.
+Visitors can reject optional advertising and continue using PhishGuard normally; they can reopen Advertising preferences from the dashboard footer. Paid Pro and Business plans do not load ads. The private Admin > Ads & monetization page reports AdSense readiness without exposing provider secrets. Update server environment variables and restart the service to change provider configuration.
 
 The ad configuration endpoint is `GET /api/ads/config`. The root `/ads.txt` endpoint generates Google's authorized-seller line from the configured publisher ID; it returns 404 until a valid ID is configured. No ad script is loaded when the publisher is not approved, configuration is incomplete, the visitor is on a paid plan, or the browser is offline. In AdSense, check that the site approval status is Ready and that ads.txt is Authorized or Not applicable. Google recommends ads.txt and notes that crawl status may take time to update. Complete applicable privacy disclosures and consent requirements before enabling ads.
 
@@ -271,7 +267,7 @@ For a production Render deployment, configure at minimum:
 - `PUBLIC_APP_URL`: the canonical public HTTPS origin, with no trailing slash.
 - `PUBLIC_SUPPORT_EMAIL`: a monitored support address.
 - `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`: verified Brevo SMTP credentials and sender.
-- `FLW_SECRET_KEY`, `FLW_SECRET_HASH`, and `FLW_REDIRECT_URL`: only after Flutterwave merchant onboarding and webhook configuration are approved.
+- UrubutoPay merchant credentials and webhook settings: add only after merchant approval and after the matching integration routes have been implemented and tested.
 - `SESSION_COOKIE_SECURE=true` (the app enforces Secure cookies whenever the `RENDER` environment is present; local HTTP testing may set it to `false` only outside Render).
 
 Use the Render start command `gunicorn --bind 0.0.0.0:$PORT backend.app:app`. Do not enable AdSense until publisher approval and the required privacy/consent setup are complete.
