@@ -305,3 +305,9 @@ def test_legacy_payment_callbacks_are_retired(client):
     assert client.get("/api/billing/callback?status=successful&tx_ref=x&transaction_id=1").status_code == 410
     assert client.post("/api/billing/webhook", json={"data": {"id": 1, "tx_ref": "x"}}).status_code == 410
     assert client.post("/api/billing/palmkash/callback", json={"client_reference": "x", "reference": "y"}).status_code == 410
+
+
+def test_paid_plan_request_page_only_accepts_pro_or_business(client):
+    assert client.get("/subscription/request?plan=pro").status_code == 200
+    assert client.get("/subscription/request?plan=business").status_code == 200
+    assert client.get("/subscription/request?plan=free").status_code == 302
