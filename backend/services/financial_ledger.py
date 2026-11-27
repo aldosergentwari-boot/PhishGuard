@@ -156,6 +156,67 @@ def reconcile_successful_payments(limit=500):
     return {"checked": len(rows), "created": created}
 
 
+
+def record_confirmed_debit(
+    *, tx_ref, provider, entry_type, amount, currency,
+    idempotency_key, user_id=None, payment_transaction_id=None,
+    provider_transaction_id=None, notes=None,
+):
+    """Record a provider-confirmed refund, payout, fee or adjustment exactly once.
+
+    This function deliberately does not call a payment provider. Callers must
+    first verify the debit outcome with the provider or an authorized operator.
+    """
+    allowed_types = {"refund", "payout", "provider_fee", "adjustment"}
+    if entry_type not in allowed_types:
+        raise LedgerError("Unsupported debit entry type.")
+    if not isinstance(tx_ref, str) or not tx_ref.strip():
+        raise LedgerError("A transaction reference is required.")
+    if not isinstance(provider, str) or not provider.strip():
+        raise LedgerError("A payment provider is required.")
+    if not isinstance(idempotency_key, str) or not idempotency_key.strip() or len(idempotency_key) > 200:
+        raise LedgerError("A valid idempotency key is required.")
+    currency = str(currency or "").upper()
+    if not _CURRENCY_RE.fullmatch(currency):
+        raise LedgerError("Currency must be a three-letter ISO code.")
+    amount_minor = _to_minor_units(amount, currency)
+    initialize_ledger()
+    key = idempotency_key.strip()
+    with auth_service.connection() as db:
+        existing = db.execute(
+            "SELECT * FROM financial_ledger_entries WHERE idempotency_key=?",
+            (key,),
+        ).fetchone()
+        expected = (
+            payment_transaction_id, user_id, provider.strip().lower(),
+            tx_ref.strip(), entry_type, "debit", amount_minor, currency,
+        )
+        if existing:
+            actual = (
+                existing["payment_transaction_id"], existing["user_id"],
+                existing["provider"], existing["tx_ref"],
+                existing["entry_type"], existing["direction"],
+                existing["amount_minor"], existing["currency"],
+            )
+            if actual != expected:
+                raise LedgerError("Idempotency key was already used for a different ledger entry.")
+            return {"created": False, "entry_id": existing["id"]}
+        now = datetime.now(timezone.utc).isoformat()
+        cursor = db.execute(
+            """INSERT INTO financial_ledger_entries
+               (payment_transaction_id,user_id,provider,tx_ref,
+                provider_transaction_id,entry_type,direction,amount_minor,
+                currency,idempotency_key,created_at,notes)
+               VALUES (?,?,?,?,?,?,'debit',?,?,?,?,?)""",
+            (
+                payment_transaction_id, user_id, provider.strip().lower(),
+                tx_ref.strip(), provider_transaction_id, entry_type,
+                amount_minor, currency, key, now, notes,
+            ),
+        )
+        return {"created": True, "entry_id": cursor.lastrowid}
+
+
 def get_financial_summary():
     """Return gross collections and confirmed debits, grouped by currency."""
     with auth_service.connection() as db:
