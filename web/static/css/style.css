@@ -500,10 +500,6 @@ tbody tr:hover { background: #ffffff05; }
 .about-hero h2 { margin: 0; font-size: 25px; }
 .about-hero p { max-width: 650px; color: #a8b9cc; font-size: 11px; line-height: 1.7; }
 .version-tag { display: inline-block; padding: 5px 8px; border: 1px solid #31577a; border-radius: 5px; color: #8ac9f0; font-size: 8px; font-weight: 900; letter-spacing: 1px; }
-.tech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; }
-.tech-card { padding: 17px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
-.tech-card strong { display: block; font-size: 12px; }
-.tech-card span { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; }
 .disclaimer-panel { margin-top: 17px; border-color: #735c36; background: #3a2c171f; }
 .disclaimer-panel h3 { margin: 0 0 8px; color: #e9c78a; font-size: 12px; }
 .disclaimer-panel p { margin: 0; color: #b9aa8c; font-size: 10px; line-height: 1.7; }
@@ -577,7 +573,6 @@ tbody tr:hover { background: #ffffff05; }
     .flow-arrow { text-align: center; transform: rotate(90deg); }
     .about-hero { align-items: flex-start; padding: 19px; gap: 15px; }
     .about-logo { width: 55px; height: 55px; }
-    .tech-grid { grid-template-columns: repeat(2, 1fr); }
     .main-footer { flex-direction: column; }
 }
 
@@ -694,7 +689,6 @@ tr[data-id] { cursor: pointer; }
 
 @media (max-width: 360px) {
     .stats-grid { grid-template-columns: 1fr; }
-    .tech-grid { grid-template-columns: 1fr; }
 }
 
 /* fingers need bigger targets than mouse pointers */
