@@ -50,6 +50,7 @@
     const a=d.ads||{},c=d.checkout||{};
     const items=[
       ["AdSense publisher approval",a.approved],
+      ["Certified CMP configured",a.consent_platform_configured],
       ["Ad display enabled",a.enabled_requested],
       ["Publisher ID valid",a.publisher_id_configured],
       ["Ad slot valid",a.slot_configured],
