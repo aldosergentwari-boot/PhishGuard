@@ -299,6 +299,33 @@ def test_only_owner_can_approve_after_confirming_verified_payment(client, monkey
         active = db.execute("SELECT plan_id,status FROM subscriptions WHERE user_id=2 ORDER BY id DESC LIMIT 1").fetchone()
     assert active["plan_id"] == "business"
     assert active["status"] == "active"
+    with auth_service.connection() as db:
+        payment = db.execute(
+            "SELECT amount,currency,status,provider FROM payment_transactions WHERE user_id=2 ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    assert payment["amount"] == 19.99
+    assert payment["currency"] == "USD"
+    assert payment["status"] == "successful"
+    assert payment["provider"] == "admin_manual"
+
+    from backend.services import email_service
+    monkeypatch.setattr(email_service, "send_owner_customer_email", lambda *args: False)
+    reply = client.post(
+        f"/api/admin/management/subscription-requests/{request_id}/reply",
+        json={"subject": "PhishGuard Business request update",
+              "message": "Thank you for contacting PhishGuard. Please review the payment instructions."},
+        headers={"X-CSRF-Token": token},
+    )
+    assert reply.status_code == 200
+    assert reply.get_json()["email_sent"] is False
+    assert reply.get_json()["mailto_url"].startswith("mailto:customer@example.com")
+    with auth_service.connection() as db:
+        notice = db.execute(
+            "SELECT title,message,category FROM user_notifications WHERE user_id=2 ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    assert notice["title"] == "PhishGuard Business request update"
+    assert "payment instructions" in notice["message"]
+    assert notice["category"] == "subscription"
 
 
 def test_legacy_payment_callbacks_are_retired(client):
