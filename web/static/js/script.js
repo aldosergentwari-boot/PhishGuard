@@ -26,6 +26,7 @@ const PAGE_NAMES = {
     adpreferences: 'Advertising Preferences',
     pricing: 'Plans & Pricing',
     account: 'My Account',
+    payments: 'Payment History',
     admin: 'Owner Console'
 };
 
@@ -621,6 +622,20 @@ function setActivePage(pageName) {
 
     if (pageName === 'account') {
         loadAccount();
+    }
+
+    if (pageName === 'payments') {
+        if (state.authenticated) {
+            loadAccountPayments();
+        } else {
+            apiRequest(API.authMe).then(auth => {
+                state.authenticated = Boolean(auth.authenticated);
+                if (state.authenticated) loadAccountPayments();
+                else $('accountPaymentHistory').innerHTML = '<p class="account-notifications-empty">Sign in from My Account to view your payment history.</p>';
+            }).catch(error => {
+                $('accountPaymentHistory').innerHTML = '<p class="account-notifications-empty">' + escapeHtml(error.message) + '</p>';
+            });
+        }
     }
 }
 
