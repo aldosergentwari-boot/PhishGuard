@@ -172,3 +172,22 @@ def test_verified_new_subscription_supersedes_previous_active_period(client):
         ("business", "active"),
     ]
     assert get_account_plan(1)["plan_id"] == "business"
+
+
+def test_public_plan_catalog_never_advertises_legacy_checkout(client, monkeypatch):
+    monkeypatch.setenv("FLW_SECRET_KEY", "legacy-secret")
+    monkeypatch.setenv("FLW_SECRET_HASH", "legacy-hash")
+    monkeypatch.setenv("FLW_REDIRECT_URL", "https://example.test/callback")
+    monkeypatch.setenv("FLW_PRO_PRICE_RWF", "2500")
+    monkeypatch.setenv("FLW_BUSINESS_PRICE_RWF", "9000")
+    monkeypatch.setenv("PK_API_TOKEN", "legacy-token")
+    monkeypatch.setenv("PK_MERCHANT_KEY", "legacy-merchant")
+    response = client.get("/api/billing/plans")
+    assert response.status_code == 200
+    checkout = response.get_json()["checkout"]
+    assert checkout["enabled"] is False
+    assert checkout["provider"] == "urubutopay"
+    assert checkout["card"] is False
+    assert checkout["mobile_money"] is False
+    assert checkout["providers"]["flutterwave"]["legacy_only"] is True
+    assert checkout["providers"]["palmkash"]["legacy_only"] is True
