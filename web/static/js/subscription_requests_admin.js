@@ -71,5 +71,5 @@
       }
     }catch(error){$("subscriptionRequestsFeedback").textContent=error.message;}
   });
-  csrf().then(load).catch(error=>{if($("subscriptionRequestsFeedback"))$("subscriptionRequestsFeedback").textContent=error.message;});
+  csrf().then(load).then(()=>window.setInterval(()=>{ if(document.visibilityState==="visible") load(); },30000)).catch(error=>{if($("subscriptionRequestsFeedback"))$("subscriptionRequestsFeedback").textContent=error.message;});
 })();
