@@ -41,35 +41,49 @@ def test_checkout_is_disabled_until_flutterwave_is_configured(client, monkeypatc
     assert response.status_code == 503
 
 
-def test_checkout_creates_pending_transaction_and_returns_hosted_link(client, monkeypatch):
+def test_checkout_stays_disabled_even_if_legacy_flutterwave_is_configured(client, monkeypatch):
     import backend.services.flutterwave_service as service
 
     register(client)
-    monkeypatch.setenv("FLW_SECRET_KEY", "test-secret")
-    monkeypatch.setenv("FLW_SECRET_HASH", "test-hash")
+    monkeypatch.setenv("FLW_SECRET_KEY", "legacy-test-secret")
+    monkeypatch.setenv("FLW_SECRET_HASH", "legacy-test-hash")
     monkeypatch.setenv("FLW_REDIRECT_URL", "https://example.test/api/billing/callback")
     monkeypatch.setattr(service, "_provider_request", lambda *args, **kwargs: {
-        "link": "https://checkout.flutterwave.com/test"
+        "link": "https://checkout.flutterwave.com/should-not-be-used"
     })
     csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
     response = client.post(
         "/api/billing/checkout",
-        json={"plan_id": "pro", "payment_method": "card"},
+        json={"plan_id": "pro", "payment_method": "card", "provider": "flutterwave"},
         headers={"X-CSRF-Token": csrf},
     )
-    assert response.status_code == 200
-    body = response.get_json()
-    assert body["checkout_url"] == "https://checkout.flutterwave.com/test"
-    assert body["amount"] == 4.99
-    assert body["currency"] == "USD"
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "PAYMENTS_NOT_AVAILABLE"
     with service.auth_service.connection() as db:
-        row = db.execute(
-            "SELECT status,plan_id,amount,currency FROM payment_transactions WHERE tx_ref=?",
-            (body["tx_ref"],),
-        ).fetchone()
-    assert row["status"] == "pending"
-    assert row["plan_id"] == "pro"
+        count = db.execute("SELECT COUNT(*) FROM payment_transactions").fetchone()[0]
+    assert count == 0
 
+
+def test_checkout_never_falls_back_to_palmkash_for_new_mobile_money_payments(client, monkeypatch):
+    import backend.services.palmkash_service as service
+
+    register(client)
+    monkeypatch.setenv("PK_API_TOKEN", "legacy-token")
+    monkeypatch.setenv("PK_MERCHANT_KEY", "legacy-merchant")
+    monkeypatch.setenv("PK_CALLBACK_URL", "https://example.test/callback")
+    monkeypatch.setenv("PK_PRO_PRICE_RWF", "2500")
+    monkeypatch.setenv("PK_BUSINESS_PRICE_RWF", "9000")
+    monkeypatch.setattr(service, "create_payment", lambda **kwargs: {
+        "checkout_url": "https://legacy.example.test"
+    })
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    response = client.post(
+        "/api/billing/checkout",
+        json={"plan_id": "pro", "payment_method": "mobile_money", "provider": "palmkash"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "PAYMENTS_NOT_AVAILABLE"
 
 def test_invalid_webhook_signature_is_rejected(client, monkeypatch):
     monkeypatch.setenv("FLW_SECRET_HASH", "expected-secret-hash")
