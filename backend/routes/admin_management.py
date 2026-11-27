@@ -566,15 +566,6 @@ def approve_subscription_request(request_id):
         return jsonify({"success":False,"error":"Enter the payment transaction reference or a clear cash/manual payment record."}),400
     if not isinstance(note,str) or len(note)>500:
         return jsonify({"success":False,"error":"Admin note must be 500 characters or fewer."}),400
-    if payment_amount is None:
-        payment_amount = {"pro": 4.99, "business": 19.99}.get(data.get("plan_id"), 0)
-    try:
-        payment_amount = float(payment_amount)
-    except (TypeError, ValueError):
-        return jsonify({"success":False,"error":"Enter the actual amount received."}),400
-    if not 0 < payment_amount <= 100000000 or not isinstance(payment_currency, str) or not re.fullmatch(r"[A-Z]{3}", payment_currency.strip().upper()):
-        return jsonify({"success":False,"error":"Enter a valid positive payment amount and 3-letter currency code."}),400
-    payment_currency = payment_currency.strip().upper()
     now_dt = datetime.now(timezone.utc)
     stamp = now_dt.isoformat()
     with auth_service.connection() as db:
@@ -587,6 +578,15 @@ def approve_subscription_request(request_id):
             return jsonify({"success":False,"error":"This request has already been reviewed."}),409
         if not row["is_active"] or row["customer_email"].lower() != row["email"].lower():
             return jsonify({"success":False,"error":"Customer account is inactive or no longer matches the request."}),409
+        if payment_amount is None:
+            payment_amount = {"pro": 4.99, "business": 19.99}[row["plan_id"]]
+        try:
+            payment_amount = float(payment_amount)
+        except (TypeError, ValueError):
+            return jsonify({"success":False,"error":"Enter the actual amount received."}),400
+        if not 0 < payment_amount <= 100000000 or not isinstance(payment_currency, str) or not re.fullmatch(r"[A-Z]{3}", payment_currency.strip().upper()):
+            return jsonify({"success":False,"error":"Enter a valid positive payment amount and 3-letter currency code."}),400
+        payment_currency = payment_currency.strip().upper()
         months = 1 if row["plan_id"]=="pro" else 7
         index = now_dt.month - 1 + months
         year, month = now_dt.year + index // 12, index % 12 + 1
