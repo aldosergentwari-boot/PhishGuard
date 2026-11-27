@@ -288,3 +288,17 @@ python -m scripts.create_owner
 The command asks you to create and confirm a password without echoing it, requires 12–128 characters, creates the account (or resets that exact account's password), marks its email verified, and never exposes an owner-registration HTTP endpoint. It uses the configured application database, so run it against the same database used by the web service. Keep the email variable configured, restart the service, and open `/admin/login`. The password is the one entered in this command. If the application is hosted, run the command in a trusted deployment shell with the production database mounted; never run it against an empty temporary database.
 
 Expanded owner APIs are available under `/api/admin/management`: searchable/filterable/paginated users, account suspend/reactivate, plan changes, payment search/details, subscription listing/cancellation, revenue and conversion analytics, in-app user notifications, and an append-only owner audit log. Mutations require the owner session and CSRF token. Admin-granted plan changes are operational overrides and are recorded in the audit log; they do not represent a verified customer payment. Notifications are stored in-app and do not claim that an email was delivered.
+
+
+## Manual Pro and Business subscriptions
+
+New paid subscriptions use an owner-reviewed request workflow. Customers must sign in, choose Pro or Business, submit their name, contact phone, preferred payment method and optional message. PhishGuard stores the request against their account and attempts to email the configured owner using the existing Brevo SMTP settings. If SMTP delivery is unavailable, the customer receives a prepared mailto link and the request remains visible in the owner dashboard.
+
+The owner contacts the customer with payment instructions and independently confirms that funds have arrived. Only then can the owner open **Admin → Subscription requests → Approve & activate**, enter the payment reference, and confirm the payment. Approval changes the account plan, records an audit event, creates an in-app notification and attempts to email the customer. A request alone never upgrades an account. Automated checkout, provider callbacks and payment webhooks are disabled for new paid access.
+
+Required deployment configuration:
+- `PHISHGUARD_OWNER_EMAIL`: owner inbox and owner-account identity.
+- `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`, `MAIL_SENDER_NAME`.
+- `PUBLIC_APP_URL`: public HTTPS URL used by the email service's configuration check.
+
+Never request or store a customer's Mobile Money PIN, bank password, OTP or account password. The owner must verify payment through their own bank or Mobile Money account, not from a screenshot alone.
