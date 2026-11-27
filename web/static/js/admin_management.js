@@ -55,16 +55,18 @@
       ["Ad slot valid",a.slot_configured],
       ["Google AdSense ready",a.ready],
       ["Root ads.txt configured",a.ads_txt_endpoint_configured],
-      ["Flutterwave card checkout",c.card],
-      ["PalmKash MTN/Airtel checkout",c.providers?.palmkash?.mobile_money],
-      ["Flutterwave Rwanda Mobile Money",c.providers?.flutterwave?.mobile_money]
+      ["UrubutoPay merchant approval",c.status === "active"],
+      ["New paid checkout enabled",c.enabled === true]
     ];
     $("monetizationMetrics").innerHTML=items.map(([label,ready])=>
       '<article class="metric"><span>'+esc(label.toUpperCase())+'</span><strong class="'+(ready?'status-ready':'status-pending')+'">'+(ready?'Ready':'Not configured')+'</strong></article>'
     ).join("");
-    feedback("monetizationNote",a.ready
-      ?"AdSense is configured. Ads still require visitor consent and are hidden from paid plans."
-      :"Ads remain safely disabled until publisher approval and every AdSense setting is complete.");
+    feedback("monetizationNote",
+      "New paid checkout is safely disabled until UrubutoPay merchant approval, official credentials, and the deployed integration are complete. Legacy providers cannot be used for new purchases. " +
+      (a.ready
+        ? "AdSense is configured; ads still require visitor consent and are hidden from paid plans."
+        : "Ads remain disabled until publisher approval and every AdSense setting is complete.")
+    );
   }
   async function audit(){
     const d=await api("/api/admin/management/audit?limit=100");
