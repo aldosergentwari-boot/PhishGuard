@@ -294,6 +294,31 @@ def health_check():
             "model_loaded": False
         }), 503
     
+
+
+@prediction_bp.route("/api/ready", methods=["GET"])
+def readiness_check():
+    """Return readiness only when the detection model and primary database work."""
+    checks = {"model": False, "database": False}
+    try:
+        model_service = get_model_service()
+        checks["model"] = model_service.model is not None
+    except Exception:
+        checks["model"] = False
+
+    try:
+        with auth_service.connection() as db:
+            db.execute("SELECT 1").fetchone()
+        checks["database"] = True
+    except Exception:
+        checks["database"] = False
+
+    is_ready = all(checks.values())
+    return jsonify({
+        "status": "ready" if is_ready else "not_ready",
+        "checks": checks,
+    }), 200 if is_ready else 503
+
 @prediction_bp.route(
     "/api/analyze",
     methods=["POST"]
