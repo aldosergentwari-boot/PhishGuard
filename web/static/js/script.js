@@ -2412,10 +2412,8 @@ async function hasValidAdvertisingConsent() {
         const finish = value => {
             if (settled) return;
             settled = true;
-            window.clearTimeout(timeout);
             resolve(Boolean(value));
         };
-        const timeout = window.setTimeout(() => finish(false), 2000);
 
         try {
             window.__tcfapi('addEventListener', 2, (tcData, success) => {
