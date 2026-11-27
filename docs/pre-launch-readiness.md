@@ -43,7 +43,7 @@ This checklist separates work that can be completed in the repository from appro
 - [ ] Review authentication, email verification, password reset, session expiry, CSRF, rate limits, and account enumeration protections.
 - [ ] Verify production secrets are configured only in Render environment variables.
 - [ ] Verify persistent database storage, backup restore, and migration behavior on Render.
-- [ ] Add health/readiness checks that distinguish app availability from database/model readiness.
+- [x] Add health/readiness checks that distinguish app availability from database/model readiness.
 - [ ] Add structured, privacy-conscious logs for checkout and webhook failures without logging secrets or full sensitive payloads.
 - [ ] Review CORS, trusted proxy handling, HTTPS, security headers, cookie flags, and error responses.
 - [ ] Review data deletion/export requests, retention periods, privacy disclosures, and incident-response contacts.
@@ -80,4 +80,4 @@ This checklist separates work that can be completed in the repository from appro
 - UrubutoPay business verification is not yet complete.
 - The deployed app domain is `https://phishguard-u6zg.onrender.com/`.
 - The proposed UrubutoPay webhook paths are not implemented yet and must not be entered in the merchant portal until verified end-to-end.
-- GitHub Actions run #762 passed on the current code head: 263 Python tests passed and the dashboard JavaScript syntax check passed.
+- GitHub Actions run #769 passed on the current code head: 265 Python tests passed and the dashboard JavaScript syntax check passed.
