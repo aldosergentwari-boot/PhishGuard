@@ -16,6 +16,7 @@ import requests
 
 from backend.database.auth_service import auth_service
 from backend.services.plan_service import PLANS, activate_subscription
+from backend.services.financial_ledger import record_verified_payment
 
 API_BASE = "https://dashboard.palmkash.com/api/v1"
 
@@ -210,6 +211,7 @@ def _verify_and_apply(client_reference, provider_reference=None, user_id=None):
     if not payment:
         raise PalmKashError("This PalmKash payment reference is not recognized.")
     if payment["status"] == "successful":
+        record_verified_payment(client_reference)
         return {"status": "successful", "already_processed": True, "plan_id": payment["plan_id"]}
 
     stored_reference = str(payment["provider_transaction_id"] or "")
@@ -258,6 +260,7 @@ def _verify_and_apply(client_reference, provider_reference=None, user_id=None):
                WHERE tx_ref=? AND provider='palmkash' AND status='pending'""",
             (verified_reference, now, client_reference),
         )
+    record_verified_payment(client_reference)
     return {"status": "successful", "already_processed": False, "plan_id": payment["plan_id"]}
 
 def verify_and_activate(client_reference, provider_reference):
