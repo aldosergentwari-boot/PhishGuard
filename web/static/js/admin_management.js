@@ -47,7 +47,7 @@
   }
   async function monetization(){
     const d=await api("/api/admin/management/monetization");
-    const a=d.ads||{},c=d.checkout||{};
+    const a=d.ads||{};
     const items=[
       ["AdSense publisher approval",a.approved],
       ["Certified CMP configured",a.consent_platform_configured],
@@ -56,16 +56,15 @@
       ["Ad slot valid",a.slot_configured],
       ["Google AdSense ready",a.ready],
       ["Root ads.txt configured",a.ads_txt_endpoint_configured],
-      ["UrubutoPay merchant approval",c.status === "active"],
-      ["New paid checkout enabled",c.enabled === true]
+      ["Manual subscription requests",d.billing_model==="manual_owner_approval"],
+      ["Automated online checkout disabled",d.automated_checkout_enabled===false]
     ];
     $("monetizationMetrics").innerHTML=items.map(([label,ready])=>
       '<article class="metric"><span>'+esc(label.toUpperCase())+'</span><strong class="'+(ready?'status-ready':'status-pending')+'">'+(ready?'Ready':'Not configured')+'</strong></article>'
     ).join("");
     feedback("monetizationNote",
-      "New paid checkout is safely disabled until UrubutoPay merchant approval, official credentials, and the deployed integration are complete. Legacy providers cannot be used for new purchases. " +
-      (a.ready
-        ? "AdSense configuration and CMP gate are ready; each browser still needs valid TCF consent, and paid plans remain ad-free."
+      "Paid subscriptions are handled manually: customers submit requests, the owner verifies payment independently, and only the owner can activate Pro or Business. " +
+      (a.ready ? "AdSense configuration and CMP gate are ready; each browser still needs valid TCF consent, and paid plans remain ad-free."
         : "Ads remain disabled until publisher approval, a certified TCF CMP, and every AdSense setting are complete.")
     );
   }
