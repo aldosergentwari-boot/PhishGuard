@@ -585,6 +585,14 @@ def approve_subscription_request(request_id):
             current_period_end,provider,provider_subscription_id,created_at,updated_at)
             VALUES (?,?,'active',?,?,?,'admin_manual',?,?,?)""",
             (row["user_id"],row["plan_id"],months,stamp,end,f"manual-request-{request_id}-{secrets.token_hex(8)}",stamp,stamp))
+        # Record the owner-verified manual payment in customer payment history.
+        plan_price = {"pro": 4.99, "business": 19.99}[row["plan_id"]]
+        payment_ref = f"manual-subscription-{request_id}-{secrets.token_hex(6)}"
+        db.execute("""INSERT INTO payment_transactions
+            (user_id,plan_id,tx_ref,amount,currency,payment_method,status,provider,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,'successful','admin_manual',?,?)""",
+            (row["user_id"],row["plan_id"],payment_ref,plan_price,"USD",
+             row["payment_method"],stamp,stamp))
         db.execute("""UPDATE subscription_requests SET status='approved',payment_reference=?,admin_note=?,
             reviewed_at=?,reviewed_by=?,updated_at=? WHERE id=?""",
             (reference.strip(),note.strip(),stamp,session["phishguard_admin_user_id"],stamp,request_id))
@@ -631,6 +639,57 @@ def reject_subscription_request(request_id):
     except Exception:
         pass
     return jsonify({"success":True,"request_id":request_id,"status":"rejected"}),200
+
+
+@admin_management_bp.post("/api/admin/management/subscription-requests/<int:request_id>/reply")
+def reply_to_subscription_request():
+    """Send an owner-written customer email and persist the same message in-app."""
+    denied = _guard(True)
+    if denied:
+        return denied
+    data = _json()
+    subject = data.get("subject", "")
+    message = data.get("message", "")
+    if not isinstance(subject, str) or not 5 <= len(subject.strip()) <= 160:
+        return jsonify({"success": False, "error": "Email subject must contain 5–160 characters."}), 400
+    if not isinstance(message, str) or not 10 <= len(message.strip()) <= 5000:
+        return jsonify({"success": False, "error": "Email message must contain 10–5,000 characters."}), 400
+
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        _ensure_subscription_requests(db)
+        row = db.execute(
+            """SELECT r.id,r.user_id,r.plan_id,r.customer_email,r.status,u.email
+               FROM subscription_requests r JOIN users u ON u.id=r.user_id
+               WHERE r.id=?""", (request_id,)
+        ).fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "Subscription request not found."}), 404
+        if row["customer_email"].strip().lower() != row["email"].strip().lower():
+            return jsonify({"success": False, "error": "Customer email no longer matches the account."}), 409
+        recipient = row["customer_email"]
+        user_id = row["user_id"]
+        plan_id = row["plan_id"]
+
+    from backend.services.email_service import send_owner_customer_email
+    sent = send_owner_customer_email(recipient, subject.strip(), message.strip())
+    stamp = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        db.execute(
+            """INSERT INTO user_notifications(user_id,title,message,category,created_at)
+               VALUES (?,?,?,?,?)""",
+            (user_id, subject.strip(), message.strip(), "subscription", stamp),
+        )
+        _audit(db, "subscription.customer_email_sent" if sent else "subscription.customer_email_prepared",
+               "subscription_request", request_id,
+               f"Email {'sent' if sent else 'prepared for manual delivery'}: {subject.strip()}")
+    from urllib.parse import urlencode
+    mailto_url = "mailto:" + recipient + "?" + urlencode({"subject": subject.strip(), "body": message.strip()})
+    return jsonify({
+        "success": True, "email_sent": bool(sent), "mailto_url": mailto_url,
+        "message": "Email sent and account notification saved." if sent
+                   else "Message saved to the customer's account. SMTP is unavailable; send the prepared email manually."
+    }), 200
 
 
 @admin_management_bp.get("/api/admin/management/monetization")
