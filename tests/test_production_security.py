@@ -29,6 +29,22 @@ def test_authenticated_session_lifetime_is_thirty_days():
     assert app.config["PERMANENT_SESSION_LIFETIME"].total_seconds() == 30 * 24 * 60 * 60
 
 
+def test_request_body_limit_allows_two_megabyte_profile_images():
+    assert app.config["MAX_CONTENT_LENGTH"] == 3 * 1024 * 1024
+
+
+def test_oversized_api_request_returns_json_413():
+    response = app.test_client().post(
+        "/api/auth/profile",
+        data=b"x" * (3 * 1024 * 1024 + 1),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 413
+    assert response.is_json
+    assert response.get_json()["code"] == "REQUEST_TOO_LARGE"
+
+
 def test_public_responses_include_browser_security_headers(monkeypatch):
     monkeypatch.delenv("RENDER", raising=False)
     response = app.test_client().get("/security-disclaimer")
