@@ -163,14 +163,14 @@ The web dashboard now exposes account and plan APIs:
 - `POST /api/billing/checkout` is intentionally unavailable until the approved UrubutoPay integration is deployed; it never falls back to PalmKash or Flutterwave.
 - Legacy Flutterwave callback/webhook routes remain only to verify and audit existing historical transactions; they are not used to start new checkouts.
 - The legacy PalmKash callback and payment-status routes are retained only for existing historical transactions.
-- `GET /api/billing/payments/<tx_ref>/status` lets a signed-in customer refresh only their own PalmKash payment.
+- `GET /api/billing/payments/<tx_ref>/status` is retained for a signed-in customer to inspect their own historical PalmKash payment.
 - Payment attempts record their provider and remain pending until verified; browser redirects and client-supplied plan IDs never grant paid access.
 
 Legacy provider note: PalmKash and Flutterwave integrations are retained for backward-compatible verification of old payment records only. They must not be configured or used to initiate new customer checkouts.
 
 New paid checkout remains disabled until UrubutoPay merchant approval, official API specifications, webhook requirements, and live credentials are available. Do not place unverified webhook URLs or credentials in the environment.
 
-Card checkout is charged in USD using the published plan price. Rwanda Mobile Money checkout uses RWF and requires the configured RWF amount plus the customer's MTN/Airtel number. Both are currently one-time charges: paid access lasts for the plan's stated period, and renewal is manual. Automatic recurring card billing is not enabled until the corresponding Flutterwave payment plans have been created and configured. Never place secret keys in frontend code or commit them to Git.
+The historical provider implementations remain in the repository for transaction verification and audit compatibility only. Their environment credentials are not included in `.env.example`, and they cannot be selected by new checkout requests. Do not configure or use those legacy integrations for new purchases.
 
 Plan catalog (USD):
 
