@@ -202,7 +202,10 @@ def create_app():
         # Flask refreshes permanent cookies on each request, so active users
         # receive a rolling expiry without weakening logout or revocation.
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
-        SESSION_REFRESH_EACH_REQUEST=True
+        SESSION_REFRESH_EACH_REQUEST=True,
+        # A 3 MiB cap permits a 2 MiB profile image encoded as a JSON data URI
+        # while preventing unbounded request bodies from exhausting worker memory.
+        MAX_CONTENT_LENGTH=3 * 1024 * 1024,
     )
 
     app.register_blueprint(prediction_bp)
@@ -239,6 +242,16 @@ def create_app():
             )
 
         return response
+
+    @app.errorhandler(413)
+    def request_too_large(error):
+        if request.path.startswith("/api/"):
+            return jsonify({
+                "success": False,
+                "error": "Request body is too large. The maximum request size is 3 MB.",
+                "code": "REQUEST_TOO_LARGE",
+            }), 413
+        return "Request body is too large.", 413
 
     @app.before_request
     def protect_public_website():
