@@ -140,3 +140,21 @@ def send_subscription_request_received_email(recipient, plan_id, request_id):
     )
     html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Subscription request received</h2><p>We received request <strong>#{int(request_id)}</strong> for the <strong>{escape(str(plan_id).title())}</strong> plan.</p><p>The owner will contact you with payment instructions. Your account remains on its current plan until payment is verified and your request is approved.</p></div></body></html>"""
     return _send(subject, recipient, text_body, html_body)
+
+
+def send_subscription_activated_email(recipient, plan_id, period_end):
+    title = str(plan_id).title()
+    end_date = str(period_end)[:10]
+    subject = f"Your PhishGuard {title} subscription is active"
+    text_body = f"Your {title} subscription has been activated after payment verification. Your current access period ends on {end_date}. Thank you for choosing PhishGuard."
+    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Your {escape(title)} plan is active</h2><p>Your payment was verified by the PhishGuard owner and your subscription is now active.</p><p>Current period ends: <strong>{escape(end_date)}</strong></p><p>You can sign in and review your plan in My Account.</p></div></body></html>"""
+    return _send(subject, recipient, text_body, html_body)
+
+
+def send_subscription_request_status_email(recipient, plan_id, status, note=""):
+    title = str(plan_id).title()
+    state = str(status).title()
+    subject = f"PhishGuard {title} subscription request update"
+    text_body = f"Your request for the {title} plan was {state.lower()}. Owner note: {note or 'Please contact support if you need more information.'}"
+    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Subscription request {escape(state.lower())}</h2><p>Your request for the <strong>{escape(title)}</strong> plan was {escape(state.lower())}.</p><p>{escape(note or 'Please contact support if you need more information.')}</p></div></body></html>"""
+    return _send(subject, recipient, text_body, html_body)
