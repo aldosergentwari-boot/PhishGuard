@@ -28,7 +28,7 @@ def register(client):
     return csrf
 
 
-def test_checkout_is_disabled_until_flutterwave_is_configured(client, monkeypatch):
+def test_checkout_is_disabled_until_urubutopay_is_approved(client, monkeypatch):
     register(client)
     monkeypatch.delenv("FLW_SECRET_KEY", raising=False)
     monkeypatch.delenv("FLW_SECRET_HASH", raising=False)
