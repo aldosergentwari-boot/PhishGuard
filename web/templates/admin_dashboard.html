@@ -187,7 +187,7 @@ $("logout").addEventListener("click",async()=>{try{await api("/api/admin/logout"
 (async()=>{try{await csrf();await Promise.allSettled([loadOverview(),loadUsers(),loadPayments(),loadAdminProfile()]);}catch(e){if(!e.message.includes("Owner session expired"))$("recentUsers").innerHTML='<tr><td colspan="4" class="empty">'+safe(e.message)+'</td></tr>';}})();
 </script><script src="/static/js/admin_dashboard_extras.js?v=4"></script><script src="/static/js/subscription_requests_admin.js?v=2"></script>
 
-<div id="customerEmailModal" hidden style="position:fixed;inset:0;z-index:1000;background:#050a14d9;display:grid;place-items:center;padding:18px">
+<div id="customerEmailModal" style="display:none;position:fixed;inset:0;z-index:1000;background:#050a14d9;place-items:center;padding:18px">
   <section style="width:min(100%,720px);max-height:90vh;overflow:auto;background:#111a2b;border:1px solid #344967;border-radius:18px;padding:24px;color:#edf3fb">
     <div class="section-head"><div><h2>Reply to customer</h2><p id="customerEmailRecipient" class="muted">Prepare a professional subscription email.</p></div><button class="btn" type="button" id="closeCustomerEmail">Close</button></div>
     <form id="customerEmailForm">
