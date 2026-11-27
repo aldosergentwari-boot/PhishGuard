@@ -23,7 +23,7 @@ def list_plans():
         "success": True,
         "currency": "USD",
         "plans": public_plans,
-        "checkout": {"enabled": False, "manual_requests": True, "provider": None, "card": False, "mobile_money": False, "mobile_money_provider": None},
+        "checkout": {"enabled": False, "manual_requests": True, "provider": None, "card": False, "mobile_money": False, "mobile_money_provider": None, "mobile_money_prices_rwf": {}},
     }), 200
 
 
