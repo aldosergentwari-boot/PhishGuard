@@ -341,7 +341,7 @@ def create_app():
                 {
                     "heading": "Email, payments, and advertising providers",
                     "paragraphs": [
-                        "Brevo is used to deliver account-verification and password-reset emails. Flutterwave may process hosted card checkout, and PalmKash may process Rwanda MTN MoMo or Airtel Money collections when the merchant account is approved and configured. PhishGuard does not receive or store full card numbers or Mobile Money PINs.",
+                        "Brevo is used to deliver account-verification and password-reset emails. New paid checkout is currently unavailable while PhishGuard completes merchant onboarding and its approved payment integration. Legacy Flutterwave and PalmKash handlers are retained only for verification and audit of older transactions; they are not offered for new purchases. PhishGuard does not receive or store full card numbers or Mobile Money PINs.",
                         "Google AdSense scripts are not loaded unless the publisher is approved, the required configuration is enabled, and a visitor explicitly accepts the advertising-consent prompt. Visitors can reject optional advertising and continue using PhishGuard. If accepted, Google may use cookies or similar technologies according to its own policies and applicable consent requirements.",
                     ],
                 },
