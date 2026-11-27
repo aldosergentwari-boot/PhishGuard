@@ -187,14 +187,14 @@ A new account receives Free automatically. A browser cannot grant itself a paid 
 
 ### Advertising rollout
 
-AdSense is disabled by default. The website only requests an ad placement for Guest and Free accounts, only after the visitor explicitly accepts the advertising-consent prompt, and only when all of these environment variables are configured:
+AdSense is disabled by default. The website only requests an ad placement for Guest and Free accounts, only when all of these environment variables are configured:
 
 - `ADS_ENABLED=true`
 - `ADSENSE_APPROVED=true` (set only after Google approves the publisher/site)
 - `ADSENSE_CLIENT_ID=ca-pub-...`
 - `ADSENSE_SLOT_ID=...`
 
-Visitors can reject optional advertising and continue using PhishGuard normally; they can reopen Advertising preferences from the dashboard footer. Paid Pro and Business plans do not load ads. The private Admin > Ads & monetization page reports AdSense readiness without exposing provider secrets. Update server environment variables and restart the service to change provider configuration.
+The dashboard footer links to Advertising Preferences, an informational page. It is not a consent-management platform. Before enabling ads, implement and verify any consent mechanism required by applicable law and Google policy. Paid Pro and Business plans do not load ads. The private Admin > Ads & monetization page reports AdSense readiness without exposing provider secrets. Update server environment variables and restart the service to change provider configuration.
 
 The ad configuration endpoint is `GET /api/ads/config`. The root `/ads.txt` endpoint generates Google's authorized-seller line from the configured publisher ID; it returns 404 until a valid ID is configured. No ad script is loaded when the publisher is not approved, configuration is incomplete, the visitor is on a paid plan, or the browser is offline. In AdSense, check that the site approval status is Ready and that ads.txt is Authorized or Not applicable. Google recommends ads.txt and notes that crawl status may take time to update. Complete applicable privacy disclosures and consent requirements before enabling ads.
 
