@@ -350,3 +350,39 @@ def test_financial_summary_is_owner_only_and_currency_separated(monkeypatch, tmp
     assert payload["summary"]["RWF"]["gross_collections_minor"] == 2500
     assert payload["total"] == 1
     assert payload["entries"][0]["tx_ref"] == "finance-paid-001"
+
+
+def test_financial_reconciliation_requires_owner_csrf_and_is_idempotent(monkeypatch, tmp_path):
+    _, client, _, csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user(
+        "reconcile-customer@example.com", "A-Strong-Customer-Password-123!"
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        db.execute(
+            """INSERT INTO payment_transactions
+               (user_id,plan_id,tx_ref,amount,currency,payment_method,status,
+                provider,created_at,updated_at)
+               VALUES (?, 'pro', 'reconcile-paid-001', 1250, 'RWF',
+                       'mobile_money', 'successful', 'palmkash', ?, ?)""",
+            (customer["id"], now, now),
+        )
+
+    denied = client.post("/api/admin/management/financial-reconcile", json={})
+    assert denied.status_code == 403
+
+    headers = {"X-CSRF-Token": csrf}
+    first = client.post(
+        "/api/admin/management/financial-reconcile",
+        json={"limit": 100},
+        headers=headers,
+    )
+    second = client.post(
+        "/api/admin/management/financial-reconcile",
+        json={"limit": 100},
+        headers=headers,
+    )
+    assert first.status_code == 200
+    assert first.get_json()["created"] == 1
+    assert second.status_code == 200
+    assert second.get_json()["created"] == 0
