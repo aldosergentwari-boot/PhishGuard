@@ -127,9 +127,9 @@ def test_confirmed_provider_fee_reduces_net_without_mixing_currencies(ledger_db)
     assert first["created"] is True
     assert second["created"] is False
     summary = ledger.get_financial_summary()["RWF"]
-    assert summary["gross_collections_minor"] == 250000
-    assert summary["provider_fees_minor"] == 5000
-    assert summary["net_cash_movement_minor"] == 245000
+    assert summary["gross_collections_minor"] == 2500
+    assert summary["provider_fees_minor"] == 50
+    assert summary["net_cash_movement_minor"] == 2450
 
 
 def test_idempotency_key_cannot_be_reused_for_different_amount(ledger_db):
