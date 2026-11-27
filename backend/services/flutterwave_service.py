@@ -12,6 +12,7 @@ import requests
 
 from backend.database.auth_service import auth_service
 from backend.services.plan_service import PLANS, activate_subscription
+from backend.services.financial_ledger import record_verified_payment
 
 API_BASE = "https://api.flutterwave.com/v3"
 
@@ -163,6 +164,7 @@ def verify_and_activate(tx_ref, transaction_id):
     if not payment:
         raise FlutterwaveError("This payment reference is not recognized.")
     if payment["status"] == "successful":
+        record_verified_payment(tx_ref)
         return {"already_processed": True, "plan_id": payment["plan_id"]}
     if (
         str(data.get("tx_ref", "")) != tx_ref
@@ -192,6 +194,7 @@ def verify_and_activate(tx_ref, transaction_id):
             provider_transaction_id=?,updated_at=? WHERE tx_ref=? AND status='pending'""",
             (str(transaction_id), now, tx_ref),
         )
+    record_verified_payment(tx_ref)
     return {"already_processed": False, "plan_id": payment["plan_id"]}
 
 
