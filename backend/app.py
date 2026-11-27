@@ -302,7 +302,7 @@ def create_app():
     def render_legal_page(page_title, page_description, sections):
         configured_support_email = os.getenv("PUBLIC_SUPPORT_EMAIL", "").strip()
         valid_support_email = bool(
-            re.fullmatch(r"[^@\\s<>]+@[^@\\s<>]+\\.[^@\\s<>]+", configured_support_email)
+            re.fullmatch(r"[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+", configured_support_email)
         )
         support_email = (
             configured_support_email
