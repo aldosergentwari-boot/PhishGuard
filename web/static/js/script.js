@@ -2402,6 +2402,55 @@ async function loadAdsenseScript(clientId) {
     return adsenseScriptPromise;
 }
 
+async function hasValidAdvertisingConsent() {
+    // Fail closed unless a real IAB TCF v2 CMP is present and reports consent.
+    // The app does not manufacture or store its own consent string.
+    if (typeof window.__tcfapi !== 'function') return false;
+
+    return new Promise(resolve => {
+        let settled = false;
+        const finish = value => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            resolve(Boolean(value));
+        };
+        const timeout = window.setTimeout(() => finish(false), 2000);
+
+        try {
+            window.__tcfapi('addEventListener', 2, (tcData, success) => {
+                if (!success || !tcData) return finish(false);
+
+                const ready = ['tcloaded', 'useractioncomplete'].includes(tcData.eventStatus);
+                if (!ready) return;
+                if (tcData.gdprApplies === false) {
+                    if (tcData.listenerId) {
+                        window.__tcfapi('removeEventListener', 2, () => {}, tcData.listenerId);
+                    }
+                    return finish(true);
+                }
+
+                const purposes = tcData.purpose?.consents || {};
+                const vendors = tcData.vendor?.consents || {};
+                const consentGranted = Boolean(
+                    tcData.tcString &&
+                    purposes[1] &&
+                    purposes[3] &&
+                    purposes[4] &&
+                    vendors[755]
+                );
+
+                if (tcData.listenerId) {
+                    window.__tcfapi('removeEventListener', 2, () => {}, tcData.listenerId);
+                }
+                finish(consentGranted);
+            });
+        } catch {
+            finish(false);
+        }
+    });
+}
+
 async function loadAdPlacement() {
     const slot = $('overviewAd');
     if (!slot) return;
@@ -2412,10 +2461,11 @@ async function loadAdPlacement() {
             apiRequest(API.ads),
             apiRequest(API.subscription)
         ]);
-        const planId = account?.plan?.plan_id || 'free';
+        const planId = account?.plan?.plan_id || 'guest';
         if (!adConfig.enabled || !['free', 'guest'].includes(planId) || !navigator.onLine) return;
+        if (!await hasValidAdvertisingConsent()) return;
 
-        // Ad eligibility is controlled by the subscription plan, not a dashboard opt-in switch.
+        // Only request ads after the configured CMP confirms the required TCF signals.
         const ad = document.createElement('ins');
         ad.className = 'adsbygoogle';
         ad.style.display = 'block';
