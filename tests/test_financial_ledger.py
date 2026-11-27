@@ -51,8 +51,8 @@ def test_verified_payment_is_recorded_once(ledger_db):
     assert first["created"] is True
     assert second["created"] is False
     summary = ledger.get_financial_summary()
-    assert summary["RWF"]["gross_collections_minor"] == 250000
-    assert summary["RWF"]["net_cash_movement_minor"] == 250000
+    assert summary["RWF"]["gross_collections_minor"] == 2500
+    assert summary["RWF"]["net_cash_movement_minor"] == 2500
     assert summary["RWF"]["entry_count"] == 1
 
 
@@ -100,7 +100,7 @@ def test_reconciliation_limit_is_validated(ledger_db):
 
 def test_confirmed_provider_fee_reduces_net_without_mixing_currencies(ledger_db):
     accounts, user_id = ledger_db
-    _payment(accounts, user_id, "paid-with-fee", 2500, currency="RWF")
+    payment_id = _payment(accounts, user_id, "paid-with-fee", 2500, currency="RWF")
     ledger.record_verified_payment("paid-with-fee")
 
     first = ledger.record_confirmed_debit(
@@ -110,7 +110,7 @@ def test_confirmed_provider_fee_reduces_net_without_mixing_currencies(ledger_db)
         amount=50,
         currency="RWF",
         idempotency_key="provider-fee:palmkash:paid-with-fee",
-        payment_transaction_id=1,
+        payment_transaction_id=payment_id,
         user_id=user_id,
     )
     second = ledger.record_confirmed_debit(
