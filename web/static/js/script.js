@@ -2414,23 +2414,27 @@ async function loadAdsenseScript(clientId) {
 
 async function hasValidAdvertisingConsent() {
     // Fail closed unless a real IAB TCF v2 CMP is present and reports consent.
-    // The app does not manufacture or store its own consent string.
+    // Keep the listener active so later withdrawal/re-consent is respected.
     if (typeof window.__tcfapi !== 'function') return false;
 
     return new Promise(resolve => {
-        let settled = false;
-        const finish = value => {
-            if (settled) return;
-            settled = true;
+        let initialDecisionReceived = false;
+        const finishInitialDecision = value => {
+            if (initialDecisionReceived) return;
+            initialDecisionReceived = true;
             resolve(Boolean(value));
         };
 
         try {
             window.__tcfapi('addEventListener', 2, (tcData, success) => {
-                if (!success || !tcData) return finish(false);
+                if (!success || !tcData) {
+                    finishInitialDecision(false);
+                    return;
+                }
 
                 const ready = ['tcloaded', 'useractioncomplete'].includes(tcData.eventStatus);
                 if (!ready) return;
+
                 // Require an affirmative TCF consent signal for every visitor.
                 // This is intentionally stricter than relying on region detection alone.
                 const purposes = tcData.purpose?.consents || {};
@@ -2443,17 +2447,27 @@ async function hasValidAdvertisingConsent() {
                     vendors[755]
                 );
 
-                if (tcData.listenerId) {
-                    window.__tcfapi('removeEventListener', 2, () => {}, tcData.listenerId);
+                if (!initialDecisionReceived) {
+                    finishInitialDecision(consentGranted);
+                    return;
                 }
-                finish(consentGranted);
+
+                // A later user choice may grant or withdraw consent. Reload so
+                // the ad slot and Google tag are recreated only from the new signal.
+                if (tcData.eventStatus === 'useractioncomplete') {
+                    const slot = $('overviewAd');
+                    if (!consentGranted && slot) {
+                        slot.hidden = true;
+                        slot.replaceChildren();
+                    }
+                    window.location.reload();
+                }
             });
         } catch {
-            finish(false);
+            finishInitialDecision(false);
         }
     });
 }
-
 async function loadAdPlacement() {
     const slot = $('overviewAd');
     if (!slot) return;
