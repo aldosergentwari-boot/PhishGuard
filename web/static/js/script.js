@@ -2060,7 +2060,7 @@ async function loadAccount() {
                 plan.plan_id === 'pro' ? '$4.99 per month' : 'Free plan') +
             '</strong></div><div><span>Plan period ends</span><strong>' +
             escapeHtml(end) + '</strong></div>';
-        await Promise.all([loadAccountNotifications(), loadAccountPayments()]);
+        await loadAccountNotifications();
     } catch (error) {
         showToast('Could not load account details: ' + error.message, 'error');
     }
