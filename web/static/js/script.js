@@ -2271,85 +2271,11 @@ async function signOutAccount() {
 }
 
 async function requestPlanUpgrade(planId) {
-    if (planId === 'guest') {
-        goToPage('scanner');
-        return;
-    }
-    if (planId === 'free') {
-        goToPage('account');
-        if (!state.authenticated) setAuthMode('register');
-        return;
-    }
-    if (!state.authenticated) {
-        goToPage('account');
-        showToast('Create a Free account or sign in before upgrading.', 'info');
-        return;
-    }
-
-    try {
-        const catalog = await apiRequest(API.plans);
-        const available = catalog.checkout || {};
-        const methods = [];
-        if (available.card) methods.push('card');
-        if (available.mobile_money) methods.push('mobile_money');
-        if (!methods.length) {
-            showToast('Paid checkout is not available yet. Payment-provider setup is still pending.', 'info');
-            return;
-        }
-
-        let paymentMethod = methods[0];
-        if (methods.length > 1) {
-            const selected = window.prompt(
-                'Choose payment method: enter 1 for international card (USD) or 2 for MTN/Airtel Mobile Money (RWF).',
-                '1'
-            );
-            if (selected === null) return;
-            paymentMethod = selected.trim() === '1' ? 'card' :
-                selected.trim() === '2' ? 'mobile_money' : null;
-            if (!paymentMethod || !methods.includes(paymentMethod)) {
-                showToast('Choose one of the payment methods currently available.', 'error');
-                return;
-            }
-        }
-
-        let phoneNumber;
-        if (paymentMethod === 'mobile_money') {
-            const localPrice = available.mobile_money_prices_rwf?.[planId];
-            if (localPrice && !window.confirm(
-                'You will be charged RWF ' + Number(localPrice).toLocaleString() +
-                ' for the ' + planId.toUpperCase() + ' plan. Continue?'
-            )) return;
-            phoneNumber = window.prompt('Enter the MTN or Airtel Rwanda phone number used for payment:');
-            if (!phoneNumber) return;
-        }
-
-        const headers = await csrfHeader();
-        const result = await apiRequest('/api/billing/checkout', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                plan_id: planId,
-                payment_method: paymentMethod,
-                phone_number: phoneNumber,
-                provider: paymentMethod === 'mobile_money'
-                    ? (available.mobile_money_provider || 'flutterwave')
-                    : 'flutterwave'
-            })
-        });
-        if (result.checkout_url) {
-            window.location.assign(result.checkout_url);
-            return;
-        }
-        if (result.provider === 'palmkash' && result.tx_ref) {
-            showToast('Payment request sent. Approve it on your MTN/Airtel phone. Waiting for confirmation…', 'info');
-            goToPage('account');
-            await waitForPalmKashPayment(result.tx_ref);
-            return;
-        }
-        throw new Error('The payment provider did not return a checkout destination.');
-    } catch (error) {
-        showToast(error.message, 'error');
-    }
+    if (planId === 'guest') { goToPage('scanner'); return; }
+    if (planId === 'free') { goToPage('account'); if (!state.authenticated) setAuthMode('register'); return; }
+    if (!['pro', 'business'].includes(planId)) return;
+    if (!state.authenticated) { goToPage('account'); showToast('Create a Free account or sign in before requesting a paid plan.', 'info'); return; }
+    window.location.assign('/subscription/request?plan=' + encodeURIComponent(planId));
 }
 
 async function waitForPalmKashPayment(txRef) {
@@ -2510,8 +2436,6 @@ async function loadPricing() {
     try {
         const payload = await apiRequest(API.plans);
         const plans = payload.plans || {};
-        const checkout = payload.checkout || {};
-        const checkoutReady = Boolean(checkout.card || checkout.mobile_money);
         const order = ['guest', 'free', 'pro', 'business'];
         grid.innerHTML = order.filter(key => plans[key]).map(key => {
             const plan = plans[key];
@@ -2530,9 +2454,9 @@ async function loadPricing() {
                 '<div class="pricing-price">$' + price + '<span>' + interval + '</span></div>' +
                 '<ul>' + features + '</ul>' +
                 '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '"' +
-                (['pro', 'business'].includes(key) && !checkoutReady ? ' disabled aria-disabled="true"' : '') + '>' +
+                '>' +
                 (key === 'guest' ? 'Start scanning' : key === 'free' ? (state.authenticated ? 'Current plan' : 'Create a free account') :
-                    checkoutReady ? 'Choose payment method' : 'Payments not available yet') + '</button>' +
+                    'Request subscription') + '</button>' +
                 '</article>';
         }).join('');
     } catch {
