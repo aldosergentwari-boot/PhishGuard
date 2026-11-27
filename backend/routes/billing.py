@@ -69,36 +69,30 @@ def account_payment_history():
 
 @billing_bp.post("/api/billing/checkout")
 def create_paid_checkout():
+    """Keep new paid checkout closed until the approved UrubutoPay integration is deployed.
+
+    Legacy provider callback and payment-history routes remain available so old
+    transactions can still be verified and audited. They are never selected for
+    new customer checkout.
+    """
     user_id = session.get("account_id")
     if not user_id:
         return jsonify({"success": False, "error": "Sign in before choosing a paid plan."}), 401
+
     payload = request.get_json(silent=True)
     payload = payload if isinstance(payload, dict) else {}
-    method = payload.get("payment_method")
-    provider = str(payload.get("provider") or "").strip().lower()
-    try:
-        if method == "mobile_money" and (
-            provider == "palmkash" or (not provider and palmkash_is_configured())
-        ):
-            result = palmkash_create_payment(
-                user_id=user_id,
-                plan_id=payload.get("plan_id"),
-                phone_number=payload.get("phone_number"),
-            )
-            return jsonify({"success": True, "provider": "palmkash", **result}), 200
-        if not is_configured():
-            return jsonify({"success": False, "error": "No approved payment provider is configured for this method yet."}), 503
-        result = create_checkout(
-            user_id=user_id,
-            email=session.get("account_email", ""),
-            plan_id=payload.get("plan_id"),
-            method=method,
-            phone_number=payload.get("phone_number"),
-        )
-    except (FlutterwaveError, PalmKashError) as exc:
-        return jsonify({"success": False, "error": str(exc)}), 400
-    return jsonify({"success": True, "provider": "flutterwave", **result}), 200
+    plan_id = str(payload.get("plan_id") or "").strip().lower()
+    if plan_id not in ("pro", "business"):
+        return jsonify({"success": False, "error": "Choose a valid paid plan."}), 400
 
+    # UrubutoPay merchant approval and API credentials are intentionally external
+    # launch requirements. Do not fall back to PalmKash or Flutterwave.
+    return jsonify({
+        "success": False,
+        "code": "PAYMENTS_NOT_AVAILABLE",
+        "error": "Paid checkout is temporarily unavailable while PhishGuard completes its approved payment-provider setup.",
+        "provider": "urubutopay",
+    }), 503
 
 @billing_bp.get("/api/billing/callback")
 def payment_callback():
