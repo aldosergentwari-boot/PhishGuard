@@ -23,6 +23,7 @@ from backend.routes.ads import ads_bp
 from backend.routes.admin import admin_bp
 from backend.routes.admin_management import admin_management_bp
 from backend.database.auth_service import auth_service
+from backend.services.financial_ledger import initialize_ledger
 from datetime import timedelta
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -212,6 +213,7 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(admin_management_bp)
     auth_service.initialize()
+    initialize_ledger()
 
     def maintenance_enabled():
         return os.getenv("MAINTENANCE_MODE", "false").lower() in (
