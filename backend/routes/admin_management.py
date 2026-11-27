@@ -77,6 +77,40 @@ def _page():
     return limit, offset
 
 
+
+@admin_management_bp.get("/api/admin/management/financial-summary")
+def management_financial_summary():
+    """Expose currency-separated ledger totals and recent entries to the owner."""
+    denied = _guard()
+    if denied:
+        return denied
+    limit, offset = _page()
+    if limit is None:
+        return jsonify({"success": False, "error": "Invalid pagination."}), 400
+
+    from backend.services.financial_ledger import get_financial_summary
+
+    with auth_service.connection() as db:
+        rows = db.execute(
+            """SELECT id,tx_ref,provider,provider_transaction_id,entry_type,
+                      direction,amount_minor,currency,created_at,notes
+               FROM financial_ledger_entries
+               ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?""",
+            (limit, offset),
+        ).fetchall()
+        total = db.execute(
+            "SELECT COUNT(*) FROM financial_ledger_entries"
+        ).fetchone()[0]
+
+    return jsonify({
+        "success": True,
+        "summary": get_financial_summary(),
+        "entries": [dict(row) for row in rows],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }), 200
+
 @admin_management_bp.get("/api/admin/management/users")
 def management_users():
     denied = _guard()
