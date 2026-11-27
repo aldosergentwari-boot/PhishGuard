@@ -57,7 +57,7 @@ def test_checkout_stays_disabled_even_if_legacy_flutterwave_is_configured(client
         json={"plan_id": "pro", "payment_method": "card", "provider": "flutterwave"},
         headers={"X-CSRF-Token": csrf},
     )
-    assert response.status_code == 503
+    assert response.status_code == 410
     assert response.get_json()["code"] == "MANUAL_SUBSCRIPTION_ONLY"
     with service.auth_service.connection() as db:
         count = db.execute("SELECT COUNT(*) FROM payment_transactions").fetchone()[0]
@@ -82,8 +82,8 @@ def test_checkout_never_falls_back_to_palmkash_for_new_mobile_money_payments(cli
         json={"plan_id": "pro", "payment_method": "mobile_money", "provider": "palmkash"},
         headers={"X-CSRF-Token": csrf},
     )
-    assert response.status_code == 503
-    assert response.get_json()["code"] == "PAYMENTS_NOT_AVAILABLE"
+    assert response.status_code == 410
+    assert response.get_json()["code"] == "MANUAL_SUBSCRIPTION_ONLY"
 
 def test_invalid_webhook_signature_is_rejected(client, monkeypatch):
     monkeypatch.setenv("FLW_SECRET_HASH", "expected-secret-hash")
