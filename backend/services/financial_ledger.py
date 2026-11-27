@@ -125,7 +125,7 @@ def record_verified_payment(tx_ref):
                (payment_transaction_id,user_id,provider,tx_ref,
                 provider_transaction_id,entry_type,direction,amount_minor,
                 currency,idempotency_key,created_at)
-               VALUES (?,?,?,?,?,'payment','credit',?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,'payment','credit',?,?,?,?)""",
             (
                 payment["id"], payment["user_id"], provider, tx_ref,
                 payment["provider_transaction_id"], amount_minor, currency,
