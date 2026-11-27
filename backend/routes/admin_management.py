@@ -642,7 +642,7 @@ def reject_subscription_request(request_id):
 
 
 @admin_management_bp.post("/api/admin/management/subscription-requests/<int:request_id>/reply")
-def reply_to_subscription_request():
+def reply_to_subscription_request(request_id):
     """Send an owner-written customer email and persist the same message in-app."""
     denied = _guard(True)
     if denied:
