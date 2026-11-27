@@ -2381,6 +2381,7 @@ async function waitForPalmKashPayment(txRef) {
    SUBSCRIPTION PLANS
 ========================================= */
 let adsenseScriptPromise = null;
+let advertisingConsentPromise = null;
 
 async function loadAdsenseScript(clientId) {
     let script = document.querySelector('script[data-phishguard-adsense]');
@@ -2414,10 +2415,11 @@ async function loadAdsenseScript(clientId) {
 
 async function hasValidAdvertisingConsent() {
     // Fail closed unless a real IAB TCF v2 CMP is present and reports consent.
-    // Keep the listener active so later withdrawal/re-consent is respected.
+    // Keep one listener active so later withdrawal/re-consent is respected.
+    if (advertisingConsentPromise) return advertisingConsentPromise;
     if (typeof window.__tcfapi !== 'function') return false;
 
-    return new Promise(resolve => {
+    advertisingConsentPromise = new Promise(resolve => {
         let initialDecisionReceived = false;
         const finishInitialDecision = value => {
             if (initialDecisionReceived) return;
