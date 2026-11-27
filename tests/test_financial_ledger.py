@@ -133,15 +133,15 @@ def test_confirmed_provider_fee_reduces_net_without_mixing_currencies(ledger_db)
 
 
 def test_idempotency_key_cannot_be_reused_for_different_amount(ledger_db):
+    ledger.record_confirmed_debit(
+        tx_ref="payout-001",
+        provider="palmkash",
+        entry_type="payout",
+        amount=1000,
+        currency="RWF",
+        idempotency_key="payout:001",
+    )
     with pytest.raises(ledger.LedgerError, match="different ledger entry"):
-        ledger.record_confirmed_debit(
-            tx_ref="payout-001",
-            provider="palmkash",
-            entry_type="payout",
-            amount=1000,
-            currency="RWF",
-            idempotency_key="payout:001",
-        )
         ledger.record_confirmed_debit(
             tx_ref="payout-001",
             provider="palmkash",
