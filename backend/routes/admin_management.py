@@ -502,14 +502,16 @@ def management_monetization():
     slot_id = os.getenv("ADSENSE_SLOT_ID", "").strip()
     approved = os.getenv("ADSENSE_APPROVED", "").strip().lower() in ("1", "true", "yes", "on")
     requested = os.getenv("ADS_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
+    consent_configured = os.getenv("ADS_CONSENT_CONFIGURED", "").strip().lower() in ("1", "true", "yes", "on")
     publisher_valid = bool(re.fullmatch(r"ca-pub-[0-9]{10,30}", publisher_id))
     slot_valid = bool(re.fullmatch(r"[0-9]{5,30}", slot_id))
-    ads_ready = approved and requested and publisher_valid and slot_valid
+    ads_ready = approved and requested and consent_configured and publisher_valid and slot_valid
     return jsonify({
         "success": True,
         "ads": {
             "approved": approved,
             "enabled_requested": requested,
+            "consent_platform_configured": consent_configured,
             "publisher_id_configured": publisher_valid,
             "slot_configured": slot_valid,
             "ads_txt_endpoint_configured": publisher_valid,
