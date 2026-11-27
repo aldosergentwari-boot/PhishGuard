@@ -263,8 +263,15 @@ def set_user_plan(user_id):
     data = _json()
     plan = data.get("plan_id")
     reason = data.get("reason", "")
+    payment_confirmed = data.get("payment_confirmed")
+    payment_reference = data.get("payment_reference", "")
     if plan not in ("free", "pro", "business") or not isinstance(reason, str) or len(reason.strip()) < 3 or len(reason) > 200:
         return jsonify({"success": False, "error": "Choose Free, Pro, or Business and provide a reason."}), 400
+    if plan in ("pro", "business") and (
+        payment_confirmed is not True or not isinstance(payment_reference, str)
+        or len(payment_reference.strip()) < 3 or len(payment_reference) > 120
+    ):
+        return jsonify({"success": False, "error": "Paid plans can only be activated after you confirm the money arrived and provide its transaction reference."}), 400
     now = datetime.now(timezone.utc)
     months = {"free": 0, "pro": 1, "business": 7}[plan]
     end = None
@@ -292,7 +299,7 @@ def set_user_plan(user_id):
                VALUES (?,?, 'active', ?,?,?, 'admin', ?,?,?)""",
             (user_id, plan, months, stamp, end, f"admin-{secrets.token_hex(16)}", stamp, stamp),
         )
-        _audit(db, "subscription.plan_changed", "user", user_id, f"{plan}: {reason.strip()}")
+        _audit(db, "subscription.plan_changed", "user", user_id, f"{plan}: {reason.strip()}" + (f"; payment ref: {payment_reference.strip()}" if plan in ("pro", "business") else ""))
         db.execute(
             "INSERT INTO user_notifications(user_id,title,message,category,created_at) VALUES (?,?,?,?,?)",
             (user_id, "Your PhishGuard plan changed", f"Your account plan is now {plan.title()}.", "subscription", stamp),
