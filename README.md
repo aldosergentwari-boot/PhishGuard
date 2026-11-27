@@ -161,15 +161,15 @@ The web dashboard now exposes account and plan APIs:
 - `GET /api/billing/plans` returns the public plan catalog.
 - `GET /api/billing/me` returns the current account plan (anonymous visitors receive the Guest plan and its 10-scan monthly allowance).
 - `GET /api/billing/payments` returns the signed-in user's own recent payment history; transaction references are not exposed.
-- `POST /api/billing/checkout` is intentionally unavailable until the approved UrubutoPay integration is deployed; it never falls back to PalmKash or Flutterwave.
-- Legacy Flutterwave callback/webhook routes remain only to verify and audit existing historical transactions; they are not used to start new checkouts.
-- The legacy PalmKash callback and payment-status routes are retained only for existing historical transactions.
-- `GET /api/billing/payments/<tx_ref>/status` is retained for a signed-in customer to inspect their own historical PalmKash payment.
+- `POST /api/billing/checkout` is retired (HTTP 410). Paid customers use the manual subscription request workflow documented below.
+- Legacy automated payment callback and webhook endpoints are retired (HTTP 410); historical transaction rows remain available for audit.
+- Legacy payment callbacks cannot activate new plans.
+- `GET /api/billing/payments/<tx_ref>/status` is read-only and cannot activate a plan.
 - Payment attempts record their provider and remain pending until verified; browser redirects and client-supplied plan IDs never grant paid access.
 
-Legacy provider note: PalmKash and Flutterwave integrations are retained for backward-compatible verification of old payment records only. They must not be configured or used to initiate new customer checkouts.
+Legacy provider integrations are not used for customer checkout; callback and webhook endpoints are retired.
 
-New paid checkout remains disabled until UrubutoPay merchant approval, official API specifications, webhook requirements, and live credentials are available. Do not place unverified webhook URLs or credentials in the environment.
+Paid plans use the owner-reviewed manual request workflow. Do not configure third-party payment-provider credentials for new subscriptions.
 
 The historical provider implementations remain in the repository for transaction verification and audit compatibility only. Their environment credentials are not included in `.env.example`, and they cannot be selected by new checkout requests. Do not configure or use those legacy integrations for new purchases.
 
@@ -183,7 +183,7 @@ Plan catalog (USD):
 
 Current advertised plan features are limited to capabilities already implemented: monthly scan quotas, visible history caps, CSV scan-history export, and ad-free access for paid web plans. The catalog does not currently promise API keys, team workspaces/reporting, advanced analytics, or priority support. Subscription entitlements currently apply to the web dashboard only; the standalone desktop client does not yet sync account plans or monthly usage.
 
-A new account receives Free automatically. A browser cannot grant itself a paid plan: paid subscription activation is reserved for verified server-side payment events. New paid checkout is intentionally disabled pending the approved UrubutoPay integration. Existing Flutterwave/PalmKash callback handlers are legacy-only and must not be used to initiate new payments. Paid subscription activation remains restricted to server-verified successful payment events; recurring billing, customer self-service cancellation, and automated refunds are not enabled.
+A new account receives Free automatically. A browser cannot grant itself a paid plan: only an authenticated owner can approve a subscription request after independently verifying payment. Automated checkout and payment callbacks are disabled; recurring billing, customer self-service cancellation, and automated refunds are not enabled.
 
 ### Advertising rollout
 
@@ -269,7 +269,7 @@ For a production Render deployment, configure at minimum:
 - `PUBLIC_APP_URL`: the canonical public HTTPS origin, with no trailing slash.
 - `PUBLIC_SUPPORT_EMAIL`: a monitored support address.
 - `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`: verified Brevo SMTP credentials and sender.
-- UrubutoPay merchant credentials and webhook settings: add only after merchant approval and after the matching integration routes have been implemented and tested.
+- Owner inbox and Brevo SMTP configuration: set `PHISHGUARD_OWNER_EMAIL`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER` and `PUBLIC_APP_URL` in the deployment environment.
 - `SESSION_COOKIE_SECURE=true` (the app enforces Secure cookies whenever the `RENDER` environment is present; local HTTP testing may set it to `false` only outside Render).
 
 Use the Render start command `gunicorn --bind 0.0.0.0:$PORT backend.app:app`. Do not enable AdSense until publisher approval and the required privacy/consent setup are complete.
