@@ -107,3 +107,36 @@ def send_admin_password_reset_email(recipient, raw_token):
         "Reset your admin password",
         "A password reset was requested for the PhishGuard owner account.",
         "Reset admin password", url, "30 minutes")
+
+
+def send_subscription_request_email(recipient, details):
+    """Notify the configured owner about a customer-initiated subscription request."""
+    from html import escape
+    from urllib.parse import quote
+    plan = str(details.get("plan_id", "")).upper()
+    fields = [
+        ("Request ID", details.get("request_id")),
+        ("Customer", details.get("customer_name")),
+        ("Account email", details.get("customer_email")),
+        ("Account ID", details.get("user_id")),
+        ("Requested plan", plan),
+        ("Phone", details.get("phone_number")),
+        ("Preferred payment", details.get("payment_method")),
+        ("Message", details.get("message") or "(none)"),
+        ("Submitted at", details.get("created_at")),
+    ]
+    text_body = "A new PhishGuard subscription request was submitted.\n\n" + "\n".join(f"{k}: {v}" for k,v in fields)
+    rows = "".join(f"<tr><th style='text-align:left;padding:8px;color:#9fb1ca'>{escape(str(k))}</th><td style='padding:8px;color:#edf3fb'>{escape(str(v))}</td></tr>" for k,v in fields)
+    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:620px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><h2>New subscription request</h2><p>A customer wants to purchase a PhishGuard subscription. Verify payment independently before activating access.</p><table style="width:100%;border-collapse:collapse">{rows}</table><p>Open the owner dashboard to review and process this request.</p></div></body></html>"""
+    return _send(f"PhishGuard {plan} subscription request #{details.get('request_id')}", recipient, text_body, html_body)
+
+
+def send_subscription_request_received_email(recipient, plan_id, request_id):
+    subject = f"PhishGuard {str(plan_id).title()} request received"
+    text_body = (
+        f"We received your request #{request_id} for the {str(plan_id).title()} plan. "
+        "The PhishGuard owner will contact you with payment instructions. "
+        "Your plan will not change until payment is verified and the owner approves it."
+    )
+    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Subscription request received</h2><p>We received request <strong>#{int(request_id)}</strong> for the <strong>{escape(str(plan_id).title())}</strong> plan.</p><p>The owner will contact you with payment instructions. Your account remains on its current plan until payment is verified and your request is approved.</p></div></body></html>"""
+    return _send(subject, recipient, text_body, html_body)
