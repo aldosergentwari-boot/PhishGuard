@@ -558,12 +558,23 @@ def approve_subscription_request(request_id):
     confirmed = data.get("payment_confirmed")
     reference = data.get("payment_reference","")
     note = data.get("admin_note","")
+    payment_amount = data.get("payment_amount")
+    payment_currency = data.get("payment_currency", "USD")
     if confirmed is not True:
         return jsonify({"success":False,"error":"Confirm that you independently verified the payment before activating this subscription."}),400
     if not isinstance(reference,str) or len(reference.strip())<3 or len(reference)>120:
         return jsonify({"success":False,"error":"Enter the payment transaction reference or a clear cash/manual payment record."}),400
     if not isinstance(note,str) or len(note)>500:
         return jsonify({"success":False,"error":"Admin note must be 500 characters or fewer."}),400
+    if payment_amount is None:
+        payment_amount = {"pro": 4.99, "business": 19.99}.get(data.get("plan_id"), 0)
+    try:
+        payment_amount = float(payment_amount)
+    except (TypeError, ValueError):
+        return jsonify({"success":False,"error":"Enter the actual amount received."}),400
+    if not 0 < payment_amount <= 100000000 or not isinstance(payment_currency, str) or not re.fullmatch(r"[A-Z]{3}", payment_currency.strip().upper()):
+        return jsonify({"success":False,"error":"Enter a valid positive payment amount and 3-letter currency code."}),400
+    payment_currency = payment_currency.strip().upper()
     now_dt = datetime.now(timezone.utc)
     stamp = now_dt.isoformat()
     with auth_service.connection() as db:
@@ -586,12 +597,11 @@ def approve_subscription_request(request_id):
             VALUES (?,?,'active',?,?,?,'admin_manual',?,?,?)""",
             (row["user_id"],row["plan_id"],months,stamp,end,f"manual-request-{request_id}-{secrets.token_hex(8)}",stamp,stamp))
         # Record the owner-verified manual payment in customer payment history.
-        plan_price = {"pro": 4.99, "business": 19.99}[row["plan_id"]]
         payment_ref = f"manual-subscription-{request_id}-{secrets.token_hex(6)}"
         db.execute("""INSERT INTO payment_transactions
             (user_id,plan_id,tx_ref,amount,currency,payment_method,status,provider,created_at,updated_at)
             VALUES (?,?,?,?,?,?,'successful','admin_manual',?,?)""",
-            (row["user_id"],row["plan_id"],payment_ref,plan_price,"USD",
+            (row["user_id"],row["plan_id"],payment_ref,payment_amount,payment_currency,
              row["payment_method"],stamp,stamp))
         db.execute("""UPDATE subscription_requests SET status='approved',payment_reference=?,admin_note=?,
             reviewed_at=?,reviewed_by=?,updated_at=? WHERE id=?""",
