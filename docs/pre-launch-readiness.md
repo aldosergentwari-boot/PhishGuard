@@ -44,6 +44,7 @@ This checklist separates work that can be completed in the repository from appro
 - [ ] Verify production secrets are configured only in Render environment variables.
 - [ ] Verify persistent database storage, backup restore, and migration behavior on Render.
 - [x] Add health/readiness checks that distinguish app availability from database/model readiness.
+- [x] Enforce a 3 MiB request-body limit and return a structured JSON 413 response for oversized API requests.
 - [ ] Add structured, privacy-conscious logs for checkout and webhook failures without logging secrets or full sensitive payloads.
 - [ ] Review CORS, trusted proxy handling, HTTPS, security headers, cookie flags, and error responses.
 - [ ] Review data deletion/export requests, retention periods, privacy disclosures, and incident-response contacts.
