@@ -490,6 +490,142 @@ def list_user_notifications():
     return jsonify({"success":True,"notifications":[dict(r) for r in rows]})
 
 
+
+
+def _ensure_subscription_requests(db):
+    db.execute("""CREATE TABLE IF NOT EXISTS subscription_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_id TEXT NOT NULL CHECK(plan_id IN ('pro','business')),
+        customer_name TEXT NOT NULL,
+        customer_email TEXT NOT NULL,
+        phone_number TEXT NOT NULL,
+        payment_method TEXT NOT NULL,
+        message TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','cancelled')),
+        admin_note TEXT NOT NULL DEFAULT '',
+        payment_reference TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        reviewed_at TEXT,
+        reviewed_by INTEGER REFERENCES users(id)
+    )""")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_subscription_requests_status ON subscription_requests(status,created_at DESC)")
+
+
+@admin_management_bp.get("/api/admin/management/subscription-requests")
+def list_subscription_requests():
+    denied = _guard()
+    if denied: return denied
+    limit, offset = _page()
+    if limit is None: return jsonify({"success":False,"error":"Invalid pagination."}),400
+    status = request.args.get("status","pending").lower()
+    if status not in ("","pending","approved","rejected","cancelled"):
+        return jsonify({"success":False,"error":"Invalid request status."}),400
+    clauses = ["LOWER(u.email)<>?"]
+    args = [_owner_email()]
+    if status:
+        clauses.append("r.status=?")
+        args.append(status)
+    where = " WHERE " + " AND ".join(clauses)
+    with auth_service.connection() as db:
+        _ensure_subscription_requests(db)
+        rows = db.execute(f"""SELECT r.id,r.user_id,r.plan_id,r.customer_name,r.customer_email,
+            r.phone_number,r.payment_method,r.message,r.status,r.admin_note,r.payment_reference,
+            r.created_at,r.updated_at,r.reviewed_at,u.is_active,
+            COALESCE(s.plan_id,'free') AS current_plan
+            FROM subscription_requests r JOIN users u ON u.id=r.user_id
+            LEFT JOIN subscriptions s ON s.id=(SELECT MAX(s2.id) FROM subscriptions s2 WHERE s2.user_id=u.id)
+            {where} ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END,r.created_at DESC
+            LIMIT ? OFFSET ?""", (*args,limit,offset)).fetchall()
+        total = db.execute(f"SELECT COUNT(*) FROM subscription_requests r JOIN users u ON u.id=r.user_id{where}",args).fetchone()[0]
+        pending = db.execute("SELECT COUNT(*) FROM subscription_requests WHERE status='pending'").fetchone()[0]
+    return jsonify({"success":True,"requests":[dict(x) for x in rows],"total":total,"pending_count":pending,"limit":limit,"offset":offset})
+
+
+@admin_management_bp.post("/api/admin/management/subscription-requests/<int:request_id>/approve")
+def approve_subscription_request(request_id):
+    denied = _guard(True)
+    if denied: return denied
+    data = _json()
+    confirmed = data.get("payment_confirmed")
+    reference = data.get("payment_reference","")
+    note = data.get("admin_note","")
+    if confirmed is not True:
+        return jsonify({"success":False,"error":"Confirm that you independently verified the payment before activating this subscription."}),400
+    if not isinstance(reference,str) or len(reference.strip())<3 or len(reference)>120:
+        return jsonify({"success":False,"error":"Enter the payment transaction reference or a clear cash/manual payment record."}),400
+    if not isinstance(note,str) or len(note)>500:
+        return jsonify({"success":False,"error":"Admin note must be 500 characters or fewer."}),400
+    now_dt = datetime.now(timezone.utc)
+    stamp = now_dt.isoformat()
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        _ensure_subscription_requests(db)
+        row = db.execute("""SELECT r.*,u.email,u.is_active FROM subscription_requests r
+            JOIN users u ON u.id=r.user_id WHERE r.id=?""",(request_id,)).fetchone()
+        if not row: return jsonify({"success":False,"error":"Subscription request not found."}),404
+        if row["status"] != "pending":
+            return jsonify({"success":False,"error":"This request has already been reviewed."}),409
+        if not row["is_active"] or row["customer_email"].lower() != row["email"].lower():
+            return jsonify({"success":False,"error":"Customer account is inactive or no longer matches the request."}),409
+        months = 1 if row["plan_id"]=="pro" else 7
+        index = now_dt.month - 1 + months
+        year, month = now_dt.year + index // 12, index % 12 + 1
+        end = now_dt.replace(year=year,month=month,day=min(now_dt.day,calendar.monthrange(year,month)[1])).isoformat()
+        db.execute("UPDATE subscriptions SET status='cancelled',updated_at=? WHERE user_id=? AND status='active'",(stamp,row["user_id"]))
+        db.execute("""INSERT INTO subscriptions(user_id,plan_id,status,billing_interval_months,started_at,
+            current_period_end,provider,provider_subscription_id,created_at,updated_at)
+            VALUES (?,?,'active',?,?,?,'admin_manual',?,?,?)""",
+            (row["user_id"],row["plan_id"],months,stamp,end,f"manual-request-{request_id}-{secrets.token_hex(8)}",stamp,stamp))
+        db.execute("""UPDATE subscription_requests SET status='approved',payment_reference=?,admin_note=?,
+            reviewed_at=?,reviewed_by=?,updated_at=? WHERE id=?""",
+            (reference.strip(),note.strip(),stamp,session["phishguard_admin_user_id"],stamp,request_id))
+        _audit(db,"subscription.request_approved","subscription_request",request_id,
+            f"{row['plan_id']} activated for user {row['user_id']}; payment ref: {reference.strip()}")
+        db.execute("INSERT INTO user_notifications(user_id,title,message,category,created_at) VALUES (?,?,?,?,?)",
+            (row["user_id"],"Paid subscription activated",
+             f"Your {row['plan_id'].title()} subscription is active until {end[:10]}. Thank you for choosing PhishGuard.",
+             "subscription",stamp))
+        customer_email = row["customer_email"]
+        plan_id = row["plan_id"]
+    try:
+        from backend.services.email_service import send_subscription_activated_email
+        send_subscription_activated_email(customer_email,plan_id,end)
+    except Exception:
+        pass
+    return jsonify({"success":True,"request_id":request_id,"user_id":row["user_id"],"plan_id":plan_id,"current_period_end":end}),200
+
+
+@admin_management_bp.post("/api/admin/management/subscription-requests/<int:request_id>/reject")
+def reject_subscription_request(request_id):
+    denied = _guard(True)
+    if denied: return denied
+    data = _json()
+    note = data.get("admin_note","")
+    if not isinstance(note,str) or len(note.strip())<3 or len(note)>500:
+        return jsonify({"success":False,"error":"Provide a reason between 3 and 500 characters."}),400
+    stamp = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        _ensure_subscription_requests(db)
+        row = db.execute("SELECT * FROM subscription_requests WHERE id=?",(request_id,)).fetchone()
+        if not row: return jsonify({"success":False,"error":"Request not found."}),404
+        if row["status"]!="pending": return jsonify({"success":False,"error":"This request has already been reviewed."}),409
+        db.execute("UPDATE subscription_requests SET status='rejected',admin_note=?,reviewed_at=?,reviewed_by=?,updated_at=? WHERE id=?",
+            (note.strip(),stamp,session["phishguard_admin_user_id"],stamp,request_id))
+        _audit(db,"subscription.request_rejected","subscription_request",request_id,note.strip())
+        db.execute("INSERT INTO user_notifications(user_id,title,message,category,created_at) VALUES (?,?,?,?,?)",
+            (row["user_id"],"Subscription request update",f"Your {row['plan_id'].title()} request was not approved. Please contact PhishGuard support for details.","subscription",stamp))
+        customer_email=row["customer_email"]; plan_id=row["plan_id"]
+    try:
+        from backend.services.email_service import send_subscription_request_status_email
+        send_subscription_request_status_email(customer_email,plan_id,"rejected",note.strip())
+    except Exception:
+        pass
+    return jsonify({"success":True,"request_id":request_id,"status":"rejected"}),200
+
+
 @admin_management_bp.get("/api/admin/management/monetization")
 def management_monetization():
     """Expose safe provider readiness details to the authenticated owner only."""
