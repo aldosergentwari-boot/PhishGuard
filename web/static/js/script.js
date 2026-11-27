@@ -23,6 +23,7 @@ const PAGE_NAMES = {
     history: 'Scan History',
     intelligence: 'Intelligence',
     about: 'About Project',
+    adpreferences: 'Advertising Preferences',
     pricing: 'Plans & Pricing',
     account: 'My Account',
     admin: 'Owner Console'
@@ -1527,30 +1528,8 @@ function bindEvents() {
         const button = event.target.closest('[data-plan]');
         if (button) void requestPlanUpgrade(button.dataset.plan);
     });
-    $('acceptAdConsent')?.addEventListener('click', () => {
-        saveAdPreferences({ adsEnabled: true, personalizedAds: true });
-    });
-    $('rejectAdConsent')?.addEventListener('click', () => {
-        saveAdPreferences({ adsEnabled: false, personalizedAds: false });
-    });
     $('manageAdConsent')?.addEventListener('click', () => {
-        goToPage('account');
-        $('adPreferencesTitle')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        $('adAdsEnabled')?.focus({ preventScroll: true });
-    });
-    $('saveAdPreferences')?.addEventListener('click', () => {
-        saveAdPreferences({
-            adsEnabled: Boolean($('adAdsEnabled')?.checked),
-            personalizedAds: Boolean($('adPersonalized')?.checked)
-        });
-    });
-    $('resetAdPreferences')?.addEventListener('click', () => {
-        try { localStorage.removeItem('phishguard.adPreferences'); } catch { /* preferences remain unchanged */ }
-        try { localStorage.removeItem('phishguard.adConsent'); } catch { /* legacy consent remains unchanged */ }
-        renderAdPreferences(null);
-        const feedback = $('adPreferencesFeedback');
-        if (feedback) feedback.textContent = 'Choices reset. Save your new preferences to apply them.';
-        void loadAdPlacement();
+        goToPage('adpreferences');
     });
 
     $('adminCreditForm')?.addEventListener('submit', submitAdminCreditGrant);
@@ -2423,65 +2402,11 @@ async function loadAdsenseScript(clientId) {
     return adsenseScriptPromise;
 }
 
-function readAdPreferences() {
-    try {
-        const saved = localStorage.getItem('phishguard.adPreferences');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            return {
-                adsEnabled: parsed.adsEnabled === true,
-                personalizedAds: parsed.adsEnabled === true && parsed.personalizedAds === true
-            };
-        }
-        const legacy = localStorage.getItem('phishguard.adConsent');
-        if (legacy === 'accepted') return { adsEnabled: true, personalizedAds: true };
-        if (legacy === 'rejected') return { adsEnabled: false, personalizedAds: false };
-    } catch { /* use safe defaults */ }
-    return null;
-}
-
-function renderAdPreferences(preferences = readAdPreferences()) {
-    const adsEnabled = Boolean(preferences?.adsEnabled);
-    const personalizedAds = adsEnabled && Boolean(preferences?.personalizedAds);
-    if ($('adAdsEnabled')) $('adAdsEnabled').checked = adsEnabled;
-    if ($('adPersonalized')) {
-        $('adPersonalized').checked = personalizedAds;
-        $('adPersonalized').disabled = !adsEnabled;
-    }
-}
-
-function saveAdPreferences(preferences) {
-    const normalized = {
-        adsEnabled: Boolean(preferences?.adsEnabled),
-        personalizedAds: Boolean(preferences?.adsEnabled && preferences?.personalizedAds)
-    };
-    try {
-        localStorage.setItem('phishguard.adPreferences', JSON.stringify(normalized));
-        localStorage.setItem('phishguard.adConsent', normalized.adsEnabled ? 'accepted' : 'rejected');
-    } catch {
-        const feedback = $('adPreferencesFeedback');
-        if (feedback) feedback.textContent = 'Your browser blocked storage. Preferences could not be saved.';
-        showToast('Could not save advertising preferences in this browser.', 'error');
-        return;
-    }
-    renderAdPreferences(normalized);
-    const feedback = $('adPreferencesFeedback');
-    if (feedback) feedback.textContent = 'Your advertising preferences have been saved in this browser.';
-    const banner = $('adConsentBanner');
-    if (banner) banner.hidden = true;
-    const slot = $('overviewAd');
-    if (slot) { slot.hidden = true; slot.replaceChildren(); }
-    void loadAdPlacement();
-}
-
 async function loadAdPlacement() {
     const slot = $('overviewAd');
-    const banner = $('adConsentBanner');
     if (!slot) return;
-    renderAdPreferences();
     slot.hidden = true;
     slot.replaceChildren();
-    if (banner) banner.hidden = true;
     try {
         const [adConfig, account] = await Promise.all([
             apiRequest(API.ads),
@@ -2490,13 +2415,7 @@ async function loadAdPlacement() {
         const planId = account?.plan?.plan_id || 'free';
         if (!adConfig.enabled || !['free', 'guest'].includes(planId) || !navigator.onLine) return;
 
-        const preferences = readAdPreferences();
-        if (preferences?.adsEnabled === false) return;
-        if (!preferences) {
-            if (banner) banner.hidden = false;
-            return;
-        }
-
+        // Ad eligibility is controlled by the subscription plan, not a dashboard opt-in switch.
         const ad = document.createElement('ins');
         ad.className = 'adsbygoogle';
         ad.style.display = 'block';
@@ -2507,9 +2426,7 @@ async function loadAdPlacement() {
         slot.appendChild(ad);
 
         await loadAdsenseScript(adConfig.client_id);
-        window.adsbygoogle = window.adsbygoogle || [];
-        window.adsbygoogle.requestNonPersonalizedAds = preferences?.personalizedAds ? 0 : 1;
-        window.adsbygoogle.push({});
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
         slot.hidden = false;
     } catch {
         slot.hidden = true;
