@@ -94,6 +94,37 @@ def payment_status(tx_ref):
     return jsonify({"success":True,**dict(payment)}),200
 
 
+def _ensure_subscription_request_table(db):
+    db.execute("""CREATE TABLE IF NOT EXISTS subscription_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_id TEXT NOT NULL CHECK(plan_id IN ('pro','business')),
+        customer_name TEXT NOT NULL,
+        customer_email TEXT NOT NULL,
+        phone_number TEXT NOT NULL,
+        payment_method TEXT NOT NULL,
+        message TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','cancelled')),
+        admin_note TEXT NOT NULL DEFAULT '',
+        payment_reference TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        reviewed_at TEXT,
+        reviewed_by INTEGER REFERENCES users(id)
+    )""")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_subscription_requests_status ON subscription_requests(status,created_at DESC)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_subscription_requests_user ON subscription_requests(user_id,created_at DESC)")
+    db.execute("""CREATE TABLE IF NOT EXISTS user_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'account',
+        read_at TEXT,
+        created_at TEXT NOT NULL
+    )""")
+
+
 @billing_bp.get("/subscription/request")
 def subscription_request_page():
     plan = request.args.get("plan", "").strip().lower()
