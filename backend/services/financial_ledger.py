@@ -79,6 +79,7 @@ def record_verified_payment(tx_ref):
     """
     if not isinstance(tx_ref, str) or not tx_ref.strip():
         raise LedgerError("A transaction reference is required.")
+    initialize_ledger()
     tx_ref = tx_ref.strip()
     with auth_service.connection() as db:
         payment = db.execute(
