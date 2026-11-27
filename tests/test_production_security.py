@@ -35,7 +35,7 @@ def test_request_body_limit_allows_two_megabyte_profile_images():
 
 def test_oversized_api_request_returns_json_413():
     response = app.test_client().post(
-        "/api/auth/profile",
+        "/api/predict",
         data=b"x" * (3 * 1024 * 1024 + 1),
         content_type="application/json",
     )
