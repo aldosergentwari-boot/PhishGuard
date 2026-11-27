@@ -64,8 +64,8 @@
     feedback("monetizationNote",
       "New paid checkout is safely disabled until UrubutoPay merchant approval, official credentials, and the deployed integration are complete. Legacy providers cannot be used for new purchases. " +
       (a.ready
-        ? "AdSense is configured; ads still require visitor consent and are hidden from paid plans."
-        : "Ads remain disabled until publisher approval and every AdSense setting is complete.")
+        ? "AdSense configuration and CMP gate are ready; each browser still needs valid TCF consent, and paid plans remain ad-free."
+        : "Ads remain disabled until publisher approval, a certified TCF CMP, and every AdSense setting are complete.")
     );
   }
   async function audit(){
