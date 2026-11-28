@@ -208,3 +208,59 @@ def create_subscription_request():
         "request_id": request_id,
         "message": "Your request has been sent to the PhishGuard admin. You can optionally prepare an email separately."
     }), 201
+
+
+@billing_bp.get("/subscription/request/<int:request_id>/email")
+def subscription_request_email_page(request_id):
+    user_id = session.get("account_id")
+    if not isinstance(user_id, int) or user_id < 1:
+        return redirect("/?auth=login")
+    with auth_service.connection() as db:
+        _ensure_subscription_request_table(db)
+        row = db.execute(
+            """SELECT id,user_id,plan_id,customer_name,customer_email,phone_number,
+                      payment_method,message,status,created_at
+               FROM subscription_requests WHERE id=? AND user_id=?""",
+            (request_id, user_id),
+        ).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Subscription request not found."}), 404
+
+    details = dict(row)
+    owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip()
+    plan = "Pro" if details["plan_id"] == "pro" else "Business"
+    price = "$4.99 per month" if details["plan_id"] == "pro" else "$19.99 for 7 months"
+    body = (
+        "Dear PhishGuard Owner,\n\n"
+        "I hope this message finds you well.\n\n"
+        f"I am writing to formally request a {plan} subscription for my PhishGuard account.\n\n"
+        "My subscription details are:\n"
+        f"Full name: {details['customer_name']}\n"
+        f"Account email: {details['customer_email']}\n"
+        f"Request reference: #{details['id']}\n"
+        f"Requested plan: {plan}\n"
+        f"Plan price: {price}\n"
+        f"Contact phone: {details['phone_number']}\n"
+        f"Preferred payment method: {details['payment_method'].replace('_', ' ').title()}\n"
+        f"Additional information: {details['message'] or 'None'}\n\n"
+        "Kindly review my request and share the payment instructions and any further steps required to complete the subscription.\n\n"
+        "I understand that my account will only be upgraded after payment has been independently verified and approved.\n\n"
+        "Thank you for your time and assistance.\n\n"
+        "Yours faithfully,\n"
+        f"{details['customer_name']}"
+    )
+    mailto_url = (
+        "mailto:" + owner_email + "?" + urlencode({
+            "subject": f"PhishGuard {plan} subscription request #{request_id}",
+            "body": body,
+        })
+    ) if owner_email else ""
+    return render_template(
+        "subscription_request_email.html",
+        details=details,
+        plan=plan,
+        price=price,
+        owner_email=owner_email,
+        email_body=body,
+        mailto_url=mailto_url,
+    )
