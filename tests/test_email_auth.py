@@ -196,3 +196,35 @@ def test_email_service_builds_verification_and_fragment_reset_links(monkeypatch)
     assert email_service.send_password_reset_email("member@example.com", "reset-token_456")
     assert "https://phishguard.example/api/auth/verify-email?token=verify-token_123" in captured[0][1]
     assert "https://phishguard.example/#reset_token=reset-token_456" in captured[1][1]
+
+
+def test_brevo_api_transport_uses_https_and_api_key(monkeypatch):
+    import json
+    import backend.services.email_service as email_service
+
+    captured = {}
+    class FakeResponse:
+        status = 201
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["headers"] = {key.lower(): value for key, value in request.header_items()}
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setenv("BREVO_API_KEY", "test-brevo-api-key")
+    monkeypatch.setenv("MAIL_DEFAULT_SENDER", "security@example.com")
+    monkeypatch.setenv("PUBLIC_APP_URL", "https://phishguard.example")
+    monkeypatch.delenv("MAIL_USERNAME", raising=False)
+    monkeypatch.delenv("MAIL_PASSWORD", raising=False)
+    monkeypatch.setattr(email_service, "urlopen", fake_urlopen)
+
+    assert email_service.send_verification_email("member@example.com", "verify-token_123")
+    assert captured["url"] == "https://api.brevo.com/v3/smtp/email"
+    assert captured["headers"]["api-key"] == "test-brevo-api-key"
+    assert captured["payload"]["to"] == [{"email": "member@example.com"}]
+    assert "verify-token_123" in captured["payload"]["textContent"]
+    assert captured["timeout"] == 15
