@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from contextlib import contextmanager
 
 from backend.config import DATABASE_DIR, DATABASE_PATH
+from backend.database.auth_service import auth_service
 
 
 class HistoryService:
@@ -16,17 +17,8 @@ class HistoryService:
 
     @contextmanager
     def get_connection(self):
-        connection = sqlite3.connect(DATABASE_PATH, timeout=10)
-        connection.row_factory = sqlite3.Row
-
-        try:
+        with auth_service.connection() as connection:
             yield connection
-            connection.commit()
-        except Exception:
-            connection.rollback()
-            raise
-        finally:
-            connection.close()
 
     def initialize_database(self):
         with self.get_connection() as connection:
