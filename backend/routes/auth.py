@@ -73,6 +73,9 @@ def protect_auth_mutations():
     }
     if (request.method, request.path) in protected or (
         request.method == "DELETE" and request.path.startswith("/api/history/")
+    ) or (
+        request.method == "POST" and request.path.startswith("/api/account/notifications/")
+        and (request.path.endswith("/read") or request.path == "/api/account/notifications/read-all")
     ):
         expected = session.get("csrf_token", "")
         supplied = request.headers.get("X-CSRF-Token", "")
