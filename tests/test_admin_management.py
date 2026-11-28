@@ -184,10 +184,20 @@ def test_customer_can_only_read_their_own_admin_notifications(monkeypatch, tmp_p
     assert login.status_code == 200
     notices = customer_client.get("/api/account/notifications")
     assert notices.status_code == 200
-    payload = notices.get_json()["notifications"]
+    body = notices.get_json()
+    payload = body["notifications"]
     assert len(payload) == 1
     assert payload[0]["title"] == "Security update"
-    assert payload[0]["read_at"]
+    assert payload[0]["read_at"] is None
+    assert body["unread_count"] == 1
+    assert customer_client.get("/api/account/notifications").get_json()["unread_count"] == 1
+    marked = customer_client.post(
+        f"/api/account/notifications/{payload[0]['id']}/read",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert marked.status_code == 200
+    assert marked.get_json()["unread_count"] == 0
+    assert customer_client.get("/api/account/notifications").get_json()["notifications"][0]["read_at"]
 
 
 
@@ -399,3 +409,31 @@ def test_admin_cannot_activate_paid_plan_without_payment_confirmation(monkeypatc
     assert response.status_code == 400
     from backend.services.plan_service import get_account_plan
     assert get_account_plan(customer["id"])["plan_id"] == "free"
+
+
+def test_customer_can_mark_all_notifications_read(monkeypatch, tmp_path):
+    app, owner_client_instance, _, owner_csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user("notice-all@example.com", "A-Strong-Customer-Password-123!")
+    for title in ("First update", "Second update"):
+        response = owner_client_instance.post(
+            "/api/admin/management/notifications",
+            json={"user_id": customer["id"], "title": title, "message": "An account update."},
+            headers={"X-CSRF-Token": owner_csrf},
+        )
+        assert response.status_code == 200
+
+    customer_client = app.test_client()
+    csrf_token = customer_client.get("/api/auth/csrf").get_json()["csrf_token"]
+    assert customer_client.post(
+        "/api/auth/login",
+        json={"email": "notice-all@example.com", "password": "A-Strong-Customer-Password-123!"},
+        headers={"X-CSRF-Token": csrf_token},
+    ).status_code == 200
+    assert customer_client.get("/api/account/notifications").get_json()["unread_count"] == 2
+    csrf_token = customer_client.get("/api/auth/csrf").get_json()["csrf_token"]
+    response = customer_client.post(
+        "/api/account/notifications/read-all",
+        headers={"X-CSRF-Token": csrf_token},
+    )
+    assert response.status_code == 200
+    assert response.get_json()["unread_count"] == 0
