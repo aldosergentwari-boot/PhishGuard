@@ -264,3 +264,42 @@ def subscription_request_email_page(request_id):
         email_body=body,
         mailto_url=mailto_url,
     )
+
+
+@billing_bp.post("/api/billing/requests/<int:request_id>/send-email")
+def send_subscription_request_email_now(request_id):
+    """Send the signed-in customer's reviewed subscription request to the owner."""
+    user_id = session.get("account_id")
+    if not isinstance(user_id, int) or user_id < 1:
+        return jsonify({"success": False, "error": "Sign in before sending this email."}), 401
+
+    owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip()
+    if not owner_email:
+        return jsonify({"success": False, "error": "The PhishGuard owner email is not configured yet."}), 503
+
+    # Limit repeat sends for this account/request while still allowing a retry
+    # after a temporary provider failure.
+    if not auth_service.allow_auth_attempt(f"subscription-email:{user_id}:{request_id}", limit=3):
+        return jsonify({"success": False, "error": "This email has been attempted too many times. Please try again later."}), 429
+
+    with auth_service.connection() as db:
+        _ensure_subscription_request_table(db)
+        row = db.execute(
+            """SELECT id,user_id,plan_id,customer_name,customer_email,phone_number,
+                      payment_method,message,status
+               FROM subscription_requests WHERE id=? AND user_id=?""",
+            (request_id, user_id),
+        ).fetchone()
+    if not row:
+        return jsonify({"success": False, "error": "Subscription request not found."}), 404
+    if row["status"] != "pending":
+        return jsonify({"success": False, "error": "This subscription request is no longer pending."}), 409
+
+    try:
+        from backend.services.email_service import send_subscription_request_email
+        sent = send_subscription_request_email(owner_email, {**dict(row), "request_id": request_id})
+    except Exception:
+        sent = False
+    if not sent:
+        return jsonify({"success": False, "error": "The email could not be delivered right now. Please try again later."}), 503
+    return jsonify({"success": True, "message": "Your subscription email has been sent to the PhishGuard owner."}), 200
