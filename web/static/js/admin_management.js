@@ -27,10 +27,10 @@
       const usage=u.scan_usage||{}, used=Number(usage.scans_used||0), total=Number(usage.scans_limit||0);
       const base=Number(usage.plan_scans_limit??usage.default_plan_limit??0);
       const owner=Boolean(u.is_owner);
-      const scanCell=owner?'<strong>Owner account</strong>':'<strong>'+esc(used)+' / '+esc(total)+' scans</strong><small class="scan-usage-note">'+esc(Math.max(0,total-used))+' remaining this month</small><div class="scan-limit-controls"><input aria-label="Monthly scan limit for '+esc(u.email)+'" type="number" min="0" max="100000" step="1" value="'+esc(base)+'" data-scan-limit-input="'+esc(u.id)+'"><button class="btn" data-set-scan-limit="'+esc(u.id)+'">Save</button><button class="btn subtle" data-reset-scan-limit="'+esc(u.id)+'">Default</button></div>';
+      const scanCell='<strong>'+esc(used)+' / '+esc(total)+' scans</strong><small class="scan-usage-note">'+esc(Math.max(0,total-used))+' remaining this month</small><div class="scan-limit-controls"><input aria-label="Monthly scan limit for '+esc(u.email)+'" type="number" min="0" max="100000" step="1" value="'+esc(base)+'" data-scan-limit-input="'+esc(u.id)+'"><button class="btn" data-set-scan-limit="'+esc(u.id)+'">Save</button><button class="btn subtle" data-reset-scan-limit="'+esc(u.id)+'">Default</button></div>';
       const actions=owner?(u.is_active?'Owner protected':'<button class="btn" data-toggle-user="'+u.id+'" data-active="true">Reactivate owner</button>'):'<button class="btn" data-toggle-user="'+u.id+'" data-active="'+(!u.is_active)+'">'+(u.is_active?"Suspend":"Activate")+'</button> <select data-plan-user="'+u.id+'"><option value="free">Free</option><option value="pro">Pro</option><option value="business">Business</option></select><button class="btn" data-set-plan="'+u.id+'">Set plan</button>';
-      return '<tr><td>'+esc(u.id)+'</td><td>'+esc(u.email)+(owner?' <strong>(Owner)</strong>':'')+'</td><td>'+esc(u.plan_id)+'</td><td>'+esc(u.is_active?"Active":"Suspended")+'</td><td>'+esc(u.email_verified?"Verified":"Unverified")+'</td><td>'+scanCell+'</td><td>'+actions+'</td></tr>';
-    }).join("") : '<tr><td colspan="7" class="empty">No matching accounts.</td></tr>';
+      return '<tr data-user-row="'+esc(u.id)+'"><td>'+esc(u.id)+'</td><td>'+esc(u.email)+(owner?' <strong>(Owner)</strong>':'')+'</td><td>'+esc(u.plan_id)+'</td><td>'+esc(u.is_active?"Active":"Suspended")+'</td><td>'+esc(u.email_verified?"Verified":"Unverified")+'</td><td>'+scanCell+'</td><td><button class="btn subtle" data-view-scans="'+esc(u.id)+'">View scans</button></td><td>'+actions+'</td></tr>';
+    }).join("") : '<tr><td colspan="8" class="empty">No matching accounts.</td></tr>';
     $("advUserPage").textContent = "Showing "+(d.total?userOffset+1:0)+"–"+Math.min(userOffset+d.users.length,d.total)+" of "+d.total;
     $("advUserPrev").disabled = userOffset === 0; $("advUserNext").disabled = userOffset+d.users.length >= d.total;
   }
@@ -84,6 +84,24 @@
     const t=e.target;
     if(t.matches(".nav[data-section]")) show(t.dataset.section);
     try {
+      if(t.dataset.viewScans){
+        const userId=t.dataset.viewScans;
+        const row=document.querySelector('[data-user-row="'+userId+'"]');
+        const existing=row && row.nextElementSibling;
+        if(existing && existing.dataset.scanDetails==="true"){existing.remove();t.textContent="View scans";return;}
+        if(existing && existing.dataset.scanDetails==="loading") existing.remove();
+        const detail=document.createElement("tr");
+        detail.dataset.scanDetails="loading";
+        detail.innerHTML='<td colspan="8">Loading scan history…</td>';
+        row.after(detail);
+        t.textContent="Hide scans";
+        try{
+          const d=await api("/api/admin/management/users/"+userId+"/scans?limit=50");
+          detail.dataset.scanDetails="true";
+          const rows=d.scans.length?d.scans.map(s=>'<tr><td>'+esc(s.id)+'</td><td>'+esc(s.url)+'</td><td>'+esc(s.domain||"—")+'</td><td>'+esc(s.prediction)+'</td><td>'+esc((Number(s.risk_score||0)*100).toFixed(1))+'%</td><td>'+esc(s.detection_mode||"—")+'</td><td>'+dt(s.scanned_at)+'</td></tr>').join(""):'<tr><td colspan="7" class="empty">No URL scans recorded for this account.</td></tr>';
+          detail.innerHTML='<td colspan="8"><div class="user-scan-history"><strong>Scan history · '+esc(d.user.email)+'</strong><small>'+esc(d.summary.total)+' total · '+esc(d.summary.phishing)+' phishing · '+esc(d.summary.suspicious)+' suspicious · '+esc(d.summary.legitimate)+' legitimate</small><div class="table-wrap"><table><thead><tr><th>ID</th><th>URL</th><th>DOMAIN</th><th>RESULT</th><th>RISK</th><th>MODE</th><th>SCANNED AT</th></tr></thead><tbody>'+rows+'</tbody></table></div><small>Showing '+esc(d.scans.length)+' most recent scans.</small></div></td>';
+        }catch(err){detail.dataset.scanDetails="true";detail.innerHTML='<td colspan="8">'+esc(err.message)+'</td>';t.textContent="View scans";}
+      }
       if(t.dataset.toggleUser){
         const reason=prompt("Reason for this account status change (required):"); if(!reason)return;
         await api("/api/admin/management/users/"+t.dataset.toggleUser+"/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({active:t.dataset.active==="true",reason})}); await users();
