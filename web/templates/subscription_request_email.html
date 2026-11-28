@@ -61,6 +61,49 @@
         status.textContent = "Copy is unavailable in this browser. You can select the email text above and copy it.";
       }
     });
+    const sendButton = document.getElementById("sendEmailNow");
+    if (sendButton) {
+      sendButton.addEventListener("click", async () => {
+        const status = document.getElementById("sendEmailStatus");
+        sendButton.disabled = true;
+        sendButton.textContent = "Sending…";
+        status.textContent = "Sending your email securely. Please wait…";
+        status.style.color = "";
+        try {
+          const csrfResponse = await fetch("/api/auth/csrf", {
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          const csrfData = await csrfResponse.json();
+          if (!csrfResponse.ok || !csrfData.csrf_token) {
+            throw new Error("Your secure session could not be verified. Refresh this page and sign in again.");
+          }
+          const response = await fetch("/api/billing/requests/{{ details.id }}/send-email", {
+            method: "POST",
+            credentials: "same-origin",
+            cache: "no-store",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfData.csrf_token
+            },
+            body: JSON.stringify({})
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "The email provider did not accept your message.");
+          }
+          status.textContent = "✓ " + (data.message || "Your email was accepted by the email provider for sending to the PhishGuard owner.");
+          status.style.color = "#55d6a2";
+          sendButton.textContent = "Email Sent";
+          sendButton.setAttribute("aria-label", "Email accepted by the email provider");
+        } catch (error) {
+          status.textContent = "⚠ " + error.message;
+          status.style.color = "#ffb86b";
+          sendButton.disabled = false;
+          sendButton.textContent = "Try Send Email Again";
+        }
+      });
+    }
   </script>
 </body>
 </html>
