@@ -57,3 +57,22 @@ def test_subscription_email_page_uses_red_phishguard_favicon():
     page = Path("web/templates/subscription_request_email.html").read_text(encoding="utf-8")
     assert 'rel="icon"' in page
     assert "%23c0392b" in page
+
+
+
+def test_phone_number_field_is_international_not_rwanda_specific():
+    page = Path("web/templates/subscription_request.html").read_text(encoding="utf-8")
+    assert "PHONE NUMBER (INTERNATIONAL FORMAT)" in page
+    assert 'placeholder="+1 202 555 0123"' in page
+    assert "PhishGuard accepts customers worldwide" in page
+    assert "+250 7XX XXX XXX" not in page
+
+
+def test_send_email_button_reports_provider_acceptance_or_failure():
+    page = Path("web/templates/subscription_request_email.html").read_text(encoding="utf-8")
+    assert 'id="sendEmailNow"' in page
+    assert 'fetch("/api/billing/requests/{{ details.id }}/send-email"' in page
+    assert 'X-CSRF-Token' in page
+    assert 'data.success' in page
+    assert 'Your email was accepted by the email provider' in page
+    assert 'Try Send Email Again' in page
