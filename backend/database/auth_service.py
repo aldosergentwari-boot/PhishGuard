@@ -8,6 +8,7 @@ from pathlib import Path
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.config import DATABASE_PATH
+from backend.database.connection import connect
 
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
@@ -15,10 +16,7 @@ EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 class AuthService:
     @contextmanager
     def connection(self):
-        Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
-        db = sqlite3.connect(DATABASE_PATH, timeout=10)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys = ON")
+        db = connect(DATABASE_PATH)
         try:
             yield db
             db.commit()
