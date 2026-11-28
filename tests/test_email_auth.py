@@ -143,7 +143,7 @@ def test_password_reset_token_cannot_be_reused(client, monkeypatch):
         headers={"X-CSRF-Token": reset_csrf},
     ).status_code == 200
 
-    # A successful reset rotates the anonymous session token as well.
+    # The shared CSRF token remains valid; the reset token itself is single-use.
     reset_csrf = csrf(client)
     assert client.post(
         "/api/auth/password-reset/confirm",
