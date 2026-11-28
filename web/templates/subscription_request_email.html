@@ -18,7 +18,7 @@
     pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:18px;border:1px solid #344967;border-radius:12px;background:#0b1424;color:#dce7f8;font:13px/1.7 Arial,sans-serif;max-height:48vh;overflow:auto}
     .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
     .actions a,.actions button{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:9px;border:1px solid #344967;background:#182842;color:#edf3fb;text-decoration:none;font-weight:700;cursor:pointer}
-    .actions .primary{background:#3678ed;border-color:#3678ed}
+    .actions .primary{background:#3678ed;border-color:#3678ed}.actions .send-now{background:#b42335;border-color:#e04455;box-shadow:0 8px 24px #b4233544}.actions .send-now:hover{background:#d12f43}.send-status{min-height:24px;font-weight:700}.actions button:disabled{opacity:.6;cursor:wait}
     .notice{font-size:13px;margin-top:18px}
   </style>
 </head>
@@ -43,9 +43,11 @@
       <span class="notice">The owner email address has not been configured, so an email cannot be addressed yet. Your request is still safely submitted.</span>
       {% endif %}
       <button type="button" id="copyEmail">Copy email text</button>
+      {% if owner_email %}<button type="button" class="send-now" id="sendEmailNow">Send Email Now</button>{% endif %}
       <a href="/">Return to PhishGuard</a>
     </div>
-    <p class="notice" id="copyStatus" role="status" aria-live="polite">No email will be sent automatically from this page. You decide whether to send it.</p>
+    <p class="notice" id="copyStatus" role="status" aria-live="polite">No email is sent automatically. Use “Send Email Now” only when you are ready to send this message directly to the PhishGuard owner.</p>
+    <p class="send-status" id="sendEmailStatus" role="status" aria-live="polite"></p>
   </main>
   <script>
     document.getElementById("copyEmail").addEventListener("click", async () => {
