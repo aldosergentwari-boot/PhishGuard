@@ -92,7 +92,7 @@ class _PostgresConnection:
             raise sqlite3.IntegrityError(str(exc)) from exc
 
         lastrowid = None
-        table_match = re.match(r"\\s*INSERT\\s+INTO\\s+(\\w+)", statement, flags=re.I)
+        table_match = re.match(r"\s*INSERT\s+INTO\s+(\w+)", statement, flags=re.I)
         if table_match:
             probe = self._connection.cursor()
             try:
