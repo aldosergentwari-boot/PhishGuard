@@ -123,6 +123,17 @@ def _ensure_subscription_request_table(db):
         read_at TEXT,
         created_at TEXT NOT NULL
     )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS admin_inbox_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        event_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        metadata_json TEXT NOT NULL DEFAULT '{}',
+        read_at TEXT,
+        created_at TEXT NOT NULL
+    )""")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_admin_inbox_created ON admin_inbox_notifications(created_at DESC)")
 
 
 @billing_bp.get("/subscription/request")
@@ -172,6 +183,17 @@ def create_subscription_request():
         request_id = cur.lastrowid
         db.execute("INSERT INTO user_notifications(user_id,title,message,category,created_at) VALUES (?,?,?,?,?)",
             (user_id,"Subscription request received",f"Your {plan_id.title()} subscription request was received. The PhishGuard owner will contact you with payment instructions.", "subscription",now))
+        db.execute("""INSERT INTO admin_inbox_notifications
+            (user_id,event_type,title,message,metadata_json,created_at)
+            VALUES (?,?,?,?,?,?)""",
+            (user_id,"subscription_request",
+             f"New {plan_id.title()} subscription request",
+             f"{customer_name} ({user['email']}) requested the {plan_id.title()} plan via {method}.",
+             __import__("json").dumps({
+                 "request_id": cur.lastrowid, "plan_id": plan_id,
+                 "customer_name": customer_name, "customer_email": user["email"],
+                 "phone_number": phone, "payment_method": method, "message": message
+             }), now))
     owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip()
     email_sent = False
     try:
