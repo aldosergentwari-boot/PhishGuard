@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import logging
 
 from flask import Blueprint, request, jsonify, session, current_app
 from urllib.parse import urlparse
@@ -22,6 +23,8 @@ prediction_bp = Blueprint(
     "prediction",
     __name__
 )
+
+logger = logging.getLogger(__name__)
 
 
 _extractor = tldextract.TLDExtract(suffix_list_urls=())  # offline copy of the public-suffix list
@@ -196,6 +199,7 @@ def predict_url():
             "error": mode_error
         }), 400
 
+    stage = "scan_access_and_quota"
     try:
         owner_id = get_current_user_id()
         if _scan_rate_limit_exceeded(owner_id, request.remote_addr):
@@ -220,6 +224,7 @@ def predict_url():
                 "registration_required": is_guest
             }), 429
 
+        stage = "hybrid_detection"
         service = get_hybrid_service()
         analysis = service.analyze(url, online=online)
         result = dict(analysis["ml_result"])
@@ -234,6 +239,7 @@ def predict_url():
             "message": analysis["message"],
         })
 
+        stage = "history_save"
         scan_id = get_history_service().save_scan(analysis, owner_id=owner_id)
         result["scan_id"] = scan_id
         return jsonify({
@@ -242,11 +248,13 @@ def predict_url():
         }), 200
 
     except Exception:
-
-        # Avoid exposing internal errors to API users
+        # Keep internal details out of the API response while preserving the
+        # traceback in server logs for reliable production diagnosis.
+        logger.exception("URL prediction failed (mode=%s, stage=%s)", "online" if online else "offline", stage)
         return jsonify({
             "success": False,
-            "error": "Prediction failed. Check the server logs."
+            "error": "URL analysis failed. Please try again. If the problem continues, contact support.",
+            "code": "ANALYSIS_FAILED",
         }), 500
 
 
@@ -361,6 +369,7 @@ def analyze_url():
             "error": mode_error
         }), 400
 
+    stage = "scan_access_and_quota"
     try:
 
         owner_id = get_current_user_id()
@@ -387,11 +396,13 @@ def analyze_url():
             }), 429
     
     
+        stage = "hybrid_detection"
         service = get_hybrid_service()
 
         result = service.analyze(url.strip(), online=online)
 
         # Save scan under the current browser's identity
+        stage = "history_save"
         history_service = get_history_service()
         owner_id = get_current_user_id()
         scan_id = history_service.save_scan(
@@ -408,8 +419,11 @@ def analyze_url():
         }), 200
     
     except Exception:
-
+        # Do not silently discard the traceback: Render logs need the actual
+        # exception to distinguish model, local-rule, quota, and DB failures.
+        logger.exception("URL analysis failed (mode=%s, stage=%s)", "online" if online else "offline", stage)
         return jsonify({
             "success": False,
-            "error": "Offline analysis failed. Check server logs."
+            "error": "URL analysis failed. Please try again. If the problem continues, contact support.",
+            "code": "ANALYSIS_FAILED",
         }), 500
