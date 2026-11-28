@@ -188,7 +188,7 @@ document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>{sho
 $("ownerProfileButton").addEventListener("click",()=>show("profile"));document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.go)));$("refresh").addEventListener("click",()=>loadOverview().catch(e=>alert(e.message)));$("reloadUsers").addEventListener("click",()=>loadUsers().catch(e=>alert(e.message)));$("reloadPayments").addEventListener("click",()=>loadPayments().catch(e=>alert(e.message)));
 $("logout").addEventListener("click",async()=>{try{await api("/api/admin/logout",{method:"POST"});}finally{location.assign("/admin/login");}});
 (async()=>{try{await csrf();await Promise.allSettled([loadOverview(),loadUsers(),loadPayments(),loadAdminProfile()]);}catch(e){if(!e.message.includes("Owner session expired"))$("recentUsers").innerHTML='<tr><td colspan="4" class="empty">'+safe(e.message)+'</td></tr>';}})();
-</script><script src="/static/js/admin_dashboard_extras.js?v=4"></script><script src="/static/js/subscription_requests_admin.js?v=4"></script>
+</script>
 
 <div id="customerEmailModal" style="display:none;position:fixed;inset:0;z-index:1000;background:#050a14d9;place-items:center;padding:18px">
   <section style="width:min(100%,720px);max-height:90vh;overflow:auto;background:#111a2b;border:1px solid #344967;border-radius:18px;padding:24px;color:#edf3fb">
@@ -204,5 +204,7 @@ $("logout").addEventListener("click",async()=>{try{await api("/api/admin/logout"
     </form>
   </section>
 </div>
+<script src="/static/js/admin_dashboard_extras.js?v=4"></script>
+<script src="/static/js/subscription_requests_admin.js?v=5"></script>
 
 </body></html>
