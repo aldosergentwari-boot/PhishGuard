@@ -2,12 +2,16 @@
 
 Credentials are read only from environment variables and are never logged.
 """
+import logging
 import os
 import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
 from html import escape
 from urllib.parse import urlencode, urlsplit
+
+
+logger = logging.getLogger(__name__)
 
 
 def _settings():
@@ -55,8 +59,13 @@ def _send(subject, recipient, text_body, html_body):
             smtp.login(cfg["username"], cfg["password"])
             smtp.send_message(message)
         return True
-    except (OSError, smtplib.SMTPException):
-        # Do not log provider responses or credentials.
+    except smtplib.SMTPResponseException as exc:
+        # Log only the SMTP status code; never expose recipient, message, or credentials.
+        logger.warning("Transactional email rejected by SMTP (code=%s)", exc.smtp_code)
+        return False
+    except (OSError, smtplib.SMTPException) as exc:
+        # Keep diagnostics useful without logging provider responses or credentials.
+        logger.warning("Transactional email delivery failed (error_type=%s)", type(exc).__name__)
         return False
 
 
