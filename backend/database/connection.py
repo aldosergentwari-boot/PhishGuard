@@ -118,7 +118,10 @@ class _PostgresConnection:
                     sequence_name = sequence_row[0] if sequence_row else None
             finally:
                 probe.close()
-            if sequence_name:
+            # INSERT ... ON CONFLICT DO NOTHING may affect zero rows. In that
+            # case PostgreSQL does not advance a sequence, so LASTVAL() is
+            # undefined and raises ObjectNotInPrerequisiteState.
+            if sequence_name and cursor.rowcount > 0:
                 probe = self._connection.cursor()
                 try:
                     probe.execute("SELECT LASTVAL()")
