@@ -71,10 +71,13 @@ def protect_auth_mutations():
         ("POST", "/api/admin/scan-credits"),
         ("POST", "/api/billing/checkout"),
         ("POST", "/api/billing/requests"),
+        ("POST", "/api/billing/requests/<request_id>/send-email"),
         ("DELETE", "/api/history"),
     }
     if (request.method, request.path) in protected or (
         request.method == "DELETE" and request.path.startswith("/api/history/")
+    ) or (
+        request.method == "POST" and request.path.startswith("/api/billing/requests/") and request.path.endswith("/send-email")
     ) or (
         request.method == "POST" and request.path.startswith("/api/account/notifications/")
         and (request.path.endswith("/read") or request.path == "/api/account/notifications/read-all")
