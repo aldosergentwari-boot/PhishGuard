@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, redirect, request, session, render_template
 import os
 import re
+import json
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
@@ -189,7 +190,7 @@ def create_subscription_request():
             (user_id,"subscription_request",
              f"New {plan_id.title()} subscription request",
              f"{customer_name} ({user['email']}) requested the {plan_id.title()} plan via {method}.",
-             __import__("json").dumps({
+             json.dumps({
                  "request_id": cur.lastrowid, "plan_id": plan_id,
                  "customer_name": customer_name, "customer_email": user["email"],
                  "phone_number": phone, "payment_method": method, "message": message
