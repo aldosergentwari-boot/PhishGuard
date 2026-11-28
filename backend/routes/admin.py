@@ -12,6 +12,7 @@ from backend.services import email_service
 from backend.services.profile_utils import validate_profile_image
 
 from backend.database.auth_service import auth_service
+from backend.services.auth_session import clear_admin_auth_session
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -115,8 +116,9 @@ def confirm_admin_password_reset():
         purpose="admin_password_reset", expected_user_id=owner["id"])
     if not changed:
         return jsonify({"success": False, "error": "This admin reset link is invalid or has expired."}), 400
-    session.clear()
-    session["csrf_token"] = secrets.token_urlsafe(32)
+    # The owner password reset revokes the owner identity only. Preserve any
+    # customer session in another tab and keep the shared CSRF token stable.
+    clear_admin_auth_session(session)
     return jsonify({"success": True, "message": "Admin password updated. Sign in from the owner login page.", "redirect": "/admin/login"}), 200
 
 
@@ -142,8 +144,8 @@ def admin_login():
         or not user.get("email_verified")
     ):
         return jsonify({"success": False, "error": "Invalid owner credentials or owner email is not verified."}), 401
-    session.clear()
-    session["csrf_token"] = secrets.token_urlsafe(32)
+    # Keep an already signed-in customer account active in this browser.
+    # Do not rotate the shared CSRF token: other open tabs still rely on it.
     session["phishguard_admin_user_id"] = user["id"]
     session["phishguard_admin_email"] = user["email"]
     session["phishguard_admin_session_version"] = user.get("session_version", 0)
@@ -155,8 +157,8 @@ def admin_login():
 def admin_logout():
     if not _authorized_admin():
         return jsonify({"success": False, "error": "Owner authorization required."}), 401
-    session.clear()
-    session["csrf_token"] = secrets.token_urlsafe(32)
+    # Owner logout must not sign the customer out of this browser.
+    clear_admin_auth_session(session)
     return jsonify({"success": True}), 200
 
 
