@@ -94,10 +94,28 @@ class _PostgresConnection:
         lastrowid = None
         table_match = re.match(r"\s*INSERT\s+INTO\s+(\w+)", statement, flags=re.I)
         if table_match:
+            table_name = table_match.group(1)
             probe = self._connection.cursor()
             try:
-                probe.execute("SELECT pg_get_serial_sequence(%s, 'id')", (table_match.group(1),))
-                sequence_name = probe.fetchone()[0]
+                # Not every table uses an integer primary key named "id".
+                # For example, auth_rate_limits is keyed by "bucket". Check
+                # the catalog before asking PostgreSQL for an id sequence;
+                # pg_get_serial_sequence raises UndefinedColumn when id is absent.
+                probe.execute(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() "
+                    "AND table_name = %s AND column_name = 'id'",
+                    (table_name,),
+                )
+                has_id_column = probe.fetchone() is not None
+                sequence_name = None
+                if has_id_column:
+                    probe.execute(
+                        "SELECT pg_get_serial_sequence(%s, 'id')",
+                        (table_name,),
+                    )
+                    sequence_row = probe.fetchone()
+                    sequence_name = sequence_row[0] if sequence_row else None
             finally:
                 probe.close()
             if sequence_name:
