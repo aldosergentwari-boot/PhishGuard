@@ -87,9 +87,9 @@
     target.innerHTML=d.notifications.length?d.notifications.map(n=>{
       const meta=n.metadata||{};
       const details=n.event_type==="subscription_request"
-        ? '<div class="inbox-meta"><span>Request #'+esc(meta.request_id||"—")+'</span><span>Plan: '+esc(meta.plan_id||"—")+'</span><span>Phone: '+esc(meta.phone_number||"—")+'</span><span>Payment: '+esc(meta.payment_method||"—")+'</span></div><p>'+esc(meta.message||"")+'</p><p><a href="#" data-open-subscription-requests>Open subscription requests</a></p>'
-        : '<p>'+esc(n.message)+'</p>';
-      return '<article class="panel inbox-item '+(n.read_at?'is-read':'is-unread')+'"><div class="inbox-heading"><div><strong>'+esc(n.title)+'</strong><small>'+esc(n.email||"Unknown user")+' · '+dt(n.created_at)+'</small></div><span>'+esc(n.event_type.replaceAll("_"," "))+'</span></div>'+details+'<p>'+esc(n.message)+'</p>'+(n.read_at?'':'<button class="btn subtle" data-mark-inbox-read="'+esc(n.id)+'">Mark as read</button>')+'</article>';
+        ? '<div class="inbox-meta"><span>Request #'+esc(meta.request_id||"—")+'</span><span>Plan: '+esc(meta.plan_id||"—")+'</span><span>Phone: '+esc(meta.phone_number||"—")+'</span><span>Payment: '+esc(meta.payment_method||"—")+'</span></div>'+(meta.message?'<p>Customer message: '+esc(meta.message)+'</p>':'')+'<p><a href="#" data-open-subscription-requests>Open subscription requests</a></p>'
+        : (n.event_type==="new_registration" ? '<div class="inbox-meta"><span>Account ID: '+esc(meta.user_id||n.user_id||"—")+'</span></div>' : '');
+      return '<article class="panel inbox-item '+(n.read_at?'is-read':'is-unread')+'"><div class="inbox-heading"><div><strong>'+esc(n.title)+'</strong><small>'+esc(n.email||"Unknown user")+' · '+dt(n.created_at)+'</small></div><span>'+esc(n.event_type.replace(/_/g," "))+'</span></div><p>'+esc(n.message)+'</p>'+details+(n.read_at?'':'<button class="btn subtle" data-mark-inbox-read="'+esc(n.id)+'">Mark as read</button>')+'</article>';
     }).join(""):'<div class="panel empty">No incoming admin notifications yet.</div>';
   }
   async function show(name){
