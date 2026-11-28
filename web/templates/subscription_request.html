@@ -9,7 +9,7 @@
   <style>
     body{min-height:100vh;background:#080d18;color:#edf3fb;display:grid;place-items:center;padding:24px}
     .request-shell{width:min(100%,760px);background:#111a2b;border:1px solid #263650;border-radius:20px;padding:clamp(22px,5vw,42px);box-shadow:0 24px 80px #0006}
-    .request-brand{color:#8fb8ff;font-weight:800;letter-spacing:2px;margin-bottom:24px}
+    .request-brand{color:#8fb8ff;font-weight:800;letter-spacing:2px;margin-bottom:24px}\n    .request-hero{display:grid;justify-items:center;text-align:center;margin:0 auto 18px}.request-hero img{width:92px;height:92px;filter:drop-shadow(0 12px 24px #557cff44)}.request-hero p{margin:8px 0 0;font-size:11px;letter-spacing:2px;font-weight:800;color:#8fb8ff}
     .request-shell h1{font-size:clamp(26px,4vw,38px);margin:8px 0 12px}
     .request-shell p{color:#aebbd0;line-height:1.65}
     .request-plan{margin:24px 0;padding:20px;border:1px solid #344967;border-radius:14px;background:#16243a}
@@ -21,13 +21,13 @@
     .request-form button{cursor:pointer}
     .request-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
     .request-actions a{color:#a9c8ff}
-    .request-feedback{margin-top:12px;min-height:24px}
+    .request-feedback{margin-top:12px;min-height:24px}\n    .request-preview{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:18px;background:#030812d9}.request-preview.is-open{display:grid}.request-preview-card{width:min(100%,680px);max-height:90vh;overflow:auto;padding:24px;border:1px solid #344967;border-radius:18px;background:#111a2b;box-shadow:0 24px 80px #0009}.request-preview-card h2{margin:0 0 8px}.request-preview-card pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;border:1px solid #344967;border-radius:10px;background:#0b1424;color:#dce7f8;font:13px/1.7 inherit}.request-preview-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}.request-preview-actions button{padding:11px 16px;border:1px solid #344967;border-radius:9px;background:#182842;color:#edf3fb;font-weight:700}.request-preview-actions .confirm{background:#3678ed;border-color:#3678ed}.request-preview-actions button:disabled{opacity:.55;cursor:wait}
     .safety-note{font-size:13px;margin-top:22px}
     @media(max-width:600px){.request-form{grid-template-columns:1fr}.request-form .wide{grid-column:auto}}
   </style>
 </head>
 <body>
-  <main class="request-shell">
+  <main class="request-shell" data-owner-email="{{ owner_email|e }}">
     <div class="request-brand">PHISHGUARD</div>
     <div class="eyebrow">SECURE SUBSCRIPTION REQUEST</div>
     <h1>Request your paid plan</h1>
@@ -44,12 +44,12 @@
       <div><label for="paymentMethod">PREFERRED PAYMENT METHOD</label><select id="paymentMethod" name="payment_method" required><option value="">Choose a method</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="bank_transfer">Bank transfer</option><option value="other">Other / discuss with owner</option></select></div>
       <div><label for="message">MESSAGE (OPTIONAL)</label><textarea id="message" name="message" rows="3" maxlength="1000" placeholder="Any details that will help us contact you"></textarea></div>
       <div class="wide"><p id="accountNotice">Checking your PhishGuard account…</p></div>
-      <div class="wide"><button class="primary-button" id="submitRequest" type="submit">Send subscription request</button><p class="request-feedback" id="feedback" role="status" aria-live="polite"></p></div>
+      <div class="wide"><button class="primary-button" id="submitRequest" type="button">Prepare email &amp; review request</button><p class="request-feedback" id="feedback" role="status" aria-live="polite"></p></div>
       <div class="wide" id="mailFallback" hidden><p>We saved your request. Automatic email delivery is unavailable right now. We recommend sending this prepared email so the PhishGuard owner receives your request and can respond faster.</p><a id="mailLink" href="#" class="primary-button">Send email</a></div>
     </form>
     <p class="safety-note">Never send your Mobile Money PIN, bank password, OTP, or account password. PhishGuard will never ask for them.</p>
     <div class="request-actions"><a href="/">Return to PhishGuard</a></div>
   </main>
-  <script src="{{ url_for('static', filename='js/subscription_request.js') }}?v=1"></script>
+  <div class="request-preview" id="requestEmailPreview" role="dialog" aria-modal="true" aria-labelledby="requestEmailPreviewTitle">\n    <section class="request-preview-card"><h2 id="requestEmailPreviewTitle">Review your subscription email</h2><p id="requestEmailRecipient"></p><pre id="requestEmailBody"></pre><p class="safety-note">Your request will only be sent after you choose “Confirm &amp; send”. Your plan will not change until payment is verified.</p><div class="request-preview-actions"><button type="button" id="cancelRequestEmail">Go back</button><button type="button" class="confirm" id="confirmRequestEmail">Confirm &amp; send</button></div></section>\n  </div>\n  <script src="{{ url_for('static', filename='js/subscription_request.js') }}?v=2"></script>
 </body>
 </html>
