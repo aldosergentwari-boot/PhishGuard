@@ -46,6 +46,10 @@ def _postgres_sql(sql):
         flags=re.I,
     )
     statement = re.sub(r"\s+COLLATE\s+NOCASE\b", "", statement, flags=re.I)
+    # psycopg2 treats percent signs as interpolation markers even when they
+    # appear inside SQL string literals (for example LIKE 'scan-%'). Escape
+    # literal percent signs before converting SQLite ? placeholders to %s.
+    statement = statement.replace("%", "%%")
     statement = statement.replace("?", "%s")
     return statement
 
