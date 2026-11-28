@@ -195,25 +195,16 @@ def create_subscription_request():
                  "customer_name": customer_name, "customer_email": user["email"],
                  "phone_number": phone, "payment_method": method, "message": message
              }), now))
-    owner_email = os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip()
-    email_sent = False
+    # The subscription request is the primary action. Do not email the owner
+    # automatically; the customer may optionally prepare a separate email later.
     try:
-        from backend.services.email_service import send_subscription_request_email, send_subscription_request_received_email
-        if owner_email:
-            email_sent = send_subscription_request_email(owner_email, {
-                "request_id": request_id, "plan_id": plan_id, "customer_name": customer_name,
-                "customer_email": user["email"], "user_id": user_id, "phone_number": phone,
-                "payment_method": method, "message": message, "created_at": now
-            })
+        from backend.services.email_service import send_subscription_request_received_email
         send_subscription_request_received_email(user["email"], plan_id, request_id)
     except Exception:
-        email_sent = False
-    mail_body = (
-        f"PhishGuard subscription request #{request_id}\n"
-        f"Name: {customer_name}\nAccount email: {user['email']}\nAccount ID: {user_id}\n"
-        f"Plan: {plan_id.title()}\nPhone: {phone}\nPreferred payment: {method}\n"
-        f"Message: {message or '(none)'}"
-    )
-    mailto_url = ("mailto:" + owner_email + "?" + urlencode({"subject": f"PhishGuard {plan_id.title()} subscription request #{request_id}", "body": mail_body})) if owner_email else ""
-    return jsonify({"success": True, "request_id": request_id, "email_sent": bool(email_sent), "mailto_url": mailto_url,
-        "message": "Your request has been saved. The owner will contact you with payment instructions."}), 201
+        # Request creation and the admin inbox record must not depend on email delivery.
+        pass
+    return jsonify({
+        "success": True,
+        "request_id": request_id,
+        "message": "Your request has been sent to the PhishGuard admin. You can optionally prepare an email separately."
+    }), 201
