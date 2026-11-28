@@ -138,6 +138,27 @@ def register():
     except ValueError as exc:
         return jsonify({"success": False, "error": str(exc)}), 400
 
+    registered_at = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        db.execute("""CREATE TABLE IF NOT EXISTS admin_inbox_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            event_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            read_at TEXT,
+            created_at TEXT NOT NULL
+        )""")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_admin_inbox_created ON admin_inbox_notifications(created_at DESC)")
+        db.execute("""INSERT INTO admin_inbox_notifications
+            (user_id,event_type,title,message,metadata_json,created_at)
+            VALUES (?, 'new_registration', ?, ?, ?, ?)""",
+            (user["id"], "New customer registration",
+             f"{user['email']} created a PhishGuard account.",
+             __import__("json").dumps({"user_id": user["id"], "email": user["email"]}),
+             registered_at))
+
     raw_token = _issue_email_token(user["id"], "verify_email", timedelta(hours=24))
     email_sent = email_service.send_verification_email(user["email"], raw_token)
     anonymous_id = get_browser_identity()
