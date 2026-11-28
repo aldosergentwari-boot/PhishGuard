@@ -26,6 +26,7 @@ const PAGE_NAMES = {
     adpreferences: 'Advertising Preferences',
     pricing: 'Plans & Pricing',
     account: 'My Account',
+    notifications: 'Notifications',
     payments: 'Payment History',
     admin: 'Owner Console'
 };
@@ -618,6 +619,10 @@ function setActivePage(pageName) {
 
     if (pageName === 'history') {
         loadHistory();
+    }
+
+    if (pageName === 'notifications') {
+        void loadAccountNotifications();
     }
 
     if (pageName === 'account') {
@@ -1535,6 +1540,11 @@ function bindEvents() {
     $('accountLogout')?.addEventListener('click', signOutAccount);
     $('accountViewPlans')?.addEventListener('click', () => goToPage('pricing'));
     $('refreshAccountNotifications')?.addEventListener('click', loadAccountNotifications);
+    $('markAllNotificationsRead')?.addEventListener('click', markAllNotificationsRead);
+    $('notificationsList')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-notification-read]');
+        if (button) void markNotificationRead(button.dataset.notificationRead);
+    });
     $('refreshAccountPayments')?.addEventListener('click', loadAccountPayments);
     $('userProfileImage')?.addEventListener('change', previewUserProfileImage);
     $('userRemovePhoto')?.addEventListener('click', removeUserProfileImage);
@@ -2094,36 +2104,78 @@ async function loadAccountPayments() {
     }
 }
 
-async function loadAccountNotifications() {
-    const list = $('accountNotifications');
+function updateNotificationBadge(unreadCount) {
+    const badge = $('accountNotificationBadge');
+    const count = Math.max(0, Number(unreadCount) || 0);
+    if (!badge) return;
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.hidden = count === 0;
+    badge.setAttribute('aria-label', count + ' unread notifications');
+}
+
+function renderNotifications(items, unreadCount) {
+    const list = $('notificationsList');
+    const summary = $('notificationUnreadSummary');
+    if (summary) summary.textContent = unreadCount + ' unread notification' + (unreadCount === 1 ? '' : 's');
     if (!list) return;
-    list.innerHTML = '<p class="account-notifications-empty">Loading notifications…</p>';
+    if (!items.length) {
+        list.innerHTML = '<p class="account-notifications-empty">You are all caught up. No notifications yet.</p>';
+        return;
+    }
+    list.innerHTML = items.map(item => {
+        const unread = !item.read_at;
+        const when = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+        return '<article class="account-notification-item' + (unread ? ' is-unread' : ' is-read') + '">' +
+            '<div class="account-notification-meta"><strong>' + escapeHtml(item.title) +
+            '</strong><span>' + escapeHtml(String(item.category || 'account').toUpperCase()) +
+            '</span></div><p>' + escapeHtml(item.message) + '</p><div class="account-notification-footer"><time>' +
+            escapeHtml(when) + '</time>' + (unread
+                ? '<button class="text-button" type="button" data-notification-read="' + escapeHtml(item.id) + '">Mark as read</button>'
+                : '<span class="notification-read-label">Read</span>') + '</div></article>';
+    }).join('');
+}
+
+async function loadAccountNotifications() {
     try {
         const data = await apiRequest('/api/account/notifications');
         const items = Array.isArray(data.notifications) ? data.notifications : [];
-        const badge = $('accountNotificationBadge');
-        if (badge) {
-            badge.textContent = String(items.length);
-            badge.hidden = items.length === 0;
-            badge.setAttribute('aria-label', items.length + ' account notifications');
-        }
-        if (!items.length) {
-            list.innerHTML = '<p class="account-notifications-empty">You are all caught up. No notifications yet.</p>';
-            return;
-        }
-        list.innerHTML = items.map(item => {
-            const when = item.created_at ? new Date(item.created_at).toLocaleString() : '';
-            return '<article class="account-notification-item">' +
-                '<div class="account-notification-meta"><strong>' + escapeHtml(item.title) +
-                '</strong><span>' + escapeHtml(String(item.category || 'account').toUpperCase()) +
-                '</span></div><p>' + escapeHtml(item.message) + '</p><time>' +
-                escapeHtml(when) + '</time></article>';
-        }).join('');
+        const unreadCount = Math.max(0, Number(data.unread_count) || 0);
+        updateNotificationBadge(unreadCount);
+        renderNotifications(items, unreadCount);
     } catch (error) {
-        list.innerHTML = '<p class="account-notifications-empty">' +
+        const list = $('notificationsList');
+        if (list) list.innerHTML = '<p class="account-notifications-empty">' +
             escapeHtml(error.message || 'Could not load notifications.') + '</p>';
     }
 }
+
+async function markNotificationRead(notificationId) {
+    try {
+        const data = await apiRequest('/api/account/notifications/' + encodeURIComponent(notificationId) + '/read', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': await getCsrfToken() }
+        });
+        updateNotificationBadge(data.unread_count);
+        await loadAccountNotifications();
+    } catch (error) {
+        showToast(error.message || 'Could not update notification.', 'error');
+    }
+}
+
+async function markAllNotificationsRead() {
+    try {
+        await apiRequest('/api/account/notifications/read-all', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': await getCsrfToken() }
+        });
+        updateNotificationBadge(0);
+        await loadAccountNotifications();
+        showToast('All notifications marked as read.', 'success');
+    } catch (error) {
+        showToast(error.message || 'Could not update notifications.', 'error');
+    }
+}
+
 
 const authFormsInProgress = new WeakSet();
 
