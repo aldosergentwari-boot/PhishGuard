@@ -2547,6 +2547,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.setInterval(() => {
         if (state.onlineMode) void refreshInternetStatus();
     }, 30000);
+    // Keep the sidebar notification count current without requiring users to open My Account.
+    window.setInterval(() => {
+        if (state.authenticated && !document.hidden) void loadAccountNotifications();
+    }, 45000);
+    document.addEventListener('visibilitychange', () => {
+        if (state.authenticated && !document.hidden) void loadAccountNotifications();
+    });
 
     loadOverview();
 });
