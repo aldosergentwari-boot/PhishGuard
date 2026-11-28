@@ -257,10 +257,14 @@ class AuthService:
             raise ValueError("Unsupported token purpose.")
         now = datetime.now(timezone.utc).isoformat()
         with self.connection() as db:
-            db.execute(
-                "UPDATE account_email_tokens SET used_at=? WHERE user_id=? AND purpose=? AND used_at IS NULL",
-                (now, user_id, purpose),
-            )
+            # Verification links may arrive out of order. Keep earlier, unexpired
+            # verification links valid when a user requests a resend; invalidate
+            # outstanding links only after one of them is successfully used.
+            if purpose != "verify_email":
+                db.execute(
+                    "UPDATE account_email_tokens SET used_at=? WHERE user_id=? AND purpose=? AND used_at IS NULL",
+                    (now, user_id, purpose),
+                )
             db.execute(
                 """INSERT INTO account_email_tokens(user_id,purpose,token_hash,expires_at,created_at)
                    VALUES (?,?,?,?,?)""",
@@ -285,6 +289,12 @@ class AuthService:
                 return False
             db.execute(
                 "UPDATE users SET email_verified=1,email_verified_at=? WHERE id=?",
+                (now, row["user_id"]),
+            )
+            # Once one link verifies the address, revoke all other outstanding
+            # verification links for this account.
+            db.execute(
+                "UPDATE account_email_tokens SET used_at=? WHERE user_id=? AND purpose='verify_email' AND used_at IS NULL",
                 (now, row["user_id"]),
             )
             return True
