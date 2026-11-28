@@ -140,7 +140,7 @@ def management_users():
         return jsonify({"success": False, "error": "Invalid account filter."}), 400
     if plan not in ("", "guest", "free", "pro", "business"):
         return jsonify({"success": False, "error": "Invalid plan filter."}), 400
-    clauses, args = ["LOWER(u.email) <> ?"], [_owner_email()]
+    clauses, args = [], []
     if search:
         clauses.append("u.email LIKE ?")
         args.append(f"%{search}%")
@@ -168,6 +168,10 @@ def management_users():
     users = []
     for row in rows:
         item = dict(row)
+        item["is_owner"] = (
+            item["email"].strip().lower() == _owner_email()
+            or item["id"] == session.get("phishguard_admin_user_id")
+        )
         plan_id = get_account_plan(item["id"])["plan_id"]
         item["scan_usage"] = get_usage(f"account:{item['id']}", plan_id)
         users.append(item)
@@ -195,8 +199,12 @@ def set_user_scan_limit(user_id):
         user = db.execute("SELECT id,email FROM users WHERE id=?", (user_id,)).fetchone()
         if not user:
             return jsonify({"success": False, "error": "User not found."}), 404
-        if user["email"].strip().lower() == _owner_email():
-            return jsonify({"success": False, "error": "Owner account is not a customer account."}), 400
+        is_owner = (
+            user["email"].strip().lower() == _owner_email()
+            or user["id"] == session.get("phishguard_admin_user_id")
+        )
+        if is_owner and not active:
+            return jsonify({"success": False, "error": "The owner account cannot be suspended from customer management."}), 400
 
         if monthly_limit is None:
             db.execute("DELETE FROM admin_scan_limit_overrides WHERE user_id=?", (user_id,))
