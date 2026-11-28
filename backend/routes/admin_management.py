@@ -37,6 +37,17 @@ def _ensure_tables(db):
         created_at TEXT NOT NULL
     )""")
     db.execute("CREATE INDEX IF NOT EXISTS idx_user_notifications_user ON user_notifications(user_id, created_at DESC)")
+    db.execute("""CREATE TABLE IF NOT EXISTS admin_inbox_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        event_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        metadata_json TEXT NOT NULL DEFAULT '{}',
+        read_at TEXT,
+        created_at TEXT NOT NULL
+    )""")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_admin_inbox_created ON admin_inbox_notifications(created_at DESC)")
 
 
 def _guard(mutate=False):
@@ -278,8 +289,6 @@ def set_user_status(user_id):
         _ensure_tables(db)
         user = db.execute("SELECT id,email,is_active FROM users WHERE id=?", (user_id,)).fetchone()
         if not user: return jsonify({"success": False, "error": "User not found."}), 404
-        if user["email"].strip().lower() == _owner_email():
-            return jsonify({"success": False, "error": "Owner account is not a customer account."}), 400
         db.execute("UPDATE users SET is_active=?,session_version=session_version+1 WHERE id=?", (int(active), user_id))
         _audit(db, "user.activated" if active else "user.suspended", "user", user_id, reason.strip())
         db.execute(
@@ -555,6 +564,54 @@ def mark_all_account_notifications_read():
             (now, user_id),
         )
     return jsonify({"success": True, "unread_count": 0}), 200
+
+
+@admin_management_bp.get("/api/admin/management/inbox")
+def admin_notification_inbox():
+    denied = _guard()
+    if denied:
+        return denied
+    try:
+        limit = min(max(int(request.args.get("limit", 100)), 1), 200)
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "Invalid pagination."}), 400
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        rows = db.execute("""SELECT n.id,n.user_id,u.email,n.event_type,n.title,n.message,
+                    n.metadata_json,n.read_at,n.created_at
+                FROM admin_inbox_notifications n
+                LEFT JOIN users u ON u.id=n.user_id
+                ORDER BY n.id DESC LIMIT ? OFFSET ?""", (limit, offset)).fetchall()
+        unread = db.execute("SELECT COUNT(*) FROM admin_inbox_notifications WHERE read_at IS NULL").fetchone()[0]
+        total = db.execute("SELECT COUNT(*) FROM admin_inbox_notifications").fetchone()[0]
+    notifications = []
+    for row in rows:
+        item = dict(row)
+        try:
+            item["metadata"] = __import__("json").loads(item.pop("metadata_json") or "{}")
+        except (TypeError, ValueError):
+            item["metadata"] = {}
+        notifications.append(item)
+    return jsonify({"success": True, "notifications": notifications,
+                    "unread_count": int(unread or 0), "total": int(total or 0),
+                    "limit": limit, "offset": offset}), 200
+
+
+@admin_management_bp.post("/api/admin/management/inbox/<int:notification_id>/read")
+def mark_admin_inbox_read(notification_id):
+    denied = _guard(True)
+    if denied:
+        return denied
+    now = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        changed = db.execute(
+            "UPDATE admin_inbox_notifications SET read_at=? WHERE id=? AND read_at IS NULL",
+            (now, notification_id),
+        ).rowcount
+        unread = db.execute("SELECT COUNT(*) FROM admin_inbox_notifications WHERE read_at IS NULL").fetchone()[0]
+    return jsonify({"success": True, "updated": bool(changed), "unread_count": int(unread or 0)}), 200
 
 
 @admin_management_bp.get("/api/admin/management/notifications")
