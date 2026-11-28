@@ -2101,6 +2101,12 @@ async function loadAccountNotifications() {
     try {
         const data = await apiRequest('/api/account/notifications');
         const items = Array.isArray(data.notifications) ? data.notifications : [];
+        const badge = $('accountNotificationBadge');
+        if (badge) {
+            badge.textContent = String(items.length);
+            badge.hidden = items.length === 0;
+            badge.setAttribute('aria-label', items.length + ' account notifications');
+        }
         if (!items.length) {
             list.innerHTML = '<p class="account-notifications-empty">You are all caught up. No notifications yet.</p>';
             return;
