@@ -3,6 +3,7 @@
 All mutations require an authenticated owner session and the session CSRF token.
 """
 import calendar
+import json
 import secrets
 import os
 import re
@@ -589,7 +590,7 @@ def admin_notification_inbox():
     for row in rows:
         item = dict(row)
         try:
-            item["metadata"] = __import__("json").loads(item.pop("metadata_json") or "{}")
+            item["metadata"] = json.loads(item.pop("metadata_json") or "{}")
         except (TypeError, ValueError):
             item["metadata"] = {}
         notifications.append(item)
