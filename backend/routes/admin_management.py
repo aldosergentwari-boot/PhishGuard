@@ -470,6 +470,48 @@ def account_notifications():
     if not isinstance(user_id, int) or user_id < 1:
         return jsonify({"success": False, "error": "Sign in to view your notifications."}), 401
 
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        rows = db.execute(
+            """SELECT id,title,message,category,read_at,created_at
+               FROM user_notifications WHERE user_id=? ORDER BY id DESC LIMIT 100""",
+            (user_id,),
+        ).fetchall()
+        unread_count = db.execute(
+            "SELECT COUNT(*) AS total FROM user_notifications WHERE user_id=? AND read_at IS NULL",
+            (user_id,),
+        ).fetchone()["total"]
+    return jsonify({
+        "success": True,
+        "notifications": [dict(row) for row in rows],
+        "unread_count": int(unread_count or 0),
+    }), 200
+
+
+@admin_management_bp.post("/api/account/notifications/<int:notification_id>/read")
+def mark_account_notification_read(notification_id):
+    user_id = session.get("account_id")
+    if not isinstance(user_id, int) or user_id < 1:
+        return jsonify({"success": False, "error": "Sign in to update your notifications."}), 401
+    now = datetime.now(timezone.utc).isoformat()
+    with auth_service.connection() as db:
+        _ensure_tables(db)
+        changed = db.execute(
+            "UPDATE user_notifications SET read_at=? WHERE id=? AND user_id=? AND read_at IS NULL",
+            (now, notification_id, user_id),
+        ).rowcount
+        unread_count = db.execute(
+            "SELECT COUNT(*) AS total FROM user_notifications WHERE user_id=? AND read_at IS NULL",
+            (user_id,),
+        ).fetchone()["total"]
+    return jsonify({"success": True, "updated": bool(changed), "unread_count": int(unread_count or 0)}), 200
+
+
+@admin_management_bp.post("/api/account/notifications/read-all")
+def mark_all_account_notifications_read():
+    user_id = session.get("account_id")
+    if not isinstance(user_id, int) or user_id < 1:
+        return jsonify({"success": False, "error": "Sign in to update your notifications."}), 401
     now = datetime.now(timezone.utc).isoformat()
     with auth_service.connection() as db:
         _ensure_tables(db)
@@ -477,12 +519,7 @@ def account_notifications():
             "UPDATE user_notifications SET read_at=? WHERE user_id=? AND read_at IS NULL",
             (now, user_id),
         )
-        rows = db.execute(
-            """SELECT id,title,message,category,read_at,created_at
-               FROM user_notifications WHERE user_id=? ORDER BY id DESC LIMIT 50""",
-            (user_id,),
-        ).fetchall()
-    return jsonify({"success": True, "notifications": [dict(row) for row in rows]}), 200
+    return jsonify({"success": True, "unread_count": 0}), 200
 
 
 @admin_management_bp.get("/api/admin/management/notifications")
