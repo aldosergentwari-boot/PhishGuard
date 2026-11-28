@@ -142,7 +142,7 @@ def subscription_request_page():
     plan = request.args.get("plan", "").strip().lower()
     if plan not in ("pro", "business"):
         return redirect("/?page=pricing")
-    return render_template("subscription_request.html", selected_plan=plan)
+    return render_template("subscription_request.html", selected_plan=plan, owner_email=os.getenv("PHISHGUARD_OWNER_EMAIL", "").strip())
 
 
 @billing_bp.post("/api/billing/requests")
