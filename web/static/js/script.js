@@ -2166,7 +2166,7 @@ async function markAllNotificationsRead() {
     try {
         await apiRequest('/api/account/notifications/read-all', {
             method: 'POST',
-            headers: { 'X-CSRF-Token': await getCsrfToken() }
+            headers: await csrfHeader()
         });
         updateNotificationBadge(0);
         await loadAccountNotifications();
