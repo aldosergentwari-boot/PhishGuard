@@ -1033,3 +1033,19 @@ html,body{max-width:100%;overflow-x:clip}
 .ad-policy-note h2{color:var(--cyan)}
 .policy-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin:18px 0}
 @media(max-width:600px){.policy-hero{align-items:flex-start;padding:17px;gap:13px}.policy-hero-icon{width:46px;height:46px;flex-basis:46px;border-radius:13px;font-size:24px}.policy-hero h2{font-size:17px}.ad-policy-section,.ad-policy-note{padding:16px}.policy-actions>*{flex:1 1 100%}}
+
+
+/* Dedicated notification centre */
+.account-notifications-shortcut{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:24px;padding:18px;border:1px solid var(--border-color,#26344c);border-radius:14px;background:rgba(12,20,35,.55)}
+.account-notifications-shortcut strong{display:block;margin-top:5px;font-size:15px}
+.account-notifications-shortcut p{margin:6px 0 0;color:var(--muted,#91a0b8);font-size:12px}
+.notification-page-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.notification-centre-panel{padding:20px}
+.notification-centre-summary{display:flex;justify-content:space-between;gap:12px;margin-bottom:16px;color:var(--muted,#91a0b8);font-size:12px}
+.notification-centre-summary strong{color:var(--text,#f5f7fb);font-size:14px}
+.account-notification-item.is-unread{border-color:rgba(77,190,255,.48);background:rgba(38,130,190,.09)}
+.account-notification-item.is-read{opacity:.78}
+.account-notification-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.account-notification-footer time,.notification-read-label{font-size:11px;color:var(--muted,#91a0b8)}
+.notification-read-label{letter-spacing:.04em}
+@media(max-width:560px){.account-notifications-shortcut{align-items:flex-start;flex-direction:column}.notification-page-actions{width:100%}.notification-page-actions button{flex:1}.notification-centre-panel{padding:13px}.notification-centre-summary{flex-direction:column;gap:5px}}
