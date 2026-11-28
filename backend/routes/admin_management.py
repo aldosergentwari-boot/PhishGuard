@@ -233,13 +233,6 @@ def set_user_scan_limit(user_id):
         user = db.execute("SELECT id,email FROM users WHERE id=?", (user_id,)).fetchone()
         if not user:
             return jsonify({"success": False, "error": "User not found."}), 404
-        is_owner = (
-            user["email"].strip().lower() == _owner_email()
-            or user["id"] == session.get("phishguard_admin_user_id")
-        )
-        if is_owner and not active:
-            return jsonify({"success": False, "error": "The owner account cannot be suspended from customer management."}), 400
-
         if monthly_limit is None:
             db.execute("DELETE FROM admin_scan_limit_overrides WHERE user_id=?", (user_id,))
             details = "Restored plan default: " + reason.strip()
