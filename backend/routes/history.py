@@ -1,5 +1,5 @@
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, current_app, jsonify, request, session
 
 from backend.database.history_service import (
     get_history_service
@@ -83,6 +83,7 @@ def get_history():
         }), 200
 
     except Exception:
+        current_app.logger.exception("Failed to retrieve scan history")
         return jsonify({
             "success": False,
             "error": "Could not retrieve scan history."
