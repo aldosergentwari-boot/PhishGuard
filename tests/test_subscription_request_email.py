@@ -36,6 +36,8 @@ def test_subscription_request_page_keeps_phishguard_brand_artwork():
     page = Path("web/templates/subscription_request.html").read_text(encoding="utf-8")
     assert "request-hero" in page
     assert "data:image/svg+xml" in page
+    assert 'rel="icon"' in page
+    assert "%23c0392b" in page
 
 
 def test_customer_can_explicitly_send_subscription_email_to_owner():
@@ -49,3 +51,9 @@ def test_customer_can_explicitly_send_subscription_email_to_owner():
     assert 'request.path.endswith("/send-email")' in auth_routes
     assert 'fetch("/api/billing/requests/{{ details.id }}/send-email"' in email_page
     assert "Email Sent" in email_page
+
+
+def test_subscription_email_page_uses_red_phishguard_favicon():
+    page = Path("web/templates/subscription_request_email.html").read_text(encoding="utf-8")
+    assert 'rel="icon"' in page
+    assert "%23c0392b" in page
