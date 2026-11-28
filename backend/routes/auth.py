@@ -1,4 +1,5 @@
 import hashlib
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -156,7 +157,7 @@ def register():
             VALUES (?, 'new_registration', ?, ?, ?, ?)""",
             (user["id"], "New customer registration",
              f"{user['email']} created a PhishGuard account.",
-             __import__("json").dumps({"user_id": user["id"], "email": user["email"]}),
+             json.dumps({"user_id": user["id"], "email": user["email"]}),
              registered_at))
 
     raw_token = _issue_email_token(user["id"], "verify_email", timedelta(hours=24))
