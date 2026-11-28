@@ -42,7 +42,7 @@ def is_configured():
     return bool(cfg["host"] and cfg["sender"] and trusted_origin and provider_ready)
 
 
-def _send_via_brevo_api(cfg, subject, recipient, text_body, html_body):
+def _send_via_brevo_api(cfg, subject, recipient, text_body, html_body, reply_to=None):
     payload = {
         "sender": {"name": cfg["sender_name"], "email": cfg["sender"]},
         "to": [{"email": recipient}],
@@ -50,6 +50,8 @@ def _send_via_brevo_api(cfg, subject, recipient, text_body, html_body):
         "textContent": text_body,
         "htmlContent": html_body,
     }
+    if reply_to:
+        payload["replyTo"] = {"email": reply_to}
     request = Request(
         "https://api.brevo.com/v3/smtp/email",
         data=json.dumps(payload).encode("utf-8"),
@@ -71,7 +73,7 @@ def _send_via_brevo_api(cfg, subject, recipient, text_body, html_body):
         return False
 
 
-def _send(subject, recipient, text_body, html_body):
+def _send(subject, recipient, text_body, html_body, reply_to=None):
     cfg = _settings()
     if not is_configured():
         logger.warning("Transactional email is not configured (missing sender, API key/SMTP credentials, or valid public URL)")
@@ -80,12 +82,14 @@ def _send(subject, recipient, text_body, html_body):
     # Render Free blocks outbound SMTP ports 25/465/587. Prefer Brevo's HTTPS API
     # whenever an API key is configured; keep SMTP for local or paid deployments.
     if cfg["api_key"]:
-        return _send_via_brevo_api(cfg, subject, recipient, text_body, html_body)
+        return _send_via_brevo_api(cfg, subject, recipient, text_body, html_body, reply_to=reply_to)
 
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = formataddr((cfg["sender_name"], cfg["sender"]))
     message["To"] = recipient
+    if reply_to:
+        message["Reply-To"] = reply_to
     message.set_content(text_body)
     message.add_alternative(html_body, subtype="html")
     try:
@@ -155,25 +159,65 @@ def send_admin_password_reset_email(recipient, raw_token):
 
 
 def send_subscription_request_email(recipient, details):
-    """Notify the configured owner about a customer-initiated subscription request."""
+    """Send a formal customer-written subscription request to the configured owner."""
     from html import escape
-    from urllib.parse import quote
-    plan = str(details.get("plan_id", "")).upper()
-    fields = [
-        ("Request ID", details.get("request_id")),
-        ("Customer", details.get("customer_name")),
-        ("Account email", details.get("customer_email")),
-        ("Account ID", details.get("user_id")),
-        ("Requested plan", plan),
-        ("Phone", details.get("phone_number")),
-        ("Preferred payment", details.get("payment_method")),
-        ("Message", details.get("message") or "(none)"),
-        ("Submitted at", details.get("created_at")),
+
+    plan_id = str(details.get("plan_id", "")).strip().lower()
+    plan = "Pro" if plan_id == "pro" else "Business"
+    price = "$4.99 per month" if plan_id == "pro" else "$19.99 for 7 months"
+    name = str(details.get("customer_name") or "PhishGuard customer").strip()
+    customer_email = str(details.get("customer_email") or "").strip()
+    phone = str(details.get("phone_number") or "").strip()
+    payment = str(details.get("payment_method") or "Not specified").replace("_", " ").title()
+    note = str(details.get("message") or "").strip() or "None"
+    request_id = details.get("request_id")
+
+    subject = f"PhishGuard | {plan} Subscription Request #{request_id}"
+    text_body = (
+        "Dear PhishGuard Owner,\n\n"
+        "I hope this message finds you well.\n\n"
+        f"I am writing to formally request a {plan} subscription for my PhishGuard account.\n\n"
+        "My subscription details are:\n"
+        f"Full name: {name}\n"
+        f"Account email: {customer_email}\n"
+        f"Account ID: {details.get('user_id')}\n"
+        f"Request reference: #{request_id}\n"
+        f"Requested plan: {plan}\n"
+        f"Plan price: {price}\n"
+        f"Contact phone: {phone}\n"
+        f"Preferred payment method: {payment}\n"
+        f"Additional information: {note}\n\n"
+        "Kindly review my request and share the payment instructions and any further steps required to complete the subscription.\n\n"
+        "I understand that my account will only be upgraded after the payment has been independently verified and approved.\n\n"
+        "Thank you for your time and assistance.\n\n"
+        "Yours faithfully,\n"
+        f"{name}"
+    )
+    rows = [
+        ("Customer", name), ("Account email", customer_email),
+        ("Account ID", details.get("user_id")), ("Request reference", f"#{request_id}"),
+        ("Requested plan", plan), ("Plan price", price), ("Contact phone", phone),
+        ("Preferred payment method", payment), ("Additional information", note),
     ]
-    text_body = "A new PhishGuard subscription request was submitted.\n\n" + "\n".join(f"{k}: {v}" for k,v in fields)
-    rows = "".join(f"<tr><th style='text-align:left;padding:8px;color:#9fb1ca'>{escape(str(k))}</th><td style='padding:8px;color:#edf3fb'>{escape(str(v))}</td></tr>" for k,v in fields)
-    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:620px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><h2>New subscription request</h2><p>A customer wants to purchase a PhishGuard subscription. Verify payment independently before activating access.</p><table style="width:100%;border-collapse:collapse">{rows}</table><p>Open the owner dashboard to review and process this request.</p></div></body></html>"""
-    return _send(f"PhishGuard {plan} subscription request #{details.get('request_id')}", recipient, text_body, html_body)
+    table = "".join(
+        f"<tr><th style='text-align:left;padding:10px;border-bottom:1px solid #263650;color:#9fb1ca'>{escape(str(label))}</th>"
+        f"<td style='padding:10px;border-bottom:1px solid #263650;color:#edf3fb'>{escape(str(value))}</td></tr>"
+        for label, value in rows
+    )
+    html_body = (
+        '<!doctype html><html><body style="margin:0;background:#0b1220;color:#edf3fb;font-family:Arial,sans-serif;padding:28px">'
+        '<div style="max-width:640px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:16px;padding:30px">'
+        '<div style="font-weight:800;letter-spacing:2px;color:#8fb8ff">PHISHGUARD</div>'
+        '<h2 style="font-size:23px;margin:22px 0 10px">Formal subscription request</h2>'
+        '<p style="line-height:1.7;color:#c4cede">Dear PhishGuard Owner,<br><br>I hope this message finds you well. I am writing to formally request a '
+        + escape(plan) + ' subscription for my PhishGuard account. Please find my details below.</p>'
+        '<table style="width:100%;border-collapse:collapse;margin:20px 0">' + table + '</table>'
+        '<p style="line-height:1.7;color:#c4cede">Kindly review my request and share the payment instructions and any further steps required. I understand that my account will only be upgraded after payment has been independently verified and approved.</p>'
+        '<p style="line-height:1.7;color:#c4cede">Thank you for your time and assistance.</p>'
+        '<p style="line-height:1.7;color:#c4cede">Yours faithfully,<br><strong>' + escape(name) + '</strong></p>'
+        '</div></body></html>'
+    )
+    return _send(subject, recipient, text_body, html_body, reply_to=customer_email or None)
 
 
 def send_subscription_request_received_email(recipient, plan_id, request_id):
