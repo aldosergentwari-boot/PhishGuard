@@ -8,7 +8,7 @@ from pathlib import Path
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.config import DATABASE_PATH
-from backend.database.connection import connect
+from backend.database.connection import connect, using_postgres
 
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
@@ -150,13 +150,17 @@ class AuthService:
                 history_scan_id INTEGER UNIQUE
             )""")
             db.execute("CREATE INDEX IF NOT EXISTS idx_scan_usage_owner_time ON scan_usage(owner_id, scanned_at)")
-            history_table = db.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_history'"
-            ).fetchone()
-            if history_table:
-                db.execute("""INSERT OR IGNORE INTO scan_usage(owner_id, scanned_at, history_scan_id)
-                    SELECT owner_id, scanned_at, id FROM scan_history
-                    WHERE owner_id IS NOT NULL""")
+            # SQLite may already contain scan history at this point. On
+            # PostgreSQL, HistoryService performs this backfill after creating
+            # scan_history, so do not query a table that may not exist yet.
+            if not using_postgres():
+                history_table = db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scan_history'"
+                ).fetchone()
+                if history_table:
+                    db.execute("""INSERT OR IGNORE INTO scan_usage(owner_id, scanned_at, history_scan_id)
+                        SELECT owner_id, scanned_at, id FROM scan_history
+                        WHERE owner_id IS NOT NULL""")
 
     def allow_auth_attempt(self, bucket, limit=8, window_seconds=900):
         now = time.time()
