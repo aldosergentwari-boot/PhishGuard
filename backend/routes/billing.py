@@ -302,4 +302,4 @@ def send_subscription_request_email_now(request_id):
         sent = False
     if not sent:
         return jsonify({"success": False, "error": "The email could not be delivered right now. Please try again later."}), 503
-    return jsonify({"success": True, "message": "Your subscription email has been sent to the PhishGuard owner."}), 200
+    return jsonify({"success": True, "message": "Your email was accepted by the email provider for sending to the PhishGuard owner. Final inbox delivery may take a little time."}), 200
