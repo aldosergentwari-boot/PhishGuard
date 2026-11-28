@@ -178,6 +178,40 @@ def management_users():
     return jsonify({"success": True, "users": users, "total": total, "limit": limit, "offset": offset})
 
 
+@admin_management_bp.get("/api/admin/management/users/<int:user_id>/scans")
+def management_user_scans(user_id):
+    """Return a user's scan history to the authenticated owner, including the owner account."""
+    denied = _guard()
+    if denied:
+        return denied
+    try:
+        limit = min(max(int(request.args.get("limit", 50)), 1), 100)
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "Invalid pagination."}), 400
+
+    with auth_service.connection() as db:
+        user = db.execute("SELECT id,email FROM users WHERE id=?", (user_id,)).fetchone()
+        if not user:
+            return jsonify({"success": False, "error": "User not found."}), 404
+
+    from backend.database.history_service import get_history_service
+    history = get_history_service().get_history(
+        owner_id=f"account:{user_id}", limit=limit, offset=offset
+    )
+    return jsonify({
+        "success": True,
+        "user": {"id": user["id"], "email": user["email"],
+                 "is_owner": user["email"].strip().lower() == _owner_email()
+                 or user["id"] == session.get("phishguard_admin_user_id")},
+        "scans": history["scans"],
+        "total": history["total"],
+        "limit": limit,
+        "offset": offset,
+        "summary": history["summary"],
+    }), 200
+
+
 @admin_management_bp.post("/api/admin/management/users/<int:user_id>/scan-limit")
 def set_user_scan_limit(user_id):
     denied = _guard(True)
