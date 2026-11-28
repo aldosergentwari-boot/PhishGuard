@@ -92,19 +92,19 @@ class _PostgresConnection:
             raise sqlite3.IntegrityError(str(exc)) from exc
 
         lastrowid = None
-        if re.match(r"\s*INSERT\s+INTO\s+\w+", statement, flags=re.I):
-            # The application only asks for lastrowid on inserts into tables
-            # whose primary key is a generated id.
-            table_match = re.match(r"\s*INSERT\s+INTO\s+(\w+)", statement, flags=re.I)
-            if table_match:
+        table_match = re.match(r"\\s*INSERT\\s+INTO\\s+(\\w+)", statement, flags=re.I)
+        if table_match:
+            probe = self._connection.cursor()
+            try:
+                probe.execute("SELECT pg_get_serial_sequence(%s, 'id')", (table_match.group(1),))
+                sequence_name = probe.fetchone()[0]
+            finally:
+                probe.close()
+            if sequence_name:
                 probe = self._connection.cursor()
                 try:
                     probe.execute("SELECT LASTVAL()")
                     lastrowid = probe.fetchone()[0]
-                except self._psycopg2.Error:
-                    self._connection.rollback()
-                    # A table without a generated id is not expected to use
-                    # lastrowid; leave it unset rather than masking the insert.
                 finally:
                     probe.close()
         return _Cursor(self, cursor, lastrowid)
