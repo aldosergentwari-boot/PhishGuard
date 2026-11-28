@@ -438,3 +438,88 @@ def test_customer_can_mark_all_notifications_read(monkeypatch, tmp_path):
     )
     assert response.status_code == 200
     assert response.get_json()["unread_count"] == 0
+
+
+
+def test_owner_and_customer_sessions_coexist_and_logout_independently(monkeypatch, tmp_path):
+    _, client, owner, csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user(
+        "same-browser-customer@example.com", "A-Strong-Customer-Password-123!"
+    )
+
+    # Customer login in the same browser must not replace the owner identity.
+    customer_login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "same-browser-customer@example.com",
+            "password": "A-Strong-Customer-Password-123!",
+        },
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert customer_login.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is True
+    assert client.get("/admin").status_code == 200
+    with client.session_transaction() as session:
+        assert session["account_id"] == customer["id"]
+        assert session["phishguard_admin_user_id"] == owner["id"]
+        assert session.permanent is True
+
+    # Customer logout removes only customer credentials; owner remains signed in.
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    customer_logout = client.post(
+        "/api/auth/logout", json={}, headers={"X-CSRF-Token": csrf}
+    )
+    assert customer_logout.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is False
+    assert client.get("/admin").status_code == 200
+
+    # Sign the customer in again, then log out the owner only.
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    assert client.post(
+        "/api/auth/login",
+        json={
+            "email": "same-browser-customer@example.com",
+            "password": "A-Strong-Customer-Password-123!",
+        },
+        headers={"X-CSRF-Token": csrf},
+    ).status_code == 200
+    csrf = client.get("/api/auth/csrf").get_json()["csrf_token"]
+    owner_logout = client.post(
+        "/api/admin/logout", json={}, headers={"X-CSRF-Token": csrf}
+    )
+    assert owner_logout.status_code == 200
+    assert client.get("/api/auth/me").get_json()["authenticated"] is True
+    assert client.get("/admin").status_code == 302
+
+    with client.session_transaction() as session:
+        assert session["account_id"] == customer["id"]
+        assert "phishguard_admin_user_id" not in session
+        assert session.permanent is True
+
+
+def test_invalid_customer_session_does_not_clear_owner_session(monkeypatch, tmp_path):
+    _, client, owner, csrf = owner_client(monkeypatch, tmp_path)
+    customer = auth_service.create_user(
+        "stale-session-customer@example.com", "A-Strong-Customer-Password-123!"
+    )
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "stale-session-customer@example.com",
+            "password": "A-Strong-Customer-Password-123!",
+        },
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert login.status_code == 200
+
+    with auth_service.connection() as db:
+        db.execute(
+            "UPDATE users SET session_version=session_version+1 WHERE id=?",
+            (customer["id"],),
+        )
+
+    assert client.get("/api/auth/me").get_json()["authenticated"] is False
+    assert client.get("/admin").status_code == 200
+    with client.session_transaction() as session:
+        assert "account_id" not in session
+        assert session["phishguard_admin_user_id"] == owner["id"]
