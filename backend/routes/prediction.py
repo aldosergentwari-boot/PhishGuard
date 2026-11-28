@@ -1,4 +1,8 @@
-from flask import Blueprint, request, jsonify
+import hashlib
+import hmac
+import logging
+
+from flask import Blueprint, request, jsonify, session, current_app
 from urllib.parse import urlparse
 import ipaddress
 
@@ -9,6 +13,7 @@ from backend.services.model_service import get_model_service
 from backend.services.hybrid_service import get_hybrid_service
 from backend.services.threat_intelligence import get_threat_intelligence_service
 from backend.services.user_identity import get_current_user_id
+from backend.database.auth_service import auth_service
 from backend.database.history_service import (
     get_history_service
 )
@@ -18,6 +23,8 @@ prediction_bp = Blueprint(
     "prediction",
     __name__
 )
+
+logger = logging.getLogger(__name__)
 
 
 _extractor = tldextract.TLDExtract(suffix_list_urls=())  # offline copy of the public-suffix list
@@ -111,6 +118,42 @@ def parse_mode(data):
     return mode.strip().lower() == "online", None
 
 
+
+
+def _scan_rate_limit_exceeded(owner_id, remote_addr=None):
+    """Limit both a client IP and its signed-in account/browser identity."""
+    secret = str(current_app.secret_key).encode("utf-8")
+
+    if remote_addr:
+        ip_digest = hmac.new(
+            secret, str(remote_addr).encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        if not auth_service.allow_scan_attempt(
+            f"scan-ip:{ip_digest}",
+            limit=300,
+            window_seconds=60,
+        ):
+            return True
+
+    identity_digest = hmac.new(
+        secret, str(owner_id).encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    return not auth_service.allow_scan_attempt(
+        f"scan-identity:{identity_digest}",
+        limit=30,
+        window_seconds=60,
+    )
+
+
+def _rate_limit_response():
+    response = jsonify({
+        "success": False,
+        "error": "Too many scan requests. Please wait before trying again.",
+        "code": "RATE_LIMIT_EXCEEDED",
+    })
+    response.headers["Retry-After"] = "60"
+    return response, 429
+
 @prediction_bp.route(
     "/api/predict",
     methods=["POST"]
@@ -156,8 +199,32 @@ def predict_url():
             "error": mode_error
         }), 400
 
+    stage = "scan_access_and_quota"
     try:
+        owner_id = get_current_user_id()
+        if _scan_rate_limit_exceeded(owner_id, request.remote_addr):
+            return _rate_limit_response()
 
+        account_id = session.get("account_id")
+        from backend.services.plan_service import can_scan, get_account_plan
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "guest"
+        allowed, usage = can_scan(owner_id, plan_id)
+        if not allowed:
+            is_guest = account_id is None
+            return jsonify({
+                "success": False,
+                "error": (
+                    "You have used all 10 guest scans this month. Create a free account or sign in to continue scanning."
+                    if is_guest else
+                    "You have reached this plan's monthly scan limit. Upgrade your plan to continue."
+                ),
+                "code": "GUEST_SCAN_LIMIT_REACHED" if is_guest else "SCAN_LIMIT_REACHED",
+                "usage": usage,
+                "plan": plan_id,
+                "registration_required": is_guest
+            }), 429
+
+        stage = "hybrid_detection"
         service = get_hybrid_service()
         analysis = service.analyze(url, online=online)
         result = dict(analysis["ml_result"])
@@ -172,17 +239,22 @@ def predict_url():
             "message": analysis["message"],
         })
 
+        stage = "history_save"
+        scan_id = get_history_service().save_scan(analysis, owner_id=owner_id)
+        result["scan_id"] = scan_id
         return jsonify({
             "success": True,
             "data": result
         }), 200
 
     except Exception:
-
-        # Avoid exposing internal errors to API users
+        # Keep internal details out of the API response while preserving the
+        # traceback in server logs for reliable production diagnosis.
+        logger.exception("URL prediction failed (mode=%s, stage=%s)", "online" if online else "offline", stage)
         return jsonify({
             "success": False,
-            "error": "Prediction failed. Check the server logs."
+            "error": "URL analysis failed. Please try again. If the problem continues, contact support.",
+            "code": "ANALYSIS_FAILED",
         }), 500
 
 
@@ -230,6 +302,31 @@ def health_check():
             "model_loaded": False
         }), 503
     
+
+
+@prediction_bp.route("/api/ready", methods=["GET"])
+def readiness_check():
+    """Return readiness only when the detection model and primary database work."""
+    checks = {"model": False, "database": False}
+    try:
+        model_service = get_model_service()
+        checks["model"] = model_service.model is not None
+    except Exception:
+        checks["model"] = False
+
+    try:
+        with auth_service.connection() as db:
+            db.execute("SELECT 1").fetchone()
+        checks["database"] = True
+    except Exception:
+        checks["database"] = False
+
+    is_ready = all(checks.values())
+    return jsonify({
+        "status": "ready" if is_ready else "not_ready",
+        "checks": checks,
+    }), 200 if is_ready else 503
+
 @prediction_bp.route(
     "/api/analyze",
     methods=["POST"]
@@ -272,13 +369,40 @@ def analyze_url():
             "error": mode_error
         }), 400
 
+    stage = "scan_access_and_quota"
     try:
 
+        owner_id = get_current_user_id()
+        if _scan_rate_limit_exceeded(owner_id, request.remote_addr):
+            return _rate_limit_response()
+
+        account_id = session.get("account_id")
+        from backend.services.plan_service import can_scan, get_account_plan
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "guest"
+        allowed, usage = can_scan(owner_id, plan_id)
+        if not allowed:
+            is_guest = account_id is None
+            return jsonify({
+                "success": False,
+                "error": (
+                    "You have used all 10 guest scans this month. Create a free account or sign in to continue scanning."
+                    if is_guest else
+                    "You have reached this plan's monthly scan limit. Upgrade your plan to continue."
+                ),
+                "code": "GUEST_SCAN_LIMIT_REACHED" if is_guest else "SCAN_LIMIT_REACHED",
+                "usage": usage,
+                "plan": plan_id,
+                "registration_required": is_guest
+            }), 429
+    
+    
+        stage = "hybrid_detection"
         service = get_hybrid_service()
 
         result = service.analyze(url.strip(), online=online)
 
         # Save scan under the current browser's identity
+        stage = "history_save"
         history_service = get_history_service()
         owner_id = get_current_user_id()
         scan_id = history_service.save_scan(
@@ -295,8 +419,11 @@ def analyze_url():
         }), 200
     
     except Exception:
-
+        # Do not silently discard the traceback: Render logs need the actual
+        # exception to distinguish model, local-rule, quota, and DB failures.
+        logger.exception("URL analysis failed (mode=%s, stage=%s)", "online" if online else "offline", stage)
         return jsonify({
             "success": False,
-            "error": "Offline analysis failed. Check server logs."
+            "error": "URL analysis failed. Please try again. If the problem continues, contact support.",
+            "code": "ANALYSIS_FAILED",
         }), 500

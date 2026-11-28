@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#080d18">
     <title>PhishGuard | Security Operations Center</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M32%204%208%2013v18c0%2015%2010%2026%2024%2031%2014-5%2024-16%2024-31V13z'%20fill='%23c0392b'/%3E%3Cpath%20d='M22%2032l7%207%2013-15'%20fill='none'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=11">
 </head>
 <body>
 
@@ -28,25 +28,30 @@
 
         <nav class="navigation">
             <button class="nav-link active" data-page="overview">
-                <span class="nav-icon">◫</span><span>Overview</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg></span><span>Overview</span>
             </button>
             <button class="nav-link" data-page="scanner">
-                <span class="nav-icon">⌕</span><span>URL Scanner</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5M8.2 10.8h5.2M10.8 8.2v5.2"/></svg></span><span>URL Scanner</span>
                 <span class="nav-tag">AI</span>
             </button>
             <button class="nav-link" data-page="history">
-                <span class="nav-icon">◷</span><span>Scan History</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg></span><span>Scan History</span>
             </button>
             <button class="nav-link" data-page="intelligence">
-                <span class="nav-icon">⌘</span><span>Intelligence</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="7" r="2.5"/><circle cx="7" cy="17" r="2.5"/><circle cx="17" cy="17" r="2.5"/><path d="M9.5 7h5M7 9.5v5M17 9.5v5M9.5 17h5"/></svg></span><span>Intelligence</span>
             </button>
         </nav>
 
         <div class="workspace-label second-label">SYSTEM</div>
 
         <nav class="navigation">
+            <button class="nav-link" data-page="pricing"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 9h17M8 14h3"/></svg></span><span>Plans &amp; Billings</span></button>
+            <button class="nav-link" data-page="payments"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span><span>Payment History</span></button>
+            <button class="nav-link" data-page="notifications"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span><span>Notifications</span><span id="accountNotificationBadge" class="notification-badge" hidden aria-label="Unread notifications"></span></button>
+            <button class="nav-link" data-page="account"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="9" r="2.7"/><path d="M6.8 18c1.2-2.3 3-3.4 5.2-3.4s4 1.1 5.2 3.4"/></svg></span><span>My Account</span></button>
+
             <button class="nav-link" data-page="about">
-                <span class="nav-icon">ⓘ</span><span>About Project</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 10.8v5M12 7.8h.01"/></svg></span><span>About Project</span>
             </button>
         </nav>
 
@@ -89,7 +94,7 @@
                         title="Click to switch between Online and Offline mode">
                     <span>●</span> <b id="modeToggleText">ONLINE MODE</b>
                 </button>
-                <div class="profile-avatar">PG</div>
+                <button type="button" class="profile-avatar" id="profileAccount" data-goto="account" aria-label="Open account">PG</button>
             </div>
         </header>
 
@@ -121,6 +126,16 @@
                     </div>
                 </div>
 
+                <div class="panel usage-block overview-usage" id="overviewUsage" aria-live="polite">
+                    <div class="usage-heading">
+                        <strong>Monthly scan allowance</strong>
+                        <span id="overviewUsageText">Loading usage…</span>
+                    </div>
+                    <div class="usage-track"><div class="usage-fill" id="overviewUsageBar"></div></div>
+                    <p id="overviewUsageNote">Checking your remaining URL scans for this month.</p>
+                </div>
+
+                <div class="ad-placement" id="overviewAd" hidden aria-label="Advertisement"></div>
                 <div class="section-heading">
                     <div>
                         <h2>Security statistics</h2>
@@ -276,7 +291,7 @@
                         <div class="scanner-divider"></div>
 
                         <div class="scanner-capabilities">
-                            <div><span class="cap-icon blue">◈</span><div><strong>Machine Learning</strong><small>Trained Random Forest model</small></div></div>
+                            <div><span class="cap-icon blue">◈</span><div><strong>Machine Learning</strong><small>Character n-gram ML model</small></div></div>
                             <div><span class="cap-icon purple">⌘</span><div><strong>Local Intelligence</strong><small>Brand rules and local blocklists</small></div></div>
                             <div><span class="cap-icon green">▣</span><div><strong>Privacy First</strong><small>Submitted URLs are not opened</small></div></div>
                         </div>
@@ -341,7 +356,7 @@
                         <p>Review and manage previously analyzed URLs.</p>
                     </div>
                     <div class="heading-actions">
-                        <button class="secondary-button" id="exportHistory">↓ Export CSV</button>
+                        <button class="secondary-button" id="exportHistory" hidden>↓ Export CSV</button>
                         <button class="danger-button" id="clearHistory">Clear history</button>
                     </div>
                 </div>
@@ -402,7 +417,7 @@
                         <div class="large-feature-icon blue">◈</div>
                         <span class="feature-label">LAYER 01</span>
                         <h3>Machine Learning</h3>
-                        <p>A locally trained Random Forest classifier evaluates numerical URL features and estimates phishing probability.</p>
+                        <p>A locally trained character n-gram model evaluates the normalized hostname together with numeric URL features to estimate phishing probability.</p>
                         <div class="feature-footer"><span class="mini-status"></span> Model loaded locally</div>
                     </article>
                     <article class="panel intelligence-card">
@@ -437,6 +452,172 @@
                 <div class="bottom-note"><span>ⓘ</span><p>A no-match from any provider does not guarantee a URL is safe. Keep local lists updated and configure live providers for additional reputation coverage.</p></div>
             </section>
 
+            <!-- MY ACCOUNT -->
+            <section class="page" id="page-account">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">ACCOUNT & SUBSCRIPTION</div>
+                        <h1>My Account</h1>
+                        <p>Manage your PhishGuard account, subscription and scan usage.</p>
+                    </div>
+                </div>
+
+                <div class="panel account-panel" id="accountSignedOut">
+                    <div class="account-tabs" role="tablist" aria-label="Account access">
+                        <button type="button" class="account-tab active" data-auth-mode="login">Sign in</button>
+                        <button type="button" class="account-tab" data-auth-mode="register">Create account</button>
+                    </div>
+                    <form id="loginForm" class="account-form">
+                        <h2>Welcome back</h2>
+                        <p>Sign in to view your plan and keep your scan history with your account.</p>
+                        <label for="loginEmail">Email address</label>
+                        <input id="loginEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+                        <label for="loginPassword">Password</label>
+                        <div class="password-input-wrap"><input id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="password-toggle" type="button" data-password-toggle="loginPassword" aria-label="Show password" aria-pressed="false">Show</button></div>
+                        <button class="primary-button" type="submit">Sign in</button>
+                        <button class="text-button" type="button" id="forgotPasswordLink">Forgot password?</button>
+                    </form>
+                    <form id="registerForm" class="account-form" hidden>
+                        <h2>Create your free account</h2>
+                        <p>Registration starts on the Free plan. Use at least 12 characters for your password.</p>
+                        <label for="registerEmail">Email address</label>
+                        <input id="registerEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+                        <label for="registerPassword">Password</label>
+                        <div class="password-input-wrap"><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button class="password-toggle" type="button" data-password-toggle="registerPassword" aria-label="Show password" aria-pressed="false">Show</button></div>
+                        <button class="primary-button" type="submit">Create Free account</button>
+                        <p class="input-hint">We will send a verification link to this email address.</p>
+                    </form>
+                    <form id="passwordResetRequestForm" class="account-form" hidden>
+                        <h2>Reset your password</h2>
+                        <p>Enter the email address linked to your account. If it matches, we will send a secure reset link.</p>
+                        <label for="resetRequestEmail">Email address</label>
+                        <input id="resetRequestEmail" name="email" type="email" autocomplete="email" maxlength="254" required>
+                        <button class="primary-button" type="submit">Send reset link</button>
+                        <button class="text-button" type="button" id="backToLogin">Back to sign in</button>
+                    </form>
+                    <form id="passwordResetConfirmForm" class="account-form" hidden>
+                        <h2>Choose a new password</h2>
+                        <p>Use at least 12 characters. This will sign out your other active sessions.</p>
+                        <input id="resetToken" name="token" type="hidden">
+                        <label for="newPassword">New password</label>
+                        <div class="password-input-wrap"><input id="newPassword" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button class="password-toggle" type="button" data-password-toggle="newPassword" aria-label="Show password" aria-pressed="false">Show</button></div>
+                        <button class="primary-button" type="submit">Update password</button>
+                        <button class="text-button" type="button" id="cancelPasswordReset">Back to sign in</button>
+                    </form>
+                    <p class="account-feedback" id="accountFeedback" role="status" aria-live="polite"></p>
+                </div>
+
+                <div class="panel account-panel" id="accountSignedIn" hidden>
+                    <div class="account-profile">
+                        <div class="account-avatar" id="accountAvatar"><span>PG</span></div>
+                        <div><div class="eyebrow">SIGNED IN AS</div><h2 id="accountEmail">—</h2><p class="profile-handle" id="accountUsernameLabel">Set your username</p></div>
+                    </div>
+                    <section class="profile-editor" aria-labelledby="userProfileTitle">
+                        <div class="profile-editor-heading"><div><span class="account-label">PERSONAL DETAILS</span><h3 id="userProfileTitle">Your profile</h3><p>Choose a username and add a photo to personalize your account.</p></div></div>
+                        <form id="userProfileForm" class="profile-form">
+                            <div class="profile-photo-control">
+                                <div class="profile-photo-preview" id="userProfilePreview"><span>PG</span></div>
+                                <div class="profile-photo-actions"><strong>Profile picture</strong><label class="profile-upload-button" for="userProfileImage">Choose photo</label><input id="userProfileImage" type="file" accept="image/png,image/jpeg,image/webp" hidden><small>JPG, PNG or WEBP · Maximum 2 MB</small><button class="profile-remove-photo" type="button" id="userRemovePhoto">Remove photo</button></div>
+                            </div>
+                            <label for="userProfileUsername">Username</label>
+                            <input id="userProfileUsername" name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" autocomplete="username" placeholder="e.g. serge_tech" required>
+                            <p class="profile-input-hint">3–24 characters. Letters, numbers, dots, underscores and hyphens.</p>
+                            <button class="primary-button" id="saveUserProfile" type="submit">Save profile</button>
+                            <p class="account-feedback" id="userProfileFeedback" role="status" aria-live="polite"></p>
+                        </form>
+                    </section>
+                    <div class="account-feedback" id="emailVerificationNotice" role="status" aria-live="polite" hidden>
+                        Your email address is not verified yet. Check your inbox or request a new verification email.
+                        <button class="text-button" type="button" id="resendVerification">Resend verification email</button>
+                    </div>
+                    <div class="account-plan-row">
+                        <div><span class="account-label">CURRENT PLAN</span><strong id="accountPlanName">Free</strong></div>
+                        <span class="account-plan-status" id="accountPlanStatus">ACTIVE</span>
+                    </div>
+                    <div class="usage-block">
+                        <div class="usage-heading"><strong>Monthly scan usage</strong><span id="accountUsageText">0 / 50</span></div>
+                        <div class="usage-track"><div class="usage-fill" id="accountUsageBar"></div></div>
+                        <p id="accountUsageNote">Your scan allowance resets at the start of each UTC calendar month.</p>
+                    </div>
+                    <div class="account-plan-details" id="accountPlanDetails"></div>
+                    <div class="account-notifications-shortcut">
+                        <div><span class="account-label">ACCOUNT UPDATES</span><strong>Notifications</strong><p>Read new messages and account updates in your notification centre.</p></div>
+                        <button class="secondary-button" type="button" data-goto="notifications">Open notifications</button>
+                    </div>
+                    <div class="account-actions">
+                        <button class="secondary-button" type="button" id="accountViewPlans">View plans</button>
+                        <button class="text-button" type="button" id="accountLogout">Sign out</button>
+                    </div>
+                    <p class="account-feedback" id="accountFeedbackSigned" role="status" aria-live="polite"></p>
+                </div>
+            </section>
+
+
+            <!-- NOTIFICATIONS CENTRE -->
+            <section class="page" id="page-notifications">
+                <div class="page-heading">
+                    <div><div class="eyebrow">ACCOUNT UPDATES</div><h1>Notifications</h1><p>New messages, payment updates, subscription changes and security notices for your account.</p></div>
+                    <div class="notification-page-actions">
+                        <button class="secondary-button" type="button" id="refreshAccountNotifications">Refresh</button>
+                        <button class="text-button" type="button" id="markAllNotificationsRead">Mark all as read</button>
+                    </div>
+                </div>
+                <div class="panel notification-centre-panel">
+                    <div class="notification-centre-summary"><strong id="notificationUnreadSummary">Unread notifications</strong><span>Only you can see these updates.</span></div>
+                    <div id="notificationsList" class="account-notifications-list" aria-live="polite">
+                        <p class="account-notifications-empty">Your notifications will appear here.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAYMENT HISTORY -->
+            <section class="page" id="page-payments">
+                <div class="page-heading">
+                    <div><div class="eyebrow">BILLING RECORDS</div><h1>Payment History</h1><p>Review payments recorded for your PhishGuard subscriptions.</p></div>
+                    <button class="secondary-button" type="button" id="refreshAccountPayments">Refresh history</button>
+                </div>
+                <div class="panel account-payment-history">
+                    <div id="accountPaymentHistory" class="account-payment-list" aria-live="polite">
+                        <p class="account-notifications-empty">Your payment records will appear here.</p>
+                    </div>
+                </div>
+                <div class="bottom-note"><span>ⓘ</span><p>Manual subscription payments appear here after the PhishGuard owner verifies payment and approves your request. Pending requests are not shown as completed payments.</p></div>
+            </section>
+
+            <!-- PLANS & PRICING -->
+            <section class="page" id="page-pricing">
+                <div class="page-heading">
+                    <div>
+                        <div class="eyebrow">PHISHGUARD SUBSCRIPTIONS</div>
+                        <h1>Plans & Pricing</h1>
+                        <p>Start free and upgrade when your security workflow needs more.</p>
+                    </div>
+                </div>
+                <div class="pricing-grid" id="pricingGrid">
+                    <article class="panel pricing-card"><h2>Loading plans…</h2></article>
+                </div>
+                <div class="bottom-note"><span>ⓘ</span><p>Subscriptions currently apply to scans and history in the web dashboard. The standalone desktop app remains local and does not yet sync account plans or usage. Paid subscriptions are requested manually. The owner will contact you with payment instructions; access is activated only after the owner verifies payment and approves your request. Pro lasts one month; Business lasts seven months.</p></div>
+            </section>
+
+            <!-- ADVERTISING PREFERENCES -->
+            <section class="page" id="page-adpreferences">
+                <div class="page-heading">
+                    <div><div class="eyebrow">TRANSPARENCY &amp; ADVERTISING</div><h1>Advertising Preferences</h1><p>Understand how advertisements are displayed across PhishGuard and how your subscription affects your experience.</p></div>
+                </div>
+                <div class="policy-hero panel">
+                    <div class="policy-hero-icon" aria-hidden="true">◎</div>
+                    <div><span class="eyebrow">YOUR PHISHGUARD EXPERIENCE</span><h2>Advertising is determined by your plan</h2><p>PhishGuard first checks your subscription eligibility and the consent signal supplied by its configured advertising consent platform. Advertising scripts are not requested when that platform is missing, unavailable, or reports that consent has not been granted.</p></div>
+                </div>
+                <section class="panel ad-policy-section"><h2>1. Ads on the Free plan</h2><p>Users on the Free plan may see advertisements in supported areas of the dashboard. Advertising helps support the operation and continued development of PhishGuard.</p></section>
+                <section class="panel ad-policy-section"><h2>2. Ad-free paid plans</h2><p>Eligible paid subscriptions, such as Pro and Business, are designed to provide an ad-free experience while the subscription is active. Your plan and billing status determine eligibility.</p><p>You can review your current subscription, plan status and available upgrades in <button type="button" class="inline-policy-link" data-goto="pricing">Plans &amp; Billings</button>.</p></section>
+                <section class="panel ad-policy-section"><h2>3. Advertising relevance and personalization</h2><p>Where supported by the advertising provider and applicable law, ads may be contextual or personalized. Personalization may depend on provider settings, browser controls and consent requirements in your region.</p><p>PhishGuard does not use your scanned URLs as an advertising preference profile. URL scanning and threat detection remain separate from advertising.</p></section>
+                <section class="panel ad-policy-section"><h2>4. Cookies and advertising technologies</h2><p>Before AdSense can load, PhishGuard requires its configured consent-management platform (CMP) to provide valid IAB Transparency and Consent Framework (TCF) signals. The site applies a strict global gate and checks for affirmative consent to purposes 1, 3 and 4 and Google as an advertising vendor for every visitor. If the CMP is missing, unavailable, or consent is declined, the AdSense script is not requested. Third-party advertising providers may use cookies or similar technologies only in accordance with the consent signals, their own policies and applicable law. For personalized ads in the EEA, UK and Switzerland, Google requires a Google-certified CMP integrated with the IAB TCF. Advertising Preferences is an informational page, not a CMP or a substitute for the consent dialog.</p></section>
+                <section class="panel ad-policy-section"><h2>5. Changing your advertising experience</h2><p>Use the consent controls displayed by the configured CMP to review or change your advertising consent. You can also change your subscription in Plans &amp; Billings; eligible Pro and Business subscriptions are ad-free while active. Rejecting advertising consent does not restrict URL scanning or account access. <button type="button" class="secondary-button" id="manageAdvertisingConsent">Manage advertising consent</button></p></section>
+                <section class="panel ad-policy-section"><h2>6. Third-party providers</h2><p>When advertisements are served, the advertising provider may process limited technical information such as browser or device data in accordance with its own privacy terms. Review the provider's privacy information for details about its processing practices.</p></section>
+                <section class="panel ad-policy-note"><h2>Important note</h2><p>Advertising availability can change based on your plan, subscription status, regional requirements and the configuration of advertising services. PhishGuard's security scanning features are not conditional on interacting with an advertisement.</p></section>
+                <div class="policy-actions"><button type="button" class="secondary-button" data-goto="account">Back to My Account</button><button type="button" class="primary-button" data-goto="pricing">View Plans &amp; Billings</button></div>
+            </section>
+
             <!-- ABOUT -->
             <section class="page" id="page-about">
                 <div class="page-heading">
@@ -450,32 +631,52 @@
                 <div class="about-hero panel">
                     <div class="about-logo">PG</div>
                     <div>
-                        <div class="eyebrow">CYBERSECURITY PROJECT</div>
+                        <div class="eyebrow">AI-POWERED CYBERSECURITY PLATFORM</div>
                         <h2>PhishGuard<span class="brand-dot">.</span></h2>
-                        <p>An offline-first URL threat detection platform combining character-level machine learning, local rules, and optional live threat-intelligence lookups.</p>
+                        <p>PhishGuard helps users assess suspicious website links before opening them. It combines a locally available machine-learning model, defensive URL rules and optional online threat-intelligence checks in an offline-first security workflow.</p>
                         <span class="version-tag">VERSION 1.0.0</span>
                     </div>
                 </div>
 
-                <div class="section-heading"><div><h2>Technology stack</h2><p>Core technologies used in this project</p></div></div>
-                <div class="tech-grid">
-                    <div class="tech-card"><strong>Python</strong><span>Core programming</span></div>
-                    <div class="tech-card"><strong>Flask</strong><span>Backend API</span></div>
-                    <div class="tech-card"><strong>Scikit-learn</strong><span>Machine learning</span></div>
-                    <div class="tech-card"><strong>SQLite</strong><span>Local database</span></div>
-                    <div class="tech-card"><strong>HTML / CSS</strong><span>User interface</span></div>
-                    <div class="tech-card"><strong>JavaScript</strong><span>Frontend logic</span></div>
+                <div class="section-heading"><div><h2>What PhishGuard does</h2><p>Core capabilities available in the security workspace</p></div></div>
+                <div class="about-feature-grid">
+                    <article class="about-feature-card"><span class="about-feature-icon">⌕</span><div><h3>URL security scanning</h3><p>Submit a website URL for analysis and receive a clear <strong>Legitimate</strong> or <strong>Phishing</strong> assessment, together with a risk score and model confidence where available.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">✳</span><div><h3>Machine-learning detection</h3><p>A trained classification model examines URL patterns and extracted characteristics that can help distinguish suspicious links from ordinary website addresses.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">⌘</span><div><h3>Layered security checks</h3><p>Local detection rules add defensive checks such as known blocked indicators, trusted allowlist handling and suspicious address patterns alongside the model assessment.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">◉</span><div><h3>Offline-first protection</h3><p>The local model and available rules can perform scans without requiring a live threat-intelligence connection. This helps keep the core detection workflow available when internet access is limited.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">⇄</span><div><h3>Optional online intelligence</h3><p>When Online Mode and provider configuration are available, PhishGuard can use external threat-intelligence lookups to add current context to a URL assessment.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">▤</span><div><h3>Scan history and review</h3><p>Review previous scan records in the dashboard, revisit available analysis details and keep track of security checks performed in your account.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">◌</span><div><h3>Personal account</h3><p>Manage your account details, choose a username and profile picture, and access account-specific dashboard information.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">◇</span><div><h3>Plans and scan usage</h3><p>View available plans, check your scan allowance and review subscription-related information shown in your account. Paid access is activated only after a payment is verified.</p></div></article>
+                    <article class="about-feature-card"><span class="about-feature-icon">♧</span><div><h3>Account notifications</h3><p>View relevant in-app updates about account, subscription, payment and security activity when notifications are available for your account.</p></div></article>
                 </div>
 
+                <div class="section-heading"><div><h2>How a URL scan works</h2><p>A simple view of the analysis process</p></div></div>
+                <div class="about-workflow panel">
+                    <div class="about-workflow-step"><span>01</span><div><strong>Submit a URL</strong><p>Enter or paste the website address you want to check.</p></div></div>
+                    <div class="about-workflow-step"><span>02</span><div><strong>Analyze its signals</strong><p>The local model and configured defensive rules examine URL characteristics and available threat indicators.</p></div></div>
+                    <div class="about-workflow-step"><span>03</span><div><strong>Review the result</strong><p>See the classification, risk information and available explanation, then use your history to revisit recorded scans.</p></div></div>
+                </div>
+
+                <div class="about-security-note panel">
+                    <h3>Privacy and security approach</h3>
+                    <p>PhishGuard is designed around an offline-first workflow. Local scans use the detection resources available on the device or server. External lookups are optional and depend on Online Mode and the configuration of supported providers. Avoid submitting private or confidential URLs unless you understand how any enabled external provider may process lookup requests.</p>
+                </div>
                 <div class="panel disclaimer-panel">
                     <h3>Important security disclaimer</h3>
-                    <p>PhishGuard is a defensive detection tool. Its results are based on the current model, local rules and available intelligence data. A legitimate classification means that no threat was detected by the current checks; it is not a guarantee that a website is safe.</p>
+                    <p>PhishGuard is a defensive decision-support tool, not a guarantee of website safety. Detection depends on the model, local rules and intelligence data available at the time of a scan. A <strong>Legitimate</strong> result means that the current checks did not identify a threat; a new, compromised or previously unseen phishing page may still be missed. Always verify the website address and use safe browsing practices.</p>
                 </div>
             </section>
 
             <footer class="main-footer">
                 <span>© 2026 PhishGuard Security Platform</span>
-                <span><span class="status-indicator"></span> All analysis processed locally</span>
+                <span class="footer-policy-links">
+                    <a href="/privacy">Privacy</a>
+                    <a href="/terms">Terms</a>
+                    <a href="/security-disclaimer">Security Disclaimer</a>
+                    <button type="button" id="manageAdConsent" class="footer-preference-link">Advertising preferences</button>
+                </span>
+                <span><span class="status-indicator"></span> Offline scans are processed locally; online lookups run only when enabled</span>
             </footer>
         </div>
     </main>
@@ -494,6 +695,6 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/script.js') }}?v=12"></script>
 </body>
 </html>

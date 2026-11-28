@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M32%204%208%2013v18c0%2015%2010%2026%2024%2031%2014-5%2024-16%2024-31V13z'%20fill='%23c0392b'/%3E%3Cpath%20d='M22%2032l7%207%2013-15'%20fill='none'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>Prepare subscription email | PhishGuard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+  <style>
+    body{min-height:100vh;background:#080d18;color:#edf3fb;display:grid;place-items:center;padding:24px}
+    .email-shell{width:min(100%,760px);background:#111a2b;border:1px solid #263650;border-radius:20px;padding:clamp(22px,5vw,42px);box-shadow:0 24px 80px #0006}
+    .brand{display:flex;align-items:center;gap:12px;color:#8fb8ff;font-weight:800;letter-spacing:2px}
+    .brand img{width:48px;height:48px}
+    h1{font-size:clamp(25px,4vw,36px);margin:22px 0 10px}
+    p{color:#aebbd0;line-height:1.65}
+    .meta{margin:20px 0;padding:16px;border:1px solid #344967;border-radius:12px;background:#16243a;line-height:1.9}
+    .meta strong{color:#edf3fb}
+    pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:18px;border:1px solid #344967;border-radius:12px;background:#0b1424;color:#dce7f8;font:13px/1.7 Arial,sans-serif;max-height:48vh;overflow:auto}
+    .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+    .actions a,.actions button{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:9px;border:1px solid #344967;background:#182842;color:#edf3fb;text-decoration:none;font-weight:700;cursor:pointer}
+    .actions .primary{background:#3678ed;border-color:#3678ed}.actions .send-now{background:#b42335;border-color:#e04455;box-shadow:0 8px 24px #b4233544}.actions .send-now:hover{background:#d12f43}.send-status{min-height:24px;font-weight:700}.actions button:disabled{opacity:.6;cursor:wait}
+    .notice{font-size:13px;margin-top:18px}
+  </style>
+</head>
+<body>
+  <main class="email-shell">
+    <div class="brand">
+      <img alt="" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cpath d=%27M50 5 12 19v29c0 23 15 39 38 47 23-8 38-24 38-47V19z%27 fill=%27%236b7cff%27/%3E%3Cpath d=%27m31 50 13 13 26-29%27 fill=%27none%27 stroke=%27white%27 stroke-width=%277%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E">
+      PHISHGUARD
+    </div>
+    <h1>Prepare your subscription email</h1>
+    <p>This step is optional. Your request has already been submitted to the admin inbox. Review the message below, then choose whether to open your email application and send it yourself.</p>
+    <div class="meta">
+      <div><strong>To:</strong> {{ owner_email if owner_email else 'Owner email is not configured' }}</div>
+      <div><strong>Subject:</strong> PhishGuard {{ plan }} subscription request #{{ details.id }}</div>
+      <div><strong>Request status:</strong> {{ details.status|title }}</div>
+    </div>
+    <pre id="emailBody">{{ email_body }}</pre>
+    <div class="actions">
+      {% if mailto_url %}
+      <a class="primary" href="{{ mailto_url }}">Open email application</a>
+      {% else %}
+      <span class="notice">The owner email address has not been configured, so an email cannot be addressed yet. Your request is still safely submitted.</span>
+      {% endif %}
+      <button type="button" id="copyEmail">Copy email text</button>
+      {% if owner_email %}<button type="button" class="send-now" id="sendEmailNow">Send Email Now</button>{% endif %}
+      <a href="/">Return to PhishGuard</a>
+    </div>
+    <p class="notice" id="copyStatus" role="status" aria-live="polite">No email is sent automatically. Use “Send Email Now” only when you are ready to send this message directly to the PhishGuard owner.</p>
+    <p class="send-status" id="sendEmailStatus" role="status" aria-live="polite"></p>
+  </main>
+  <script>
+    document.getElementById("copyEmail").addEventListener("click", async () => {
+      const text = document.getElementById("emailBody").textContent;
+      const status = document.getElementById("copyStatus");
+      try {
+        await navigator.clipboard.writeText(text);
+        status.textContent = "Email text copied.";
+      } catch (_) {
+        status.textContent = "Copy is unavailable in this browser. You can select the email text above and copy it.";
+      }
+    });
+    const sendButton = document.getElementById("sendEmailNow");
+    if (sendButton) {
+      sendButton.addEventListener("click", async () => {
+        const status = document.getElementById("sendEmailStatus");
+        sendButton.disabled = true;
+        sendButton.textContent = "Sending…";
+        status.textContent = "Sending your email securely. Please wait…";
+        status.style.color = "";
+        try {
+          const csrfResponse = await fetch("/api/auth/csrf", {
+            credentials: "same-origin",
+            cache: "no-store"
+          });
+          const csrfData = await csrfResponse.json();
+          if (!csrfResponse.ok || !csrfData.csrf_token) {
+            throw new Error("Your secure session could not be verified. Refresh this page and sign in again.");
+          }
+          const response = await fetch("/api/billing/requests/{{ details.id }}/send-email", {
+            method: "POST",
+            credentials: "same-origin",
+            cache: "no-store",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfData.csrf_token
+            },
+            body: JSON.stringify({})
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "The email provider did not accept your message.");
+          }
+          status.textContent = "✓ " + (data.message || "Your email was accepted by the email provider for sending to the PhishGuard owner.");
+          status.style.color = "#55d6a2";
+          sendButton.textContent = "Email Sent";
+          sendButton.setAttribute("aria-label", "Email accepted by the email provider");
+        } catch (error) {
+          status.textContent = "⚠ " + error.message;
+          status.style.color = "#ffb86b";
+          sendButton.disabled = false;
+          sendButton.textContent = "Try Send Email Again";
+        }
+      });
+    }
+  </script>
+</body>
+</html>

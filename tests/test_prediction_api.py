@@ -220,12 +220,40 @@ def test_production_session_cookie_is_secure_by_default(monkeypatch):
     assert app.config["SESSION_COOKIE_SECURE"] is True
 
 
-def test_session_cookie_secure_can_be_explicitly_overridden(monkeypatch):
+def test_render_forces_secure_cookie_even_when_env_disables_it(monkeypatch):
     monkeypatch.setenv("RENDER", "true")
     monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
     monkeypatch.setenv("SECRET_KEY", "test-production-secret")
 
     app = create_app()
 
-    assert app.config["SESSION_COOKIE_SECURE"] is False
+    # Render is HTTPS-only in production; an environment override must not
+    # weaken the Secure attribute on authentication session cookies.
+    assert app.config["SESSION_COOKIE_SECURE"] is True
 
+
+
+
+def test_readiness_endpoint_checks_model_and_database(client):
+    response = client.get("/api/ready")
+    assert response.status_code in (200, 503)
+    data = response.get_json()
+    assert data["status"] in ("ready", "not_ready")
+    assert set(data["checks"]) == {"model", "database"}
+    assert all(isinstance(value, bool) for value in data["checks"].values())
+
+
+def test_readiness_endpoint_returns_not_ready_when_database_is_unavailable(client, monkeypatch):
+    from contextlib import contextmanager
+    from backend.database.auth_service import auth_service
+
+    @contextmanager
+    def unavailable_database():
+        raise RuntimeError("database unavailable")
+        yield
+
+    monkeypatch.setattr(auth_service, "connection", unavailable_database)
+    response = client.get("/api/ready")
+    assert response.status_code == 503
+    assert response.get_json()["status"] == "not_ready"
+    assert response.get_json()["checks"]["database"] is False

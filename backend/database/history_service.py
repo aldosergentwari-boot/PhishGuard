@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from contextlib import contextmanager
 
 from backend.config import DATABASE_DIR, DATABASE_PATH
+from backend.database.connection import connect
 
 
 class HistoryService:
@@ -16,9 +17,7 @@ class HistoryService:
 
     @contextmanager
     def get_connection(self):
-        connection = sqlite3.connect(DATABASE_PATH, timeout=10)
-        connection.row_factory = sqlite3.Row
-
+        connection = connect(DATABASE_PATH)
         try:
             yield connection
             connection.commit()
@@ -79,6 +78,25 @@ class HistoryService:
                 ON scan_history(prediction)
             """)
 
+            # Keep quota accounting after users delete their visible history.
+            connection.execute("""
+                CREATE TABLE IF NOT EXISTS scan_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    owner_id TEXT NOT NULL,
+                    scanned_at TEXT NOT NULL,
+                    history_scan_id INTEGER UNIQUE
+                )
+            """)
+            connection.execute("""
+                CREATE INDEX IF NOT EXISTS idx_scan_usage_owner_time
+                ON scan_usage(owner_id, scanned_at)
+            """)
+            connection.execute("""
+                INSERT OR IGNORE INTO scan_usage(owner_id, scanned_at, history_scan_id)
+                SELECT owner_id, scanned_at, id FROM scan_history
+                WHERE owner_id IS NOT NULL
+            """)
+
     def save_scan(self, result, owner_id):
         if not owner_id:
             raise ValueError("A valid scan owner is required.")
@@ -121,7 +139,12 @@ class HistoryService:
                 scanned_at
             ))
 
-            return cursor.lastrowid
+            scan_id = cursor.lastrowid
+            connection.execute("""
+                INSERT INTO scan_usage(owner_id, scanned_at, history_scan_id)
+                VALUES (?, ?, ?)
+            """, (owner_id, scanned_at, scan_id))
+            return scan_id
 
     @staticmethod
     def serialize_scan(row):
@@ -183,7 +206,8 @@ class HistoryService:
         limit=20,
         offset=0,
         search="",
-        filter_by="all"
+        filter_by="all",
+        max_records=None
     ):
         if not owner_id:
             raise ValueError("A valid history owner is required.")
@@ -195,6 +219,10 @@ class HistoryService:
 
         where_clause = f"owner_id = ? AND ({filters})"
         parameters = [owner_id, *filter_parameters]
+        if max_records is not None:
+            max_records = max(1, int(max_records))
+            where_clause = f"owner_id = ? AND id IN (SELECT id FROM scan_history WHERE owner_id = ? ORDER BY id DESC LIMIT ?) AND ({filters})"
+            parameters = [owner_id, owner_id, max_records, *filter_parameters]
 
         with self.get_connection() as connection:
 
@@ -212,7 +240,7 @@ class HistoryService:
                 WHERE {where_clause}
             """, parameters).fetchone()[0]
 
-            summary_row = connection.execute("""
+            summary_query = """
                 SELECT
                     COUNT(*) AS total,
                     COALESCE(SUM(CASE WHEN UPPER(prediction) = 'PHISHING'
@@ -223,7 +251,17 @@ class HistoryService:
                         THEN 1 ELSE 0 END), 0) AS legitimate
                 FROM scan_history
                 WHERE owner_id = ?
-            """, (owner_id,)).fetchone()
+            """
+            summary_parameters = (owner_id,)
+            if max_records is not None:
+                summary_query = summary_query.replace(
+                    "WHERE owner_id = ?",
+                    "WHERE owner_id = ? AND id IN (SELECT id FROM scan_history WHERE owner_id = ? ORDER BY id DESC LIMIT ?)"
+                )
+                summary_parameters = (owner_id, owner_id, max_records)
+            summary_row = connection.execute(
+                summary_query, summary_parameters
+            ).fetchone()
 
             return {
                 "total": total,
@@ -243,13 +281,24 @@ class HistoryService:
                 ]
             }
 
-    def get_scan(self, scan_id, owner_id):
+    def get_scan(self, scan_id, owner_id, max_records=None):
         with self.get_connection() as connection:
-            row = connection.execute("""
-                SELECT *
-                FROM scan_history
-                WHERE id = ? AND owner_id = ?
-            """, (scan_id, owner_id)).fetchone()
+            if max_records is None:
+                row = connection.execute("""
+                    SELECT *
+                    FROM scan_history
+                    WHERE id = ? AND owner_id = ?
+                """, (scan_id, owner_id)).fetchone()
+            else:
+                row = connection.execute("""
+                    SELECT *
+                    FROM scan_history
+                    WHERE id = ? AND owner_id = ?
+                      AND id IN (
+                          SELECT id FROM scan_history
+                          WHERE owner_id = ? ORDER BY id DESC LIMIT ?
+                      )
+                """, (scan_id, owner_id, owner_id, max(1, int(max_records)))).fetchone()
 
             if row is None:
                 return None

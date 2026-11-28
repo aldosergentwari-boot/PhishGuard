@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d18">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cpath%20d='M32%204%208%2013v18c0%2015%2010%2026%2024%2031%2014-5%2024-16%2024-31V13z'%20fill='%23c0392b'/%3E%3Cpath%20d='M22%2032l7%207%2013-15'%20fill='none'%20stroke='%23fff'%20stroke-width='6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>Request subscription | PhishGuard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+  <style>
+    body{min-height:100vh;background:#080d18;color:#edf3fb;display:grid;place-items:center;padding:24px}
+    .request-shell{width:min(100%,760px);background:#111a2b;border:1px solid #263650;border-radius:20px;padding:clamp(22px,5vw,42px);box-shadow:0 24px 80px #0006}
+    .request-brand{color:#8fb8ff;font-weight:800;letter-spacing:2px;margin-bottom:24px}
+    .request-hero{display:grid;justify-items:center;text-align:center;margin:0 auto 18px}.request-hero img{width:92px;height:92px;filter:drop-shadow(0 12px 24px #557cff44)}.request-hero p{margin:8px 0 0;font-size:11px;letter-spacing:2px;font-weight:800;color:#8fb8ff}
+    .request-shell h1{font-size:clamp(26px,4vw,38px);margin:8px 0 12px}
+    .request-shell p{color:#aebbd0;line-height:1.65}
+    .request-plan{margin:24px 0;padding:20px;border:1px solid #344967;border-radius:14px;background:#16243a}
+    .request-plan strong{font-size:25px;display:block;margin:8px 0}
+    .request-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:24px}
+    .request-form label{display:block;font-size:12px;font-weight:700;letter-spacing:.8px;margin-bottom:8px;color:#aebbd0}.request-form small{display:block;margin-top:7px;color:#8798b2;font-size:12px;line-height:1.5}
+    .request-form input,.request-form select,.request-form textarea{width:100%;padding:13px;border:1px solid #344967;border-radius:9px;background:#0b1424;color:#edf3fb;font:inherit}
+    .request-form .wide{grid-column:1/-1}
+    .request-form button{cursor:pointer}
+    .request-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+    .request-actions a{color:#a9c8ff}.prepare-email-button{display:inline-flex;align-items:center;justify-content:center;min-height:58px;padding:16px 30px!important;border-radius:12px;background:linear-gradient(135deg,#3678ed,#735cf5);color:#fff!important;font-size:17px;font-weight:850;letter-spacing:.2px;text-decoration:none;box-shadow:0 12px 30px #3678ed55;border:1px solid #8bb2ff;transition:transform .18s ease,box-shadow .18s ease}.prepare-email-button:hover{transform:translateY(-2px);box-shadow:0 16px 36px #3678ed77}.prepare-email-button:focus-visible{outline:3px solid #a9c8ff;outline-offset:4px}
+    .request-feedback{margin-top:12px;min-height:24px}
+    .request-preview{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:18px;background:#030812d9}.request-preview.is-open{display:grid}.request-preview-card{width:min(100%,680px);max-height:90vh;overflow:auto;padding:24px;border:1px solid #344967;border-radius:18px;background:#111a2b;box-shadow:0 24px 80px #0009}.request-preview-card h2{margin:0 0 8px}.request-preview-card pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:16px;border:1px solid #344967;border-radius:10px;background:#0b1424;color:#dce7f8;font:13px/1.7 inherit}.request-preview-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}.request-preview-actions button{padding:11px 16px;border:1px solid #344967;border-radius:9px;background:#182842;color:#edf3fb;font-weight:700}.request-preview-actions .confirm{background:#3678ed;border-color:#3678ed}.request-preview-actions button:disabled{opacity:.55;cursor:wait}
+    .safety-note{font-size:13px;margin-top:22px}
+    @media(max-width:600px){.request-form{grid-template-columns:1fr}.request-form .wide{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <main class="request-shell" data-owner-email="{{ owner_email|e }}">
+    <div class="request-hero" aria-hidden="true"><img alt="" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Cdefs%3E%3ClinearGradient id=%27g%27 x1=%270%27 y1=%270%27 x2=%271%27 y2=%271%27%3E%3Cstop stop-color=%27%238b7cff%27/%3E%3Cstop offset=%271%27 stop-color=%27%2339c7c5%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d=%27M50 5 12 19v29c0 23 15 39 38 47 23-8 38-24 38-47V19z%27 fill=%27url(%23g)%27/%3E%3Cpath d=%27m31 50 13 13 26-29%27 fill=%27none%27 stroke=%27white%27 stroke-width=%277%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E"><p>PHISHGUARD</p></div>
+    <div class="eyebrow">SECURE SUBSCRIPTION REQUEST</div>
+    <h1>Request your paid plan</h1>
+    <p>Submit your subscription request to the PhishGuard admin first. The admin will review it and contact you with the next steps. Preparing an email is optional and can be done separately after your request is submitted.</p>
+    <div class="request-plan">
+      <div class="eyebrow">YOUR SELECTED PLAN</div>
+      <strong>{{ 'Pro' if selected_plan == 'pro' else 'Business' }}</strong>
+      <div>{{ '$4.99 / month' if selected_plan == 'pro' else '$19.99 / 7 months' }}</div>
+    </div>
+    <form id="subscriptionRequestForm" class="request-form">
+      <input type="hidden" id="selectedPlan" value="{{ selected_plan }}">
+      <div><label for="customerName">FULL NAME</label><input id="customerName" name="customer_name" required minlength="2" maxlength="80" autocomplete="name" placeholder="Your full name"></div>
+      <div><label for="phoneNumber">PHONE NUMBER (INTERNATIONAL FORMAT)</label><input id="phoneNumber" name="phone_number" type="tel" required minlength="7" maxlength="24" autocomplete="tel" inputmode="tel" placeholder="+1 202 555 0123" aria-describedby="phoneNumberHelp"><small id="phoneNumberHelp">Include your country calling code, for example +1, +44, or +250. PhishGuard accepts customers worldwide.</small></div>
+      <div><label for="paymentMethod">PREFERRED PAYMENT METHOD</label><select id="paymentMethod" name="payment_method" required><option value="">Choose a method</option><option value="mtn_momo">MTN Mobile Money</option><option value="airtel_money">Airtel Money</option><option value="bank_transfer">Bank transfer</option><option value="other">Other / discuss with owner</option></select></div>
+      <div><label for="message">MESSAGE (OPTIONAL)</label><textarea id="message" name="message" rows="3" maxlength="1000" placeholder="Any details that will help us contact you"></textarea></div>
+      <div class="wide"><p id="accountNotice">Checking your PhishGuard account…</p></div>
+      <div class="wide"><button class="primary-button" id="submitRequest" type="submit">Submit subscription request</button><p class="request-feedback" id="feedback" role="status" aria-live="polite"></p></div>
+      <div class="wide" id="requestSuccess" hidden><h2>Request submitted successfully</h2><p>Your request is now in the PhishGuard admin inbox. You do not need to send an email. If you would also like to write a formal email, you can prepare it separately below.</p><a id="prepareEmailLink" class="primary-button prepare-email-button" href="#">✉ Prepare Email (Optional)</a></div>
+    </form>
+    <p class="safety-note">Never send your Mobile Money PIN, bank password, OTP, or account password. PhishGuard will never ask for them.</p>
+    <div class="request-actions"><a href="/">Return to PhishGuard</a></div>
+  </main>
+  <script src="{{ url_for('static', filename='js/subscription_request.js') }}?v=3"></script>
+</body>
+</html>

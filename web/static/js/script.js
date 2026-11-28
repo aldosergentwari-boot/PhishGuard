@@ -4,7 +4,15 @@
 const API = {
     analyze: '/api/analyze',
     history: '/api/history',
-    status: '/api/status'
+    status: '/api/status',
+    plans: '/api/billing/plans',
+    subscription: '/api/billing/me',
+    ads: '/api/ads/config',
+    csrf: '/api/auth/csrf',
+    authMe: '/api/auth/me',
+    login: '/api/auth/login',
+    register: '/api/auth/register',
+    logout: '/api/auth/logout'
 };
 
 const MODE_STORAGE_KEY = 'phishguard.onlineMode';
@@ -14,7 +22,13 @@ const PAGE_NAMES = {
     scanner: 'URL Scanner',
     history: 'Scan History',
     intelligence: 'Intelligence',
-    about: 'About Project'
+    about: 'About Project',
+    adpreferences: 'Advertising Preferences',
+    pricing: 'Plans & Pricing',
+    account: 'My Account',
+    notifications: 'Notifications',
+    payments: 'Payment History',
+    admin: 'Owner Console'
 };
 
 const state = {
@@ -27,8 +41,14 @@ const state = {
     lastHistoryRecords: [],
     lastOverviewRecords: [],
     onlineMode: false,      // Offline-first: online checks require an explicit choice
-    internet: null          // true / false once /api/status has answered
+    internet: null,         // true / false once /api/status has answered
+    authenticated: false,
+    account: null,
+    planId: 'guest'
 };
+
+let userProfileImageDraft;
+let userProfileImageChanged = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -90,11 +110,15 @@ async function apiRequest(url, options = {}) {
     }
 
     if (!response.ok || payload?.success === false) {
-        throw new Error(
+        const error = new Error(
             payload?.message ||
             payload?.error ||
             `Request failed (HTTP ${response.status}).`
         );
+        error.code = payload?.code || null;
+        error.payload = payload;
+        error.status = response.status;
+        throw error;
     }
 
     return payload;
@@ -596,6 +620,28 @@ function setActivePage(pageName) {
     if (pageName === 'history') {
         loadHistory();
     }
+
+    if (pageName === 'notifications') {
+        void loadAccountNotifications();
+    }
+
+    if (pageName === 'account') {
+        loadAccount();
+    }
+
+    if (pageName === 'payments') {
+        if (state.authenticated) {
+            loadAccountPayments();
+        } else {
+            apiRequest(API.authMe).then(auth => {
+                state.authenticated = Boolean(auth.authenticated);
+                if (state.authenticated) loadAccountPayments();
+                else $('accountPaymentHistory').innerHTML = '<p class="account-notifications-empty">Sign in from My Account to view your payment history.</p>';
+            }).catch(error => {
+                $('accountPaymentHistory').innerHTML = '<p class="account-notifications-empty">' + escapeHtml(error.message) + '</p>';
+            });
+        }
+    }
 }
 
 function goToPage(pageName) {
@@ -954,9 +1000,10 @@ async function deleteHistoryRecord(id) {
     }
 
     try {
+        const headers = await csrfHeader();
         await apiRequest(
             `${API.history}/${encodeURIComponent(id)}`,
-            { method: 'DELETE' }
+            { method: 'DELETE', headers }
         );
 
         showToast('Scan record deleted.', 'success');
@@ -982,8 +1029,10 @@ async function clearHistory() {
     }
 
     try {
+        const headers = await csrfHeader();
         await apiRequest(API.history, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers
         });
 
         state.historyPage = 0;
@@ -1214,10 +1263,15 @@ async function handleScanSubmit(event) {
     } catch (error) {
         console.error('URL analysis failed:', error);
 
-        showToast(
-            `URL analysis failed: ${error.message}`,
-            'error'
-        );
+        if (error.code === 'GUEST_SCAN_LIMIT_REACHED') {
+            await promptGuestRegistration();
+            showToast('Guest limit reached. Create a free account or sign in to continue.', 'warning');
+        } else {
+            showToast(
+                `URL analysis failed: ${error.message}`,
+                'error'
+            );
+        }
 
     } finally {
         if (button) {
@@ -1229,6 +1283,17 @@ async function handleScanSubmit(event) {
             progress.hidden = true;
         }
     }
+}
+
+async function promptGuestRegistration() {
+    goToPage('account');
+    await loadAccount();
+    setAuthMode('register');
+    const feedback = $('accountFeedback');
+    if (feedback) {
+        feedback.textContent = 'Your 10 guest scans are used. Create a free account to continue scanning. Your guest scan history will be linked to your new account.';
+    }
+    $('registerEmail')?.focus();
 }
 
 /* =========================================
@@ -1353,7 +1418,157 @@ async function exportHistoryCsv() {
    12. EVENT LISTENERS
 ========================================= */
 
+async function loadAdminOverview() {
+    const token = $('adminToken')?.value || '';
+    const button = $('adminLoadOverview');
+    if (token.length < 32) {
+        showToast('Enter the configured admin token first.', 'error');
+        $('adminToken')?.focus();
+        return;
+    }
+    if (button) button.disabled = true;
+    try {
+        const response = await apiRequest('/api/admin/overview', {
+            headers: { 'X-Admin-Token': token },
+            cache: 'no-store'
+        });
+        const data = response.overview || {};
+        const setMetric = (id, value) => {
+            const element = $(id);
+            if (element) element.textContent = Number(value || 0).toLocaleString();
+        };
+        setMetric('adminActiveAccounts', data.active_accounts);
+        setMetric('adminActiveSubscriptions', data.active_subscriptions);
+        setMetric('adminScansThisMonth', data.scans_this_month);
+        setMetric('adminBonusScans', data.bonus_scans_granted_this_month);
+        const paymentStates = data.payment_transactions || {};
+        const paymentTotal = Object.values(paymentStates).reduce((sum, value) => sum + Number(value || 0), 0);
+        setMetric('adminPaymentsTotal', paymentTotal);
+        const breakdown = Object.entries(paymentStates).map(([status, count]) => status + ': ' + count).join(' · ');
+        if ($('adminPaymentBreakdown')) $('adminPaymentBreakdown').textContent = breakdown || 'No payment transactions';
+        if ($('adminOverview')) $('adminOverview').hidden = false;
+        showToast('Owner overview loaded. Reporting period: UTC month.', 'success');
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
+async function submitAdminCreditGrant(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const token = $('adminToken')?.value || '';
+    const email = $('adminUserEmail')?.value.trim() || '';
+    const scans = Number($('adminScanAmount')?.value);
+    const reason = $('adminGrantReason')?.value.trim() || '';
+    const feedback = $('adminFeedback');
+    const button = $('adminGrantButton');
+    const resultPanel = $('adminGrantResult');
+
+    if (token.length < 32) {
+        if (feedback) feedback.textContent = 'The admin token must be at least 32 characters.';
+        return;
+    }
+    if (!email || !Number.isInteger(scans) || scans < 1 || scans > 10000 || !reason || reason.length > 200) {
+        if (feedback) feedback.textContent = 'Check the email, scan amount (1–10,000), and reason.';
+        return;
+    }
+
+    if (button) button.disabled = true;
+    if (feedback) feedback.textContent = 'Verifying authorization and granting credits…';
+    if (resultPanel) resultPanel.hidden = true;
+
+    try {
+        const response = await apiRequest('/api/admin/scan-credits', {
+            method: 'POST',
+            headers: { 'X-Admin-Token': token },
+            body: JSON.stringify({ email, scans, reason })
+        });
+        if (feedback) feedback.textContent = response.message || 'Scan credits granted.';
+        if (resultPanel) {
+            resultPanel.hidden = false;
+            resultPanel.textContent = '';
+            const heading = document.createElement('strong');
+            heading.textContent = 'Bonus credits successfully recorded';
+            const details = document.createElement('p');
+            details.textContent = String(response.granted_scans) + ' scans granted to ' + (response.user?.email || email) + '.';
+            const expiry = document.createElement('p');
+            expiry.textContent = 'Expires: ' + formatDate(response.expires_at) + ' (UTC)';
+            resultPanel.append(heading, details, expiry);
+        }
+        $('adminToken').value = '';
+        form.reset();
+        $('adminScanAmount').value = '25';
+        showToast('Bonus scan credits granted successfully.', 'success');
+    } catch (error) {
+        if (feedback) feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+
 function bindEvents() {
+    // Accessible show/hide controls for account passwords
+    document.querySelectorAll('[data-password-toggle]').forEach(button => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById(button.dataset.passwordToggle);
+            if (!input) return;
+
+            const shouldShow = input.type === 'password';
+            input.type = shouldShow ? 'text' : 'password';
+            button.textContent = shouldShow ? 'Hide' : 'Show';
+            button.setAttribute('aria-label', shouldShow ? 'Hide password' : 'Show password');
+            button.setAttribute('aria-pressed', String(shouldShow));
+        });
+    });
+
+
+    // Account access and authentication
+    document.querySelectorAll('[data-auth-mode]').forEach(button => {
+        button.addEventListener('click', () => setAuthMode(button.dataset.authMode));
+    });
+    $('loginForm')?.addEventListener('submit', event => submitAccountForm(event, 'login'));
+    $('registerForm')?.addEventListener('submit', event => submitAccountForm(event, 'register'));
+    $('forgotPasswordLink')?.addEventListener('click', () => setAuthMode('forgot'));
+    $('backToLogin')?.addEventListener('click', () => setAuthMode('login'));
+    $('cancelPasswordReset')?.addEventListener('click', () => setAuthMode('login'));
+    $('passwordResetRequestForm')?.addEventListener('submit', requestPasswordReset);
+    $('passwordResetConfirmForm')?.addEventListener('submit', confirmPasswordReset);
+    $('resendVerification')?.addEventListener('click', resendVerificationEmail);
+    $('accountLogout')?.addEventListener('click', signOutAccount);
+    $('accountViewPlans')?.addEventListener('click', () => goToPage('pricing'));
+    $('refreshAccountNotifications')?.addEventListener('click', loadAccountNotifications);
+    $('markAllNotificationsRead')?.addEventListener('click', markAllNotificationsRead);
+    $('notificationsList')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-notification-read]');
+        if (button) void markNotificationRead(button.dataset.notificationRead);
+    });
+    $('refreshAccountPayments')?.addEventListener('click', loadAccountPayments);
+    $('userProfileImage')?.addEventListener('change', previewUserProfileImage);
+    $('userRemovePhoto')?.addEventListener('click', removeUserProfileImage);
+    $('userProfileForm')?.addEventListener('submit', saveUserProfile);
+    $('pricingGrid')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-plan]');
+        if (button) void requestPlanUpgrade(button.dataset.plan);
+    });
+    $('manageAdConsent')?.addEventListener('click', () => {
+        goToPage('adpreferences');
+    });
+    $('manageAdvertisingConsent')?.addEventListener('click', () => {
+        if (typeof window.phishguardShowConsentPreferences === 'function') {
+            window.phishguardShowConsentPreferences();
+        } else {
+            showToast(
+                'Advertising consent controls are not configured yet. Ads remain disabled.',
+                'info'
+            );
+        }
+    });
+
+    $('adminCreditForm')?.addEventListener('submit', submitAdminCreditGrant);
+    $('adminLoadOverview')?.addEventListener('click', loadAdminOverview);
 
     // Sidebar navigation
     document.querySelectorAll('.nav-link[data-page]').forEach(button => {
@@ -1689,8 +1904,710 @@ function toggleMode() {
     }
 }
 
+/* =========================================
+   ACCOUNT MANAGEMENT
+========================================= */
+async function csrfHeader() {
+    const token = await apiRequest(API.csrf);
+    return { 'X-CSRF-Token': token.csrf_token };
+}
+
+function setAuthMode(mode) {
+    $('loginForm').hidden = mode !== 'login';
+    $('registerForm').hidden = mode !== 'register';
+    $('passwordResetRequestForm').hidden = mode !== 'forgot';
+    $('passwordResetConfirmForm').hidden = mode !== 'reset';
+    document.querySelectorAll('[data-auth-mode]').forEach(button => {
+        button.classList.toggle('active', button.dataset.authMode === mode);
+    });
+    if ($('accountFeedback')) $('accountFeedback').textContent = '';
+}
+
+
+function renderUserProfile(user) {
+    const username = user?.username || '';
+    const label = $('accountUsernameLabel');
+    const field = $('userProfileUsername');
+    if (label) label.textContent = username ? '@' + username : 'Set your username';
+    if (field && document.activeElement !== field) field.value = username;
+    const image = user?.profile_image || '';
+    for (const id of ['accountAvatar', 'userProfilePreview']) {
+        const holder = $(id);
+        if (!holder) continue;
+        holder.replaceChildren();
+        if (image) {
+            const img = document.createElement('img');
+            img.src = image;
+            img.alt = 'Profile picture';
+            holder.appendChild(img);
+        } else {
+            const fallback = document.createElement('span');
+            fallback.textContent = (username || user?.email || 'PG').replace(/^@/, '').slice(0, 2).toUpperCase();
+            holder.appendChild(fallback);
+        }
+    }
+    if (!userProfileImageChanged) userProfileImageDraft = image || null;
+}
+
+function previewUserProfileImage(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+        showToast('Choose a JPG, PNG or WEBP image up to 2 MB.', 'error');
+        event.target.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        userProfileImageDraft = String(reader.result || '');
+        userProfileImageChanged = true;
+        const holder = $('userProfilePreview');
+        if (holder) holder.innerHTML = '<img src="' + userProfileImageDraft + '" alt="Profile picture preview">';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeUserProfileImage() {
+    userProfileImageDraft = null;
+    userProfileImageChanged = true;
+    $('userProfileImage').value = '';
+    const holder = $('userProfilePreview');
+    if (holder) holder.innerHTML = '<span>PG</span>';
+}
+
+async function saveUserProfile(event) {
+    event.preventDefault();
+    const button = $('saveUserProfile');
+    const feedback = $('userProfileFeedback');
+    button.disabled = true;
+    feedback.textContent = 'Saving your profile…';
+    try {
+        const headers = await csrfHeader();
+        const result = await apiRequest('/api/auth/profile', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                username: $('userProfileUsername').value.trim(),
+                profile_image: userProfileImageChanged ? userProfileImageDraft : (state.account?.profile_image || null)
+            })
+        });
+        state.account = { ...state.account, ...result.user };
+        userProfileImageChanged = false;
+        renderUserProfile(state.account);
+        feedback.textContent = result.message || 'Profile saved.';
+        showToast('Profile updated successfully.', 'success');
+    } catch (error) {
+        feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function loadAccount() {
+    const signedOut = $('accountSignedOut');
+    const signedIn = $('accountSignedIn');
+    if (!signedOut || !signedIn) return;
+    try {
+        const resetToken = new URLSearchParams(window.location.hash.slice(1)).get('reset_token');
+        if (resetToken) {
+            signedOut.hidden = false;
+            signedIn.hidden = true;
+            setAuthMode('reset');
+            return;
+        }
+        const [auth, billing] = await Promise.all([
+            apiRequest(API.authMe),
+            apiRequest(API.subscription)
+        ]);
+        state.authenticated = Boolean(auth.authenticated);
+        state.account = auth.user || null;
+        state.planId = billing.plan?.plan_id || (state.authenticated ? 'free' : 'guest');
+
+        // Show monthly scan usage on the main dashboard for Guests and signed-in users.
+        const usage = billing.usage || {};
+        const used = Math.max(0, Number(usage.scans_used) || 0);
+        const limit = Math.max(0, Number(usage.scans_limit) || 0);
+        const remaining = Math.max(0, Number(usage.scans_remaining ?? (limit - used)) || 0);
+        const usageText = $('overviewUsageText');
+        const usageBar = $('overviewUsageBar');
+        const usageNote = $('overviewUsageNote');
+        if (usageText) usageText.textContent = used.toLocaleString() + ' / ' + limit.toLocaleString();
+        if (usageBar) usageBar.style.width = (limit ? Math.min(100, used / limit * 100) : 0) + '%';
+        if (usageNote) usageNote.textContent = remaining.toLocaleString() +
+            ' URL scans remaining this month on your ' + (billing.plan?.name || 'Guest') +
+            ' plan. Allowance resets at the start of each UTC calendar month.';
+        const exportButton = $('exportHistory');
+        if (exportButton) exportButton.hidden = !['pro', 'business'].includes(state.planId);
+        signedOut.hidden = state.authenticated;
+        signedIn.hidden = !state.authenticated;
+        if (!state.authenticated) {
+            const resetToken = new URLSearchParams(window.location.hash.slice(1)).get('reset_token');
+            setAuthMode(resetToken ? 'reset' : 'login');
+            return;
+        }
+
+        const plan = billing.plan || {};
+        $('accountEmail').textContent = auth.user.email;
+        renderUserProfile(auth.user);
+        const verificationNotice = $('emailVerificationNotice');
+        if (verificationNotice) verificationNotice.hidden = Boolean(auth.user.email_verified);
+        $('accountPlanName').textContent = plan.name || 'Free';
+        $('accountPlanStatus').textContent = String(plan.status || 'active').toUpperCase();
+        $('accountUsageText').textContent = Number(usage.scans_used || 0) + ' / ' + Number(usage.scans_limit || 50);
+        const percent = usage.scans_limit
+            ? Math.min(100, (Number(usage.scans_used || 0) / Number(usage.scans_limit)) * 100)
+            : 0;
+        $('accountUsageBar').style.width = percent + '%';
+        $('accountUsageNote').textContent =
+            Number(usage.scans_remaining || 0) + ' scans remaining this month. Usage resets at the start of each UTC calendar month.';
+        const end = plan.current_period_end
+            ? new Date(plan.current_period_end).toLocaleDateString()
+            : 'No paid renewal date';
+        $('accountPlanDetails').innerHTML =
+            '<div><span>Billing</span><strong>' +
+            (plan.plan_id === 'business' ? '$19.99 every 7 months' :
+                plan.plan_id === 'pro' ? '$4.99 per month' : 'Free plan') +
+            '</strong></div><div><span>Plan period ends</span><strong>' +
+            escapeHtml(end) + '</strong></div>';
+        await loadAccountNotifications();
+    } catch (error) {
+        showToast('Could not load account details: ' + error.message, 'error');
+    }
+}
+
+async function loadAccountPayments() {
+    const list = $('accountPaymentHistory');
+    if (!list) return;
+    list.innerHTML = '<p class="account-notifications-empty">Loading payment history…</p>';
+    try {
+        const data = await apiRequest('/api/billing/payments');
+        const payments = Array.isArray(data.payments) ? data.payments : [];
+        if (!payments.length) {
+            list.innerHTML = '<p class="account-notifications-empty">No payment transactions have been recorded yet.</p>';
+            return;
+        }
+        list.innerHTML = payments.map(payment => {
+            const amount = Number(payment.amount || 0).toFixed(2);
+            const when = payment.created_at ? new Date(payment.created_at).toLocaleString() : '—';
+            const status = String(payment.status || 'pending').toLowerCase();
+            return '<article class="account-payment-item">' +
+                '<div><strong>' + escapeHtml(String(payment.plan_id || '').toUpperCase()) +
+                ' plan</strong><span>' + escapeHtml(when) + '</span></div>' +
+                '<div class="account-payment-value"><strong>' + escapeHtml(amount + ' ' + payment.currency) +
+                '</strong><span class="payment-status payment-status-' + escapeHtml(status) + '">' +
+                escapeHtml(status.replace(/_/g, ' ')) + '</span></div></article>';
+        }).join('');
+    } catch (error) {
+        list.innerHTML = '<p class="account-notifications-empty">' +
+            escapeHtml(error.message || 'Could not load payment history.') + '</p>';
+    }
+}
+
+function updateNotificationBadge(unreadCount) {
+    const badge = $('accountNotificationBadge');
+    const count = Math.max(0, Number(unreadCount) || 0);
+    if (!badge) return;
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.hidden = count === 0;
+    badge.setAttribute('aria-label', count + ' unread notifications');
+}
+
+function renderNotifications(items, unreadCount) {
+    const list = $('notificationsList');
+    const summary = $('notificationUnreadSummary');
+    if (summary) summary.textContent = unreadCount + ' unread notification' + (unreadCount === 1 ? '' : 's');
+    if (!list) return;
+    if (!items.length) {
+        list.innerHTML = '<p class="account-notifications-empty">You are all caught up. No notifications yet.</p>';
+        return;
+    }
+    list.innerHTML = items.map(item => {
+        const unread = !item.read_at;
+        const when = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+        return '<article class="account-notification-item' + (unread ? ' is-unread' : ' is-read') + '">' +
+            '<div class="account-notification-meta"><strong>' + escapeHtml(item.title) +
+            '</strong><span>' + escapeHtml(String(item.category || 'account').toUpperCase()) +
+            '</span></div><p>' + escapeHtml(item.message) + '</p><div class="account-notification-footer"><time>' +
+            escapeHtml(when) + '</time>' + (unread
+                ? '<button class="text-button" type="button" data-notification-read="' + escapeHtml(item.id) + '">Mark as read</button>'
+                : '<span class="notification-read-label">Read</span>') + '</div></article>';
+    }).join('');
+}
+
+async function loadAccountNotifications() {
+    try {
+        const data = await apiRequest('/api/account/notifications');
+        const items = Array.isArray(data.notifications) ? data.notifications : [];
+        const unreadCount = Math.max(0, Number(data.unread_count) || 0);
+        updateNotificationBadge(unreadCount);
+        renderNotifications(items, unreadCount);
+    } catch (error) {
+        const list = $('notificationsList');
+        if (list) list.innerHTML = '<p class="account-notifications-empty">' +
+            escapeHtml(error.message || 'Could not load notifications.') + '</p>';
+    }
+}
+
+async function markNotificationRead(notificationId) {
+    try {
+        const data = await apiRequest('/api/account/notifications/' + encodeURIComponent(notificationId) + '/read', {
+            method: 'POST',
+            headers: await csrfHeader()
+        });
+        updateNotificationBadge(data.unread_count);
+        await loadAccountNotifications();
+    } catch (error) {
+        showToast(error.message || 'Could not update notification.', 'error');
+    }
+}
+
+async function markAllNotificationsRead() {
+    try {
+        await apiRequest('/api/account/notifications/read-all', {
+            method: 'POST',
+            headers: await csrfHeader()
+        });
+        updateNotificationBadge(0);
+        await loadAccountNotifications();
+        showToast('All notifications marked as read.', 'success');
+    } catch (error) {
+        showToast(error.message || 'Could not update notifications.', 'error');
+    }
+}
+
+
+const authFormsInProgress = new WeakSet();
+
+function beginAuthForm(event, busyLabel) {
+    const form = event.currentTarget;
+    if (authFormsInProgress.has(form)) return null;
+    authFormsInProgress.add(form);
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(button => {
+        button.dataset.idleLabel = button.textContent;
+        button.disabled = true;
+        if (button.tagName === 'BUTTON') button.textContent = busyLabel;
+    });
+    return form;
+}
+
+function endAuthForm(form) {
+    if (!form) return;
+    authFormsInProgress.delete(form);
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(button => {
+        button.disabled = false;
+        if (button.dataset.idleLabel !== undefined) {
+            button.textContent = button.dataset.idleLabel;
+            delete button.dataset.idleLabel;
+        }
+    });
+}
+
+async function submitAccountForm(event, mode) {
+    event.preventDefault();
+    const form = beginAuthForm(event, mode === 'register' ? 'Creating account…' : 'Signing in…');
+    if (!form) return;
+    const email = form.elements.email.value.trim();
+    const password = form.elements.password.value;
+    const feedback = $('accountFeedback');
+    feedback.textContent = mode === 'register' ? 'Creating your account…' : 'Signing in…';
+    try {
+        const headers = await csrfHeader();
+        const response = await apiRequest(mode === 'register' ? API.register : API.login, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ email, password })
+        });
+        feedback.textContent = '';
+        form.reset();
+        await loadAccount();
+        await loadOverview();
+        await loadHistory();
+        await loadAdPlacement();
+        showToast(mode === 'register' ? (response.message || 'Your Free account is ready.') : 'You are signed in.', response.email_sent === false ? 'info' : 'success');
+    } catch (error) {
+        feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    } finally {
+        endAuthForm(form);
+    }
+}
+
+async function requestPasswordReset(event) {
+    event.preventDefault();
+    const form = beginAuthForm(event, 'Sending…');
+    if (!form) return;
+    const email = $('resetRequestEmail').value.trim();
+    const feedback = $('accountFeedback');
+    feedback.textContent = 'If the account exists, reset instructions will be sent.';
+    try {
+        const headers = await csrfHeader();
+        const result = await apiRequest('/api/auth/password-reset/request', {
+            method: 'POST', headers, body: JSON.stringify({ email })
+        });
+        feedback.textContent = result.message;
+        $('passwordResetRequestForm').reset();
+    } catch (error) {
+        feedback.textContent = error.message;
+    } finally {
+        endAuthForm(form);
+    }
+}
+
+async function confirmPasswordReset(event) {
+    event.preventDefault();
+    const form = beginAuthForm(event, 'Updating password…');
+    if (!form) return;
+    const token = $('resetToken').value;
+    const password = $('newPassword').value;
+    const feedback = $('accountFeedback');
+    feedback.textContent = 'Updating your password…';
+    try {
+        const headers = await csrfHeader();
+        const result = await apiRequest('/api/auth/password-reset/confirm', {
+            method: 'POST', headers, body: JSON.stringify({ token, password })
+        });
+        $('passwordResetConfirmForm').reset();
+        setAuthMode('login');
+        feedback.textContent = result.message;
+        window.history.replaceState({}, '', window.location.pathname + window.location.search);
+    } catch (error) {
+        feedback.textContent = error.message;
+    } finally {
+        endAuthForm(form);
+    }
+}
+
+let verificationResendLocked = false;
+
+async function resendVerificationEmail() {
+    const button = $('resendVerification');
+    const feedback = $('accountFeedbackSigned');
+    if (verificationResendLocked) return;
+    verificationResendLocked = true;
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Please wait…';
+    }
+    if (feedback) feedback.textContent = 'Sending verification email…';
+    try {
+        const headers = await csrfHeader();
+        const result = await apiRequest('/api/auth/verification/resend', {
+            method: 'POST', headers, body: '{}'
+        });
+        if (feedback) feedback.textContent = result.message;
+        showToast(result.message, result.email_sent ? 'success' : 'info');
+    } catch (error) {
+        if (feedback) feedback.textContent = error.message;
+        showToast(error.message, 'error');
+    } finally {
+        // Prevent accidental repeated clicks from invalidating/replacing links
+        // or exhausting the server-side resend rate limit.
+        window.setTimeout(() => {
+            verificationResendLocked = false;
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Resend verification email';
+            }
+        }, 60000);
+    }
+}
+
+let signOutInProgress = false;
+
+async function signOutAccount() {
+    // Ignore rapid repeated clicks while the first logout request is running.
+    if (signOutInProgress) return;
+
+    const button = $('accountLogout');
+    signOutInProgress = true;
+    if (button) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.textContent = 'Signing out…';
+    }
+
+    let loggedOut = false;
+    try {
+        const headers = await csrfHeader();
+        await apiRequest(API.logout, { method: 'POST', headers, body: '{}' });
+
+        // The server has confirmed logout. Update local auth state immediately;
+        // dashboard refreshes must not make a successful logout look like a failure.
+        loggedOut = true;
+        state.authenticated = false;
+        state.account = null;
+
+        await loadAccount();
+        await Promise.allSettled([
+            loadOverview(),
+            loadHistory(),
+            loadAdPlacement()
+        ]);
+        showToast('You have signed out.', 'success');
+    } catch (error) {
+        showToast(
+            loggedOut
+                ? 'You have signed out, but some dashboard data could not refresh.'
+                : 'Sign out failed: ' + error.message,
+            loggedOut ? 'info' : 'error'
+        );
+    } finally {
+        signOutInProgress = false;
+        if (button) {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+            button.textContent = 'Sign out';
+        }
+    }
+}
+
+async function requestPlanUpgrade(planId) {
+    if (planId === 'guest') { goToPage('scanner'); return; }
+    if (planId === 'free') { goToPage('account'); if (!state.authenticated) setAuthMode('register'); return; }
+    if (!['pro', 'business'].includes(planId)) return;
+    if (!state.authenticated) { goToPage('account'); showToast('Create a Free account or sign in before requesting a paid plan.', 'info'); return; }
+    window.location.assign('/subscription/request?plan=' + encodeURIComponent(planId));
+}
+
+async function waitForPalmKashPayment(txRef) {
+    const started = Date.now();
+    while (Date.now() - started < 120000) {
+        await new Promise(resolve => window.setTimeout(resolve, 5000));
+        try {
+            const status = await apiRequest('/api/billing/payments/' + encodeURIComponent(txRef) + '/status');
+            if (status.status === 'successful') {
+                showToast('Payment confirmed. Your paid plan is now active.', 'success');
+                await loadAccount();
+                return;
+            }
+            if (status.status === 'failed' || status.status === 'cancelled') {
+                showToast('Payment was not completed. No subscription was activated.', 'error');
+                await loadAccountPayments();
+                return;
+            }
+        } catch (error) {
+            showToast('Payment is still being checked. Refresh Payment History in My Account shortly.', 'info');
+            return;
+        }
+    }
+    showToast('Payment is still pending. You can refresh Payment History in My Account.', 'info');
+    await loadAccountPayments();
+}
+
+/* =========================================
+   SUBSCRIPTION PLANS
+========================================= */
+let adsenseScriptPromise = null;
+let advertisingConsentPromise = null;
+
+async function loadAdsenseScript(clientId) {
+    let script = document.querySelector('script[data-phishguard-adsense]');
+    if (script?.dataset.loaded === 'true') return;
+    if (adsenseScriptPromise) return adsenseScriptPromise;
+
+    adsenseScriptPromise = new Promise((resolve, reject) => {
+        if (!script) {
+            script = document.createElement('script');
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+            script.dataset.phishguardAdsense = 'true';
+            script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' +
+                encodeURIComponent(clientId);
+        }
+        script.addEventListener('load', () => {
+            script.dataset.loaded = 'true';
+            resolve();
+        }, { once: true });
+        script.addEventListener('error', () => {
+            script.remove();
+            reject(new Error('Ad service could not be loaded.'));
+        }, { once: true });
+        if (!script.isConnected) document.head.appendChild(script);
+    }).finally(() => {
+        adsenseScriptPromise = null;
+    });
+
+    return adsenseScriptPromise;
+}
+
+async function hasValidAdvertisingConsent() {
+    // Fail closed unless a real IAB TCF v2 CMP is present and reports consent.
+    // Keep one listener active so later withdrawal/re-consent is respected.
+    if (advertisingConsentPromise) return advertisingConsentPromise;
+    if (typeof window.__tcfapi !== 'function') return false;
+
+    advertisingConsentPromise = new Promise(resolve => {
+        let initialDecisionReceived = false;
+        const finishInitialDecision = value => {
+            if (initialDecisionReceived) return;
+            initialDecisionReceived = true;
+            resolve(Boolean(value));
+        };
+
+        try {
+            window.__tcfapi('addEventListener', 2, (tcData, success) => {
+                if (!success || !tcData) {
+                    finishInitialDecision(false);
+                    return;
+                }
+
+                const ready = ['tcloaded', 'useractioncomplete'].includes(tcData.eventStatus);
+                if (!ready) return;
+
+                // Require an affirmative TCF consent signal for every visitor.
+                // This is intentionally stricter than relying on region detection alone.
+                const purposes = tcData.purpose?.consents || {};
+                const vendors = tcData.vendor?.consents || {};
+                const consentGranted = Boolean(
+                    tcData.tcString &&
+                    purposes[1] &&
+                    purposes[3] &&
+                    purposes[4] &&
+                    vendors[755]
+                );
+
+                if (!initialDecisionReceived) {
+                    finishInitialDecision(consentGranted);
+                    return;
+                }
+
+                // A later user choice may grant or withdraw consent. Reload so
+                // the ad slot and Google tag are recreated only from the new signal.
+                if (tcData.eventStatus === 'useractioncomplete') {
+                    const slot = $('overviewAd');
+                    if (!consentGranted && slot) {
+                        slot.hidden = true;
+                        slot.replaceChildren();
+                    }
+                    window.location.reload();
+                }
+            });
+        } catch {
+            finishInitialDecision(false);
+        }
+    });
+}
+async function loadAdPlacement() {
+    const slot = $('overviewAd');
+    if (!slot) return;
+    slot.hidden = true;
+    slot.replaceChildren();
+    try {
+        const [adConfig, account] = await Promise.all([
+            apiRequest(API.ads),
+            apiRequest(API.subscription)
+        ]);
+        const planId = account?.plan?.plan_id || 'guest';
+        if (!adConfig.enabled || !['free', 'guest'].includes(planId) || !navigator.onLine) return;
+        if (!await hasValidAdvertisingConsent()) return;
+
+        // Only request ads after the configured CMP confirms the required TCF signals.
+        const ad = document.createElement('ins');
+        ad.className = 'adsbygoogle';
+        ad.style.display = 'block';
+        ad.dataset.adClient = adConfig.client_id;
+        ad.dataset.adSlot = adConfig.slot_id;
+        ad.dataset.adFormat = 'auto';
+        ad.dataset.fullWidthResponsive = 'true';
+        slot.appendChild(ad);
+
+        await loadAdsenseScript(adConfig.client_id);
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        slot.hidden = false;
+    } catch {
+        slot.hidden = true;
+        slot.replaceChildren();
+        // Ads are optional and must never affect scanning or account access.
+    }
+}
+
+async function loadPricing() {
+    const grid = $('pricingGrid');
+    if (!grid) return;
+    try {
+        const payload = await apiRequest(API.plans);
+        const plans = payload.plans || {};
+        const order = ['guest', 'free', 'pro', 'business'];
+        grid.innerHTML = order.filter(key => plans[key]).map(key => {
+            const plan = plans[key];
+            const interval = key === 'business' ? ' / 7 months' :
+                key === 'pro' ? ' / month' : key === 'guest' ? ' / month' : ' / forever';
+            const price = Number(plan.price_usd).toFixed(2);
+            const usageFeature = plan.limits?.scans_per_month
+                ? [Number(plan.limits.scans_per_month).toLocaleString() + ' scans per month']
+                : [];
+            const features = [...usageFeature, ...(plan.features || [])].map(item =>
+                '<li>' + escapeHtml(item) + '</li>'
+            ).join('');
+            return '<article class="panel pricing-card pricing-' + key + '">' +
+                '<div class="eyebrow">' + escapeHtml(key.toUpperCase()) + ' PLAN</div>' +
+                '<h2>' + escapeHtml(plan.name) + '</h2>' +
+                '<div class="pricing-price">$' + price + '<span>' + interval + '</span></div>' +
+                '<ul>' + features + '</ul>' +
+                '<button class="secondary-button pricing-action" type="button" data-plan="' + key + '"' +
+                '>' +
+                (key === 'guest' ? 'Start scanning' : key === 'free' ? (state.authenticated ? 'Current plan' : 'Create a free account') :
+                    'Request subscription') + '</button>' +
+                '</article>';
+        }).join('');
+    } catch {
+        grid.textContent = 'Plans are temporarily unavailable. Please try again.';
+    }
+}
+
+function handlePaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const paymentState = params.get('payment');
+    if (!paymentState) return;
+
+    const messages = {
+        success: ['Payment verified. Your subscription is now active.', 'success'],
+        not_completed: ['Payment was not completed. No plan change was made.', 'info'],
+        verification_failed: ['We could not verify the payment yet. Please contact support before trying again.', 'error']
+    };
+    const message = messages[paymentState];
+    if (message) {
+        showToast(message[0], message[1]);
+        if (paymentState === 'success' || paymentState === 'verification_failed') {
+            void loadAccount();
+        }
+    }
+
+    params.delete('payment');
+    const cleanUrl = window.location.pathname +
+        (params.toString() ? '?' + params.toString() : '') +
+        window.location.hash;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    const query = new URLSearchParams(window.location.search);
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const resetToken = fragment.get('reset_token');
+    if (resetToken) {
+        $('resetToken').value = resetToken;
+        goToPage('account');
+        setAuthMode('reset');
+    }
+    if (query.get('email_verified') === '1') {
+        showToast('Your email address has been verified.', 'success');
+        query.delete('email_verified');
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('email_verified');
+        window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+    } else if (query.get('email_verified') === '0') {
+        showToast('That verification link is invalid or has expired.', 'error');
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('email_verified');
+        window.history.replaceState({}, '', clean.pathname + clean.search + clean.hash);
+    }
+
+    handlePaymentReturn();
     bindEvents();
+    void loadPricing();
+    void loadAdPlacement();
+    void loadAccount();
 
     loadModePreference();
     renderModeUI();
@@ -1701,6 +2618,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.setInterval(() => {
         if (state.onlineMode) void refreshInternetStatus();
     }, 30000);
+    // Keep the sidebar notification count current without requiring users to open My Account.
+    window.setInterval(() => {
+        if (state.authenticated && !document.hidden) void loadAccountNotifications();
+    }, 45000);
+    document.addEventListener('visibilitychange', () => {
+        if (state.authenticated && !document.hidden) void loadAccountNotifications();
+    });
 
     loadOverview();
 });

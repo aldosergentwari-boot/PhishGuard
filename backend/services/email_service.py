@@ -1,0 +1,269 @@
+"""Minimal Brevo SMTP delivery for account security emails.
+
+Credentials are read only from environment variables and are never logged.
+"""
+import json
+import logging
+import os
+import smtplib
+from email.message import EmailMessage
+from email.utils import formataddr
+from html import escape
+from urllib.parse import urlencode, urlsplit
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+
+logger = logging.getLogger(__name__)
+
+
+def _settings():
+    return {
+        "host": os.getenv("MAIL_SERVER", "smtp-relay.brevo.com").strip(),
+        "port": int(os.getenv("MAIL_PORT") or "587"),
+        "username": os.getenv("MAIL_USERNAME", "").strip(),
+        "password": os.getenv("MAIL_PASSWORD", ""),
+        "api_key": os.getenv("BREVO_API_KEY", "").strip(),
+        "sender": os.getenv("MAIL_DEFAULT_SENDER", "").strip(),
+        "sender_name": os.getenv("MAIL_SENDER_NAME", "PhishGuard Security").strip(),
+        "base_url": os.getenv("PUBLIC_APP_URL", "").strip().rstrip("/"),
+        "use_tls": os.getenv("MAIL_USE_TLS", "true").strip().lower() in ("1", "true", "yes", "on"),
+    }
+
+
+def is_configured():
+    cfg = _settings()
+    parsed = urlsplit(cfg["base_url"])
+    trusted_origin = (
+        parsed.scheme == "https" and bool(parsed.hostname)
+        or parsed.scheme == "http" and parsed.hostname in ("127.0.0.1", "localhost")
+    ) and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment
+    provider_ready = bool(cfg["api_key"]) or bool(cfg["username"] and cfg["password"])
+    return bool(cfg["host"] and cfg["sender"] and trusted_origin and provider_ready)
+
+
+def _send_via_brevo_api(cfg, subject, recipient, text_body, html_body, reply_to=None):
+    payload = {
+        "sender": {"name": cfg["sender_name"], "email": cfg["sender"]},
+        "to": [{"email": recipient}],
+        "subject": subject,
+        "textContent": text_body,
+        "htmlContent": html_body,
+    }
+    if reply_to:
+        payload["replyTo"] = {"email": reply_to}
+    request = Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "accept": "application/json",
+            "api-key": cfg["api_key"],
+            "content-type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=15) as response:
+            return 200 <= response.status < 300
+    except HTTPError as exc:
+        logger.warning("Brevo API rejected transactional email (code=%s)", exc.code)
+        return False
+    except (URLError, TimeoutError, OSError) as exc:
+        logger.warning("Brevo API delivery failed (error_type=%s)", type(exc).__name__)
+        return False
+
+
+def _send(subject, recipient, text_body, html_body, reply_to=None):
+    cfg = _settings()
+    if not is_configured():
+        logger.warning("Transactional email is not configured (missing sender, API key/SMTP credentials, or valid public URL)")
+        return False
+
+    # Render Free blocks outbound SMTP ports 25/465/587. Prefer Brevo's HTTPS API
+    # whenever an API key is configured; keep SMTP for local or paid deployments.
+    if cfg["api_key"]:
+        return _send_via_brevo_api(cfg, subject, recipient, text_body, html_body, reply_to=reply_to)
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = formataddr((cfg["sender_name"], cfg["sender"]))
+    message["To"] = recipient
+    if reply_to:
+        message["Reply-To"] = reply_to
+    message.set_content(text_body)
+    message.add_alternative(html_body, subtype="html")
+    try:
+        with smtplib.SMTP(cfg["host"], cfg["port"], timeout=15) as smtp:
+            smtp.ehlo()
+            if cfg["use_tls"]:
+                smtp.starttls()
+                smtp.ehlo()
+            smtp.login(cfg["username"], cfg["password"])
+            smtp.send_message(message)
+        return True
+    except smtplib.SMTPResponseException as exc:
+        logger.warning("Transactional email rejected by SMTP (code=%s)", exc.smtp_code)
+        return False
+    except (OSError, smtplib.SMTPException) as exc:
+        logger.warning("Transactional email delivery failed (error_type=%s)", type(exc).__name__)
+        return False
+
+
+def _security_email(recipient, subject, heading, intro, action_label, action_url, expiry):
+    safe_heading = escape(heading)
+    safe_intro = escape(intro)
+    safe_label = escape(action_label)
+    safe_url = escape(action_url, quote=True)
+    text_body = (
+        f"{heading}\n\n{intro}\n\n{action_label}: {action_url}\n\n"
+        f"This link expires in {expiry}. If you did not request this, ignore this email."
+    )
+    html_body = f"""<!doctype html><html><body style="margin:0;background:#0b1220;color:#e8eef8;font-family:Arial,sans-serif;padding:32px">
+<div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:16px;padding:32px">
+<div style="font-weight:700;letter-spacing:1px;color:#8fb8ff">PHISHGUARD</div>
+<h1 style="font-size:24px">{safe_heading}</h1><p style="line-height:1.6;color:#c4cede">{safe_intro}</p>
+<p style="margin:28px 0"><a href="{safe_url}" style="display:inline-block;background:#3678ed;color:white;text-decoration:none;padding:13px 20px;border-radius:8px;font-weight:700">{safe_label}</a></p>
+<p style="font-size:13px;color:#a5b2c7">This link expires in {escape(expiry)}. If you did not request this, you can safely ignore this email.</p>
+<p style="font-size:12px;color:#718096">PhishGuard Security</p></div></body></html>"""
+    return _send(subject, recipient, text_body, html_body)
+
+
+def send_verification_email(recipient, raw_token):
+    cfg = _settings()
+    url = cfg["base_url"] + "/api/auth/verify-email?" + urlencode({"token": raw_token})
+    return _security_email(
+        recipient, "Verify your PhishGuard email", "Verify your email address",
+        "Confirm this email address to secure your PhishGuard account.",
+        "Verify email", url, "24 hours"
+    )
+
+
+def send_password_reset_email(recipient, raw_token):
+    cfg = _settings()
+    # Keep the bearer token in the URL fragment so it is not sent in HTTP requests or Referer headers.
+    url = cfg["base_url"] + "/#reset_token=" + raw_token
+    return _security_email(
+        recipient, "Reset your PhishGuard password", "Reset your password",
+        "A password reset was requested for your PhishGuard account.",
+        "Choose a new password", url, "30 minutes"
+    )
+
+
+def send_admin_password_reset_email(recipient, raw_token):
+    cfg = _settings()
+    url = cfg["base_url"] + "/admin/reset-password#token=" + raw_token
+    return _security_email(recipient, "Reset your PhishGuard admin password",
+        "Reset your admin password",
+        "A password reset was requested for the PhishGuard owner account.",
+        "Reset admin password", url, "30 minutes")
+
+
+def send_subscription_request_email(recipient, details):
+    """Send a formal customer-written subscription request to the configured owner."""
+    from html import escape
+
+    plan_id = str(details.get("plan_id", "")).strip().lower()
+    plan = "Pro" if plan_id == "pro" else "Business"
+    price = "$4.99 per month" if plan_id == "pro" else "$19.99 for 7 months"
+    name = str(details.get("customer_name") or "PhishGuard customer").strip()
+    customer_email = str(details.get("customer_email") or "").strip()
+    phone = str(details.get("phone_number") or "").strip()
+    payment = str(details.get("payment_method") or "Not specified").replace("_", " ").title()
+    note = str(details.get("message") or "").strip() or "None"
+    request_id = details.get("request_id")
+
+    subject = f"PhishGuard | {plan} Subscription Request #{request_id}"
+    text_body = (
+        "Dear PhishGuard Owner,\n\n"
+        "I hope this message finds you well.\n\n"
+        f"I am writing to formally request a {plan} subscription for my PhishGuard account.\n\n"
+        "My subscription details are:\n"
+        f"Full name: {name}\n"
+        f"Account email: {customer_email}\n"
+        f"Account ID: {details.get('user_id')}\n"
+        f"Request reference: #{request_id}\n"
+        f"Requested plan: {plan}\n"
+        f"Plan price: {price}\n"
+        f"Contact phone: {phone}\n"
+        f"Preferred payment method: {payment}\n"
+        f"Additional information: {note}\n\n"
+        "Kindly review my request and share the payment instructions and any further steps required to complete the subscription.\n\n"
+        "I understand that my account will only be upgraded after the payment has been independently verified and approved.\n\n"
+        "Thank you for your time and assistance.\n\n"
+        "Yours faithfully,\n"
+        f"{name}"
+    )
+    rows = [
+        ("Customer", name), ("Account email", customer_email),
+        ("Account ID", details.get("user_id")), ("Request reference", f"#{request_id}"),
+        ("Requested plan", plan), ("Plan price", price), ("Contact phone", phone),
+        ("Preferred payment method", payment), ("Additional information", note),
+    ]
+    table = "".join(
+        f"<tr><th style='text-align:left;padding:10px;border-bottom:1px solid #263650;color:#9fb1ca'>{escape(str(label))}</th>"
+        f"<td style='padding:10px;border-bottom:1px solid #263650;color:#edf3fb'>{escape(str(value))}</td></tr>"
+        for label, value in rows
+    )
+    html_body = (
+        '<!doctype html><html><body style="margin:0;background:#0b1220;color:#edf3fb;font-family:Arial,sans-serif;padding:28px">'
+        '<div style="max-width:640px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:16px;padding:30px">'
+        '<div style="font-weight:800;letter-spacing:2px;color:#8fb8ff">PHISHGUARD</div>'
+        '<h2 style="font-size:23px;margin:22px 0 10px">Formal subscription request</h2>'
+        '<p style="line-height:1.7;color:#c4cede">Dear PhishGuard Owner,<br><br>I hope this message finds you well. I am writing to formally request a '
+        + escape(plan) + ' subscription for my PhishGuard account. Please find my details below.</p>'
+        '<table style="width:100%;border-collapse:collapse;margin:20px 0">' + table + '</table>'
+        '<p style="line-height:1.7;color:#c4cede">Kindly review my request and share the payment instructions and any further steps required. I understand that my account will only be upgraded after payment has been independently verified and approved.</p>'
+        '<p style="line-height:1.7;color:#c4cede">Thank you for your time and assistance.</p>'
+        '<p style="line-height:1.7;color:#c4cede">Yours faithfully,<br><strong>' + escape(name) + '</strong></p>'
+        '</div></body></html>'
+    )
+    return _send(subject, recipient, text_body, html_body, reply_to=customer_email or None)
+
+
+def send_subscription_request_received_email(recipient, plan_id, request_id):
+    subject = f"PhishGuard {str(plan_id).title()} request received"
+    text_body = (
+        f"We received your request #{request_id} for the {str(plan_id).title()} plan. "
+        "The PhishGuard owner will contact you with payment instructions. "
+        "Your plan will not change until payment is verified and the owner approves it."
+    )
+    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Subscription request received</h2><p>We received request <strong>#{int(request_id)}</strong> for the <strong>{escape(str(plan_id).title())}</strong> plan.</p><p>The owner will contact you with payment instructions. Your account remains on its current plan until payment is verified and your request is approved.</p></div></body></html>"""
+    return _send(subject, recipient, text_body, html_body)
+
+
+def send_subscription_activated_email(recipient, plan_id, period_end):
+    title = str(plan_id).title()
+    end_date = str(period_end)[:10]
+    subject = f"Your PhishGuard {title} subscription is active"
+    text_body = f"Your {title} subscription has been activated after payment verification. Your current access period ends on {end_date}. Thank you for choosing PhishGuard."
+    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Your {escape(title)} plan is active</h2><p>Your payment was verified by the PhishGuard owner and your subscription is now active.</p><p>Current period ends: <strong>{escape(end_date)}</strong></p><p>You can sign in and review your plan in My Account.</p></div></body></html>"""
+    return _send(subject, recipient, text_body, html_body)
+
+
+def send_subscription_request_status_email(recipient, plan_id, status, note=""):
+    title = str(plan_id).title()
+    state = str(status).title()
+    subject = f"PhishGuard {title} subscription request update"
+    text_body = f"Your request for the {title} plan was {state.lower()}. Owner note: {note or 'Please contact support if you need more information.'}"
+    html_body = f"""<!doctype html><html><body style="background:#0b1220;color:#edf3fb;font-family:Arial;padding:24px"><div style="max-width:560px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:14px;padding:24px"><div style="color:#8fb8ff;font-weight:700">PHISHGUARD</div><h2>Subscription request {escape(state.lower())}</h2><p>Your request for the <strong>{escape(title)}</strong> plan was {escape(state.lower())}.</p><p>{escape(note or 'Please contact support if you need more information.')}</p></div></body></html>"""
+    return _send(subject, recipient, text_body, html_body)
+
+
+def send_owner_customer_email(recipient, subject, body):
+    """Send a plain-text and HTML customer-service reply from the configured owner."""
+    safe_subject = str(subject).strip()
+    safe_body = str(body).strip()
+    if not safe_subject or not safe_body:
+        return False
+    paragraphs = "".join(
+        f"<p style='line-height:1.7;color:#c4cede;white-space:pre-wrap'>{escape(line)}</p>"
+        for line in safe_body.splitlines() if line.strip()
+    )
+    html_body = f"""<!doctype html><html><body style="margin:0;background:#0b1220;color:#e8eef8;font-family:Arial,sans-serif;padding:32px">
+<div style="max-width:620px;margin:auto;background:#121d30;border:1px solid #263650;border-radius:16px;padding:32px">
+<div style="font-weight:700;letter-spacing:1px;color:#8fb8ff">PHISHGUARD</div>
+<h2 style="font-size:22px">A message from the PhishGuard team</h2>{paragraphs}
+<p style="margin-top:28px;color:#8fb8ff;font-weight:700">PhishGuard Customer Support</p>
+<p style="font-size:12px;color:#718096">This message relates to your PhishGuard account or subscription request.</p>
+</div></body></html>"""
+    return _send(safe_subject, recipient, safe_body + "\n\nPhishGuard Customer Support", html_body)

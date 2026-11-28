@@ -1,11 +1,12 @@
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, session
 
 from backend.database.history_service import (
     get_history_service
 )
 
 from backend.services.user_identity import get_current_user_id
+from backend.services.plan_service import PLAN_LIMITS, get_account_plan
 
 
 history_bp = Blueprint("history", __name__)
@@ -49,15 +50,32 @@ def get_history():
                 "error": "Invalid history filter."
             }), 400
 
+        account_id = session.get("account_id")
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
+        history_limit = PLAN_LIMITS[plan_id]["history_records"]
         service = get_history_service()
-
-        result = service.get_history(
-            owner_id=owner_id,
-            limit=limit,
-            offset=offset,
-            search=search,
-            filter_by=filter_by
-        )
+        if offset >= history_limit:
+            result = service.get_history(
+                owner_id=owner_id,
+                limit=1,
+                offset=0,
+                search=search,
+                filter_by=filter_by,
+                max_records=history_limit
+            )
+            result["scans"] = []
+            result["limit"] = limit
+            result["offset"] = offset
+        else:
+            limit = min(limit, history_limit - offset)
+            result = service.get_history(
+                owner_id=owner_id,
+                limit=limit,
+                offset=offset,
+                search=search,
+                filter_by=filter_by,
+                max_records=history_limit
+            )
 
         return jsonify({
             "success": True,
@@ -65,6 +83,7 @@ def get_history():
         }), 200
 
     except Exception:
+        current_app.logger.exception("Failed to retrieve scan history")
         return jsonify({
             "success": False,
             "error": "Could not retrieve scan history."
@@ -77,9 +96,13 @@ def get_scan(scan_id):
         owner_id = get_current_user_id()
         service = get_history_service()
 
+        account_id = session.get("account_id")
+        plan_id = get_account_plan(account_id)["plan_id"] if account_id else "free"
+        history_limit = PLAN_LIMITS[plan_id]["history_records"]
         scan = service.get_scan(
             scan_id=scan_id,
-            owner_id=owner_id
+            owner_id=owner_id,
+            max_records=history_limit
         )
 
         if scan is None:
