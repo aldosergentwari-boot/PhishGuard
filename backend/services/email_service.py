@@ -2,6 +2,7 @@
 
 Credentials are read only from environment variables and are never logged.
 """
+import json
 import logging
 import os
 import smtplib
@@ -9,6 +10,8 @@ from email.message import EmailMessage
 from email.utils import formataddr
 from html import escape
 from urllib.parse import urlencode, urlsplit
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +23,7 @@ def _settings():
         "port": int(os.getenv("MAIL_PORT") or "587"),
         "username": os.getenv("MAIL_USERNAME", "").strip(),
         "password": os.getenv("MAIL_PASSWORD", ""),
+        "api_key": os.getenv("BREVO_API_KEY", "").strip(),
         "sender": os.getenv("MAIL_DEFAULT_SENDER", "").strip(),
         "sender_name": os.getenv("MAIL_SENDER_NAME", "PhishGuard Security").strip(),
         "base_url": os.getenv("PUBLIC_APP_URL", "").strip().rstrip("/"),
@@ -34,16 +38,50 @@ def is_configured():
         parsed.scheme == "https" and bool(parsed.hostname)
         or parsed.scheme == "http" and parsed.hostname in ("127.0.0.1", "localhost")
     ) and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment
-    return bool(
-        cfg["host"] and cfg["username"] and cfg["password"]
-        and cfg["sender"] and trusted_origin
+    provider_ready = bool(cfg["api_key"]) or bool(cfg["username"] and cfg["password"])
+    return bool(cfg["host"] and cfg["sender"] and trusted_origin and provider_ready)
+
+
+def _send_via_brevo_api(cfg, subject, recipient, text_body, html_body):
+    payload = {
+        "sender": {"name": cfg["sender_name"], "email": cfg["sender"]},
+        "to": [{"email": recipient}],
+        "subject": subject,
+        "textContent": text_body,
+        "htmlContent": html_body,
+    }
+    request = Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "accept": "application/json",
+            "api-key": cfg["api_key"],
+            "content-type": "application/json",
+        },
+        method="POST",
     )
+    try:
+        with urlopen(request, timeout=15) as response:
+            return 200 <= response.status < 300
+    except HTTPError as exc:
+        logger.warning("Brevo API rejected transactional email (code=%s)", exc.code)
+        return False
+    except (URLError, TimeoutError, OSError) as exc:
+        logger.warning("Brevo API delivery failed (error_type=%s)", type(exc).__name__)
+        return False
 
 
 def _send(subject, recipient, text_body, html_body):
     cfg = _settings()
     if not is_configured():
+        logger.warning("Transactional email is not configured (missing sender, API key/SMTP credentials, or valid public URL)")
         return False
+
+    # Render Free blocks outbound SMTP ports 25/465/587. Prefer Brevo's HTTPS API
+    # whenever an API key is configured; keep SMTP for local or paid deployments.
+    if cfg["api_key"]:
+        return _send_via_brevo_api(cfg, subject, recipient, text_body, html_body)
+
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = formataddr((cfg["sender_name"], cfg["sender"]))
@@ -60,11 +98,9 @@ def _send(subject, recipient, text_body, html_body):
             smtp.send_message(message)
         return True
     except smtplib.SMTPResponseException as exc:
-        # Log only the SMTP status code; never expose recipient, message, or credentials.
         logger.warning("Transactional email rejected by SMTP (code=%s)", exc.smtp_code)
         return False
     except (OSError, smtplib.SMTPException) as exc:
-        # Keep diagnostics useful without logging provider responses or credentials.
         logger.warning("Transactional email delivery failed (error_type=%s)", type(exc).__name__)
         return False
 
