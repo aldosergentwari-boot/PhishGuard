@@ -43,7 +43,7 @@
       "",
       "Yours faithfully,",
       name
-    ].join("\\n");
+    ].join("\n");
   }
 
   function openPreview() {
