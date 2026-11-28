@@ -21,6 +21,14 @@ def test_postgres_adapter_translates_placeholders_and_ignore_insert():
     assert statement.endswith("ON CONFLICT DO NOTHING")
 
 
+def test_postgres_adapter_escapes_literal_percent_for_psycopg2():
+    statement = _postgres_sql(
+        "DELETE FROM auth_rate_limits WHERE bucket LIKE 'scan-%' AND window_started < ?"
+    )
+    assert "bucket LIKE 'scan-%%'" in statement
+    assert "window_started < %s" in statement
+
+
 def test_postgres_adapter_translates_sqlite_table_introspection():
     statement = _postgres_sql("PRAGMA table_info(users)")
     assert "information_schema.columns" in statement
