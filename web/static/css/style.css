@@ -78,6 +78,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 .navigation { display: grid; gap: 5px; }
 .nav-link {
+    position: relative;
     display: flex; align-items: center; gap: 13px;
     width: 100%; min-height: 44px;
     padding: 0 12px;
@@ -89,6 +90,15 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     transition: .2s ease;
 }
 .nav-link:hover { color: white; background: #172438; }
+.notification-badge {
+    margin-left: auto; min-width: 19px; height: 19px; padding: 0 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #ff7185; border-radius: 999px;
+    background: #d83d58; color: #fff; font-size: 10px;
+    line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 12px #d83d5844;
+}
+.notification-badge[hidden] { display: none !important; }
 .nav-link.active {
     color: #e9f5ff;
     background: linear-gradient(90deg, #1c4a7a55, #19334d55);
