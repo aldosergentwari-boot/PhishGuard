@@ -182,6 +182,7 @@ def test_customer_can_only_read_their_own_admin_notifications(monkeypatch, tmp_p
         json={"email": "notice-customer@example.com", "password": "A-Strong-Customer-Password-123!"},
         headers={"X-CSRF-Token": csrf})
     assert login.status_code == 200
+    csrf = customer_client.get("/api/auth/csrf").get_json()["csrf_token"]
     notices = customer_client.get("/api/account/notifications")
     assert notices.status_code == 200
     body = notices.get_json()
