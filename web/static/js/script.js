@@ -2226,8 +2226,17 @@ async function confirmPasswordReset(event) {
     }
 }
 
+let verificationResendLocked = false;
+
 async function resendVerificationEmail() {
+    const button = $('resendVerification');
     const feedback = $('accountFeedbackSigned');
+    if (verificationResendLocked) return;
+    verificationResendLocked = true;
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Please wait…';
+    }
     if (feedback) feedback.textContent = 'Sending verification email…';
     try {
         const headers = await csrfHeader();
@@ -2239,6 +2248,16 @@ async function resendVerificationEmail() {
     } catch (error) {
         if (feedback) feedback.textContent = error.message;
         showToast(error.message, 'error');
+    } finally {
+        // Prevent accidental repeated clicks from invalidating/replacing links
+        // or exhausting the server-side resend rate limit.
+        window.setTimeout(() => {
+            verificationResendLocked = false;
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Resend verification email';
+            }
+        }, 60000);
     }
 }
 
