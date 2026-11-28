@@ -9,6 +9,7 @@ from backend.database.auth_service import auth_service
 from backend.services.user_identity import get_browser_identity
 from backend.services import email_service
 from backend.services.profile_utils import USERNAME_RE, validate_profile_image
+from backend.services.auth_session import clear_user_auth_session
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -46,7 +47,7 @@ def protect_auth_mutations():
             or session.get("session_version") != user.get("session_version", 0)
             or session.get("account_email") != user.get("email")
         ):
-            session.clear()
+            clear_user_auth_session(session)
         else:
             # Refresh the rolling persistent cookie while the account remains
             # active and its revocation version still matches the database.
@@ -100,10 +101,10 @@ def _rate_limited(operation, email):
 
 
 def _establish_session(user):
-    # Rotate the CSRF token whenever authentication state changes. Keeping a
-    # fresh token in the new session avoids a tokenless interval after login.
-    session.clear()
-    session["csrf_token"] = secrets.token_urlsafe(32)
+    # User and owner authentication share the browser's signed Flask session,
+    # but occupy independent key namespaces. Do not clear the whole session or
+    # rotate the shared CSRF token: doing so would sign the owner out (or break
+    # CSRF-protected requests in an already-open admin tab).
     session["account_id"] = user["id"]
     session["account_email"] = user["email"]
     session["session_version"] = user.get("session_version", 0)
@@ -186,7 +187,7 @@ def current_user():
         return jsonify({"success": True, "authenticated": False, "user": None}), 200
     user = auth_service.get_user(user_id)
     if not user or session.get("session_version") != user.get("session_version", 0):
-        session.clear()
+        clear_user_auth_session(session)
         return jsonify({"success": True, "authenticated": False, "user": None}), 200
     from backend.services.plan_service import get_account_plan
     return jsonify({
@@ -298,8 +299,7 @@ def confirm_password_reset():
     )
     if not changed:
         return jsonify({"success": False, "error": "This password reset link is invalid or has expired."}), 400
-    session.clear()
-    session["csrf_token"] = secrets.token_urlsafe(32)
+    clear_user_auth_session(session)
     return jsonify({
         "success": True,
         "message": "Password updated. Sign in using your new password.",
@@ -308,8 +308,6 @@ def confirm_password_reset():
 
 @auth_bp.post("/api/auth/logout")
 def logout():
-    session.clear()
-    # Leave the anonymous browser session with a fresh token so the next
-    # sign-in or password-reset request starts from a valid CSRF state.
-    session["csrf_token"] = secrets.token_urlsafe(32)
+    # Customer logout must not affect an owner session in another tab.
+    clear_user_auth_session(session)
     return jsonify({"success": True, "message": "Logged out."}), 200
