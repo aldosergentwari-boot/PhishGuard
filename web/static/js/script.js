@@ -2153,7 +2153,7 @@ async function markNotificationRead(notificationId) {
     try {
         const data = await apiRequest('/api/account/notifications/' + encodeURIComponent(notificationId) + '/read', {
             method: 'POST',
-            headers: { 'X-CSRF-Token': await getCsrfToken() }
+            headers: await csrfHeader()
         });
         updateNotificationBadge(data.unread_count);
         await loadAccountNotifications();
