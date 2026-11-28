@@ -28,7 +28,9 @@
       const base=Number(usage.plan_scans_limit??usage.default_plan_limit??0);
       const owner=Boolean(u.is_owner);
       const scanCell='<strong>'+esc(used)+' / '+esc(total)+' scans</strong><small class="scan-usage-note">'+esc(Math.max(0,total-used))+' remaining this month</small><div class="scan-limit-controls"><input aria-label="Monthly scan limit for '+esc(u.email)+'" type="number" min="0" max="100000" step="1" value="'+esc(base)+'" data-scan-limit-input="'+esc(u.id)+'"><button class="btn" data-set-scan-limit="'+esc(u.id)+'">Save</button><button class="btn subtle" data-reset-scan-limit="'+esc(u.id)+'">Default</button></div>';
-      const actions=owner?(u.is_active?'Owner protected':'<button class="btn" data-toggle-user="'+u.id+'" data-active="true">Reactivate owner</button>'):'<button class="btn" data-toggle-user="'+u.id+'" data-active="'+(!u.is_active)+'">'+(u.is_active?"Suspend":"Activate")+'</button> <select data-plan-user="'+u.id+'"><option value="free">Free</option><option value="pro">Pro</option><option value="business">Business</option></select><button class="btn" data-set-plan="'+u.id+'">Set plan</button>';
+      const statusAction=owner?(u.is_active?'<strong>Owner protected</strong>':'<button class="btn" data-toggle-user="'+u.id+'" data-active="true">Reactivate owner</button>'):'<button class="btn" data-toggle-user="'+u.id+'" data-active="'+(!u.is_active)+'">'+(u.is_active?"Suspend":"Activate")+'</button>';
+      const planControls=' <select data-plan-user="'+u.id+'" aria-label="Plan for '+esc(u.email)+'"><option value="free" '+(u.plan_id==="free"?'selected':'')+'>Free</option><option value="pro" '+(u.plan_id==="pro"?'selected':'')+'>Pro</option><option value="business" '+(u.plan_id==="business"?'selected':'')+'>Business</option></select><button class="btn" data-set-plan="'+u.id+'">Set plan</button>';
+      const actions=statusAction+planControls;
       return '<tr data-user-row="'+esc(u.id)+'"><td>'+esc(u.id)+'</td><td>'+esc(u.email)+(owner?' <strong>(Owner)</strong>':'')+'</td><td>'+esc(u.plan_id)+'</td><td>'+esc(u.is_active?"Active":"Suspended")+'</td><td>'+esc(u.email_verified?"Verified":"Unverified")+'</td><td>'+scanCell+'</td><td><button class="btn subtle" data-view-scans="'+esc(u.id)+'">View scans</button></td><td>'+actions+'</td></tr>';
     }).join("") : '<tr><td colspan="8" class="empty">No matching accounts.</td></tr>';
     $("advUserPage").textContent = "Showing "+(d.total?userOffset+1:0)+"–"+Math.min(userOffset+d.users.length,d.total)+" of "+d.total;
@@ -75,8 +77,23 @@
     const d=await api("/api/admin/management/audit?limit=100");
     $("advAudit").innerHTML=d.events.length?d.events.map(a=>'<tr><td>'+dt(a.created_at)+'</td><td>'+esc(a.actor_email)+'</td><td>'+esc(a.action)+'</td><td>'+esc(a.target_type)+' #'+esc(a.target_id)+'</td><td>'+esc(a.details)+'</td></tr>').join(""):'<tr><td colspan="5" class="empty">No administrative actions recorded yet.</td></tr>';
   }
+
+  async function adminInbox(){
+    const d=await api("/api/admin/management/inbox?limit=100");
+    const badge=$("adminInboxBadge");
+    if(badge){badge.textContent=String(d.unread_count||0);badge.hidden=!(d.unread_count>0);badge.classList.toggle("off",!(d.unread_count>0));}
+    const target=$("adminInboxList");
+    if(!target)return;
+    target.innerHTML=d.notifications.length?d.notifications.map(n=>{
+      const meta=n.metadata||{};
+      const details=n.event_type==="subscription_request"
+        ? '<div class="inbox-meta"><span>Request #'+esc(meta.request_id||"—")+'</span><span>Plan: '+esc(meta.plan_id||"—")+'</span><span>Phone: '+esc(meta.phone_number||"—")+'</span><span>Payment: '+esc(meta.payment_method||"—")+'</span></div><p>'+esc(meta.message||"")+'</p><p><a href="#" data-open-subscription-requests>Open subscription requests</a></p>'
+        : '<p>'+esc(n.message)+'</p>';
+      return '<article class="panel inbox-item '+(n.read_at?'is-read':'is-unread')+'"><div class="inbox-heading"><div><strong>'+esc(n.title)+'</strong><small>'+esc(n.email||"Unknown user")+' · '+dt(n.created_at)+'</small></div><span>'+esc(n.event_type.replaceAll("_"," "))+'</span></div>'+details+'<p>'+esc(n.message)+'</p>'+(n.read_at?'':'<button class="btn subtle" data-mark-inbox-read="'+esc(n.id)+'">Mark as read</button>')+'</article>';
+    }).join(""):'<div class="panel empty">No incoming admin notifications yet.</div>';
+  }
   async function show(name){
-    const actions={ "advanced-users":users,"advanced-payments":payments,"analytics":analytics,"subscriptions":subscriptions,"monetization":monetization,"audit":audit };
+    const actions={ "advanced-users":users,"advanced-payments":payments,"analytics":analytics,"subscriptions":subscriptions,"monetization":monetization,"audit":audit,"notifications":adminInbox };
     if(actions[name])try{await actions[name]();}catch(e){alert(e.message);}
   }
   $("monetizationRefresh")?.addEventListener("click", () => show("monetization"));
@@ -136,6 +153,15 @@
         await api("/api/admin/management/users/"+t.dataset.setPlan+"/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}); await users();
         alert("Plan change saved.");
       }
+      if(t.dataset.markInboxRead){
+        await api("/api/admin/management/inbox/"+t.dataset.markInboxRead+"/read",{method:"POST"});
+        await adminInbox();
+      }
+      if(t.hasAttribute("data-open-subscription-requests")){
+        e.preventDefault();
+        const nav=document.querySelector('.nav[data-section="subscription-requests"]');
+        if(nav)nav.click();
+      }
       if(t.dataset.payment){
         const d=await api("/api/admin/management/payments/"+t.dataset.payment);
         alert(JSON.stringify(d.payment,null,2));
@@ -164,6 +190,7 @@
     if(e.target.id==="advAnalyticsRefresh")analytics().catch(x=>alert(x.message));
     if(e.target.id==="advSubscriptionsRefresh")subscriptions().catch(x=>alert(x.message));
     if(e.target.id==="advAuditRefresh")audit().catch(x=>alert(x.message));
+    if(e.target.id==="adminInboxRefresh")adminInbox().catch(x=>alert(x.message));
   });
-  csrf().then(()=>Promise.allSettled([users(),payments(),analytics(),subscriptions(),audit()])).catch(e=>console.warn(e.message));
+  csrf().then(()=>Promise.allSettled([users(),payments(),analytics(),subscriptions(),audit(),adminInbox()])).catch(e=>console.warn(e.message));
 })();
